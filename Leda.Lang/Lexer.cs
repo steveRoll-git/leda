@@ -111,13 +111,47 @@ public class Lexer
             return ReadString();
         }
 
+        // "--" can start either a single line comment or a long comment.
+        if (CurChar == '-' && CharAt(index + 1) == '-')
+        {
+            AdvanceChar(2);
+            if (CurChar == '[' && (CharAt(index + 1) == '[' || CharAt(index + 1) == '='))
+            {
+                // Long comment.
+                var (level, range, _, valid) = ReadLongString();
+                if (level != -1)
+                {
+                    if (!valid)
+                    {
+                        // TODO error: unfinished long comment
+                    }
+
+                    return ReadToken();
+                }
+            }
+
+            // Single line comment.
+            while (!ReachedEnd && CurChar != '\n')
+            {
+                AdvanceChar();
+            }
+
+            AdvanceChar();
+
+            return ReadToken();
+        }
+
         // Long strings start with "[[" or long brackets starting with "[=".
         if (CurChar == '[' && (CharAt(index + 1) == '[' || CharAt(index + 1) == '='))
         {
-            var (level, range, value) = ReadLongString();
+            var (level, range, value, valid) = ReadLongString();
             if (level == -1)
             {
                 // TODO error: invalid long string delimiter
+            }
+            else if (!valid)
+            {
+                // TODO error: unfinished long string
             }
 
             return new Token.LongString(level, range, value);
@@ -348,7 +382,7 @@ public class Lexer
     /// </summary>
     /// <returns>The level of the long brackets (how many equal signs are in the brackets), the range they occupy, and
     /// the contents. If the opening long bracket is invalid, a level of -1 is returned.</returns>
-    private (int Level, Range Range, string Value) ReadLongString()
+    private (int Level, Range Range, string Value, bool valid) ReadLongString()
     {
         var start = position;
 
@@ -363,7 +397,7 @@ public class Lexer
         if (CurChar != '[')
         {
             AdvanceChar();
-            return (-1, default, "");
+            return (-1, default, "", false);
         }
 
         AdvanceChar();
@@ -373,10 +407,12 @@ public class Lexer
         // Find the matching closing long bracket.
         var closingBracket = $"]{new string('=', level)}]";
         var endIndex = Code.IndexOf(closingBracket, index, StringComparison.Ordinal);
+        var valid = true;
 
         if (endIndex == -1)
         {
             // If the closing bracket wasn't found, advance to the end of the code.
+            valid = false;
             endIndex = Code.Length;
             while (!ReachedEnd)
             {
@@ -395,7 +431,7 @@ public class Lexer
 
         var value = Code.Substring(startIndex, endIndex - startIndex);
 
-        return (level, new(start, position), value);
+        return (level, new(start, position), value, valid);
     }
 
     /// <summary>
