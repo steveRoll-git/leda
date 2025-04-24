@@ -145,7 +145,7 @@ public class Lexer
         {
             if (CurChar == '.')
             {
-                if (seenDot)
+                if (seenDot || seenExp)
                 {
                     valid = false;
                 }
@@ -162,8 +162,16 @@ public class Lexer
                 }
                 else
                 {
+                    AdvanceChar();
+                    // A '+' or '-' may optionally appear after the exponent character.
+                    if (CurChar == '+' || CurChar == '-')
+                    {
+                        AdvanceChar();
+                    }
+
                     seenExp = true;
                     isHex = false; // Numbers following the exponent are decimal.
+                    continue;
                 }
             }
             else if (!IsNumberChar(CurChar) || !(isHex ? char.IsAsciiHexDigit(CurChar) : char.IsDigit(CurChar)))
