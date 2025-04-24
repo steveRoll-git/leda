@@ -108,6 +108,27 @@ public class Lexer
             return ReadNumber();
         }
 
+        // If `CurChar` is an underscore or letter, return the corresponding keyword token or a Name token.
+        if (IsNameChar(CurChar))
+        {
+            return ReadName();
+        }
+
+        // Otherwise, see if the current character matches any known tokens.
+        if (Token.StringTokenMap.TryGetValue(CurChar.ToString(), out var token))
+        {
+            var start = position;
+            AdvanceChar();
+            // As long as the next character still makes a valid token, add it and advance.
+            while (Token.StringTokenMap.TryGetValue($"{token.Value}{CurChar}", out var otherToken))
+            {
+                token = otherToken;
+                AdvanceChar();
+            }
+
+            return token with { WordRange = start };
+        }
+
         return new Token();
     }
 
@@ -188,6 +209,31 @@ public class Lexer
         }
 
         return new Token.Number(start, Code.Substring(startIndex, index - startIndex));
+    }
+
+
+    /// <summary>
+    /// Reads the next name, and returns its corresponding keyword token, or a Name token.
+    /// </summary>
+    /// <returns></returns>
+    private Token ReadName()
+    {
+        var startIndex = index;
+        var start = position;
+
+        while (!ReachedEnd && IsNameChar(CurChar))
+        {
+            AdvanceChar();
+        }
+
+        var value = Code.Substring(startIndex, index - startIndex);
+
+        if (Token.StringTokenMap.TryGetValue(value, out var keyword))
+        {
+            return keyword with { WordRange = start };
+        }
+
+        return new Token.Name(start, value);
     }
 
     /// <summary>

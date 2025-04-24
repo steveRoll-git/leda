@@ -43,7 +43,7 @@ public record Token
     {
         public Eof(Position position) : base(new Range(position, position)) { }
 
-        public override string Value => "<EOF>";
+        public override string Value { get; } = "<EOF>";
     }
 
     /// <summary>
@@ -72,7 +72,7 @@ public record Token
         public override string Value { get; }
     }
 
-    #region Keyword Types
+    #region Keyword Tokens
 
     /// <summary>
     /// The `and` keyword.
@@ -265,10 +265,170 @@ public record Token
 
     #endregion
 
+    #region Punctuation Tokens
+
+    public sealed record Plus : Token
+    {
+        public const string Punctuation = "+";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Minus : Token
+    {
+        public const string Punctuation = "-";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Multiply : Token
+    {
+        public const string Punctuation = "*";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Divide : Token
+    {
+        public const string Punctuation = "/";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Modulo : Token
+    {
+        public const string Punctuation = "%";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Power : Token
+    {
+        public const string Punctuation = "^";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Length : Token
+    {
+        public const string Punctuation = "#";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Equal : Token
+    {
+        public const string Punctuation = "==";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record NotEqual : Token
+    {
+        public const string Punctuation = "~=";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record LessEqual : Token
+    {
+        public const string Punctuation = "<=";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record GreaterEqual : Token
+    {
+        public const string Punctuation = ">=";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Less : Token
+    {
+        public const string Punctuation = "<";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Greater : Token
+    {
+        public const string Punctuation = ">";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Assign : Token
+    {
+        public const string Punctuation = "=";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record LParen : Token
+    {
+        public const string Punctuation = "(";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record RParen : Token
+    {
+        public const string Punctuation = ")";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record LCurly : Token
+    {
+        public const string Punctuation = "{";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record RCurly : Token
+    {
+        public const string Punctuation = "}";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record LSquare : Token
+    {
+        public const string Punctuation = "[";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record RSquare : Token
+    {
+        public const string Punctuation = "]";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Semicolon : Token
+    {
+        public const string Punctuation = ";";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Colon : Token
+    {
+        public const string Punctuation = ":";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Comma : Token
+    {
+        public const string Punctuation = ",";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Dot : Token
+    {
+        public const string Punctuation = ".";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Concat : Token
+    {
+        public const string Punctuation = "..";
+        public override string Value { get; } = Punctuation;
+    }
+
+    public sealed record Vararg : Token
+    {
+        public const string Punctuation = "...";
+        public override string Value { get; } = Punctuation;
+    }
+
+    #endregion
+
     /// <summary>
-    /// A map of strings to their respective keyword tokens.
+    /// A map of strings to their respective tokens.
     /// </summary>
-    public static Dictionary<string, Token> Keywords = new()
+    public static Dictionary<string, Token> StringTokenMap = new()
     {
         { And.Keyword, new And() },
         { Break.Keyword, new Break() },
@@ -291,5 +451,31 @@ public record Token
         { True.Keyword, new True() },
         { Until.Keyword, new Until() },
         { While.Keyword, new While() },
+        { Plus.Punctuation, new Plus() },
+        { Minus.Punctuation, new Minus() },
+        { Multiply.Punctuation, new Multiply() },
+        { Divide.Punctuation, new Divide() },
+        { Modulo.Punctuation, new Modulo() },
+        { Power.Punctuation, new Power() },
+        { Length.Punctuation, new Length() },
+        { Equal.Punctuation, new Equal() },
+        { NotEqual.Punctuation, new NotEqual() },
+        { LessEqual.Punctuation, new LessEqual() },
+        { GreaterEqual.Punctuation, new GreaterEqual() },
+        { Less.Punctuation, new Less() },
+        { Greater.Punctuation, new Greater() },
+        { Assign.Punctuation, new Assign() },
+        { LParen.Punctuation, new LParen() },
+        { RParen.Punctuation, new RParen() },
+        { LCurly.Punctuation, new LCurly() },
+        { RCurly.Punctuation, new RCurly() },
+        { LSquare.Punctuation, new LSquare() },
+        { RSquare.Punctuation, new RSquare() },
+        { Semicolon.Punctuation, new Semicolon() },
+        { Colon.Punctuation, new Colon() },
+        { Comma.Punctuation, new Comma() },
+        { Dot.Punctuation, new Dot() },
+        { Concat.Punctuation, new Concat() },
+        { Vararg.Punctuation, new Vararg() },
     };
 }
