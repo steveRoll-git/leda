@@ -85,6 +85,25 @@ public record Token
         public override string Value { get; }
     }
 
+    /// <summary>
+    /// A multiline string literal surrounded with long brackets.
+    /// </summary>
+    public sealed record LongString : Token
+    {
+        public LongString(int level, Range range, string value) : base(range)
+        {
+            Level = level;
+            Value = value;
+        }
+
+        /// <summary>
+        /// The number of equal signs in the long brackets.
+        /// </summary>
+        public int Level { get; }
+
+        public override string Value { get; }
+    }
+
     #region Keyword Tokens
 
     /// <summary>

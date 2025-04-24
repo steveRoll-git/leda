@@ -105,9 +105,22 @@ public class Lexer
             return new Token.Eof(position);
         }
 
+        // Single line strings start with single or double quotes.
         if (CurChar == '\'' || CurChar == '"')
         {
             return ReadString();
+        }
+
+        // Long strings start with "[[" or long brackets starting with "[=".
+        if (CurChar == '[' && (CharAt(index + 1) == '[' || CharAt(index + 1) == '='))
+        {
+            var (level, range, value) = ReadLongString();
+            if (level == -1)
+            {
+                // TODO error: invalid long string delimiter
+            }
+
+            return new Token.LongString(level, range, value);
         }
 
         // If `CurChar` is a digit, or a period with a digit right after it...
@@ -327,6 +340,62 @@ public class Lexer
         }
 
         return new Token.Name(start, value);
+    }
+
+    /// <summary>
+    /// Reads a long string, delimited by long brackets - a pair of square brackets with zero or more equal signs
+    /// in-between.
+    /// </summary>
+    /// <returns>The level of the long brackets (how many equal signs are in the brackets), the range they occupy, and
+    /// the contents. If the opening long bracket is invalid, a level of -1 is returned.</returns>
+    private (int Level, Range Range, string Value) ReadLongString()
+    {
+        var start = position;
+
+        var level = 0;
+        AdvanceChar();
+        while (CurChar == '=')
+        {
+            level++;
+            AdvanceChar();
+        }
+
+        if (CurChar != '[')
+        {
+            AdvanceChar();
+            return (-1, default, "");
+        }
+
+        AdvanceChar();
+
+        var startIndex = index;
+
+        // Find the matching closing long bracket.
+        var closingBracket = $"]{new string('=', level)}]";
+        var endIndex = Code.IndexOf(closingBracket, index, StringComparison.Ordinal);
+
+        if (endIndex == -1)
+        {
+            // If the closing bracket wasn't found, advance to the end of the code.
+            endIndex = Code.Length;
+            while (!ReachedEnd)
+            {
+                AdvanceChar();
+            }
+        }
+        else
+        {
+            while (index < endIndex)
+            {
+                AdvanceChar();
+            }
+
+            AdvanceChar(closingBracket.Length);
+        }
+
+        var value = Code.Substring(startIndex, endIndex - startIndex);
+
+        return (level, new(start, position), value);
     }
 
     /// <summary>
