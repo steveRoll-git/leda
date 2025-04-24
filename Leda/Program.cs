@@ -6,10 +6,10 @@ class Program
 {
     static void Main(string[] args)
     {
-        Lexer l = new Lexer(new Source("", "a=--asdf!!!!!\n3"));
+        var l = new Lexer(new Source("test", "local myThing = \"wow\nasdf"), new ConsoleReporter());
         while (!l.ReachedEnd)
         {
-            Console.WriteLine(l.ReadToken());
+            l.ReadToken();
         }
     }
 }

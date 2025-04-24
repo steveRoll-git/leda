@@ -9,6 +9,8 @@ public class Lexer
 {
     private readonly Source source;
 
+    private IDiagnosticReporter? reporter;
+
     private string Code => source.Code;
 
     /// <summary>
@@ -33,9 +35,10 @@ public class Lexer
 
     private char CurChar => CharAt(index);
 
-    public Lexer(Source source)
+    public Lexer(Source source, IDiagnosticReporter? reporter = null)
     {
         this.source = source;
+        this.reporter = reporter;
     }
 
     /// <summary>
@@ -105,6 +108,8 @@ public class Lexer
             return new Token.Eof(position);
         }
 
+        var start = position;
+
         // Single line strings start with single or double quotes.
         if (CurChar == '\'' || CurChar == '"')
         {
@@ -121,9 +126,11 @@ public class Lexer
                 var (level, range, _, valid) = ReadLongString();
                 if (level != -1)
                 {
+                    // If the comment starts with an invalid long bracket, we'll treat it as a single line comment.
+                    // But if the opening bracket is valid and there's no closing bracket, we'll report that.
                     if (!valid)
                     {
-                        // TODO error: unfinished long comment
+                        reporter?.Report(new Diagnostic.UnfinishedLongComment(source, new(start, range.End)));
                     }
 
                     return ReadToken();
@@ -147,11 +154,11 @@ public class Lexer
             var (level, range, value, valid) = ReadLongString();
             if (level == -1)
             {
-                // TODO error: invalid long string delimiter
+                reporter?.Report(new Diagnostic.InvalidLongStringDelimiter(source, range));
             }
             else if (!valid)
             {
-                // TODO error: unfinished long string
+                reporter?.Report(new Diagnostic.UnfinishedLongString(source, range));
             }
 
             return new Token.LongString(level, range, value);
@@ -172,7 +179,6 @@ public class Lexer
         // Otherwise, see if the current character matches any known tokens.
         if (Token.StringTokenMap.TryGetValue(CurChar.ToString(), out var token))
         {
-            var start = position;
             AdvanceChar();
             // As long as the next character still makes a valid token, add it and advance.
             while (Token.StringTokenMap.TryGetValue($"{token.Value}{CurChar}", out var otherToken))
@@ -184,8 +190,9 @@ public class Lexer
             return token with { WordRange = start };
         }
 
-        // TODO error: invalid character
+        var character = CurChar;
         AdvanceChar();
+        reporter?.Report(new Diagnostic.InvalidCharacter(source, new(start, position), character));
 
         return new Token(new(prevCharPosition, position));
     }
@@ -220,19 +227,18 @@ public class Lexer
         {
             if (CurChar == '\n')
             {
-                // TODO error: unfinished string
-                AdvanceChar();
                 break;
             }
 
             if (CurChar == '\\')
             {
+                var slashStart = position;
                 AdvanceChar();
                 if (char.IsAsciiDigit(CurChar))
                 {
                     // A backslash followed by at most 3 digits is a decimal character code.
-                    int code = 0;
-                    for (int i = 0; i < 3 && char.IsAsciiDigit(CurChar); i++)
+                    var code = 0;
+                    for (var i = 0; i < 3 && char.IsAsciiDigit(CurChar); i++)
                     {
                         code = code * 10 + (CurChar - '0');
                         AdvanceChar();
@@ -254,7 +260,8 @@ public class Lexer
                 }
                 else
                 {
-                    // TODO error: invalid escape sequence
+                    AdvanceChar();
+                    reporter?.Report(new Diagnostic.InvalidEscapeSequence(source, new(slashStart, position)));
                 }
             }
             else
@@ -264,10 +271,12 @@ public class Lexer
             }
         }
 
-        if (CurChar == delimiter)
+        if (CurChar != delimiter)
         {
-            AdvanceChar();
+            reporter?.Report(new Diagnostic.UnfinishedString(source, new(start, position)));
         }
+
+        AdvanceChar();
 
         return new Token.String(new(start, prevCharPosition), value.ToString());
     }
@@ -345,7 +354,7 @@ public class Lexer
 
         if (!valid)
         {
-            // TODO report malformed number
+            reporter?.Report(new Diagnostic.MalformedNumber(source, new(start, position)));
         }
 
         return new Token.Number(start, Code.Substring(startIndex, index - startIndex));
@@ -396,8 +405,7 @@ public class Lexer
 
         if (CurChar != '[')
         {
-            AdvanceChar();
-            return (-1, default, "", false);
+            return (-1, new(start, position), "", false);
         }
 
         AdvanceChar();

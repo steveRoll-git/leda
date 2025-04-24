@@ -16,13 +16,14 @@ public class Source
     public string Code { get; }
 
     /// <summary>
+    /// A dictionary where the key is a 0-based line number, and the value is the index in `Code` where that line begins.
+    /// </summary>
+    private Dictionary<int, int> newlines = new() { { 0, 0 } };
+
+    /// <summary>
     /// Creates a new source with the given path, and reads the file at that path into Code.
     /// </summary>
-    public Source(string path)
-    {
-        Path = path;
-        Code = File.ReadAllText(path);
-    }
+    public Source(string path) : this(path, File.ReadAllText(path)) { }
 
     /// <summary>
     /// Creates a new source with the given path and code.
@@ -31,5 +32,34 @@ public class Source
     {
         Path = path;
         Code = code;
+
+        // Map all newline numbers to the indices they appear at.
+        var currentLine = 1;
+        for (var i = 0; i < code.Length; i++)
+        {
+            if (code[i] == '\n')
+            {
+                newlines.Add(currentLine, i + 1);
+                currentLine++;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns the contents of the line at the given (0-based) index.
+    /// </summary>
+    public string GetLine(int index)
+    {
+        if (newlines.TryGetValue(index, out var lineStart))
+        {
+            if (newlines.TryGetValue(index + 1, out var lineEnd))
+            {
+                return Code.Substring(lineStart, lineEnd - lineStart - 1);
+            }
+
+            return Code.Substring(lineStart);
+        }
+
+        return "";
     }
 }
