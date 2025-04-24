@@ -72,6 +72,19 @@ public record Token
         public override string Value { get; }
     }
 
+    /// <summary>
+    /// A single-line string literal.
+    /// </summary>
+    public sealed record String : Token
+    {
+        public String(Range range, string value) : base(range)
+        {
+            Value = value;
+        }
+
+        public override string Value { get; }
+    }
+
     #region Keyword Tokens
 
     /// <summary>

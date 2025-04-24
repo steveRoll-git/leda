@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Leda.Lang;
 
 /// <summary>
@@ -54,6 +56,8 @@ public class Lexer
             return;
         }
 
+        prevCharPosition = position;
+
         if (CurChar == '\n')
         {
             position.Character = 0;
@@ -101,6 +105,10 @@ public class Lexer
             return new Token.Eof(position);
         }
 
+        if (CurChar == '\'' || CurChar == '"')
+        {
+            return ReadString();
+        }
 
         // If `CurChar` is a digit, or a period with a digit right after it...
         if (char.IsAsciiDigit(CurChar) || (CurChar == '.' && char.IsAsciiDigit(CharAt(index + 1))))
@@ -129,7 +137,92 @@ public class Lexer
             return token with { WordRange = start };
         }
 
-        return new Token();
+        // TODO error: invalid character
+        AdvanceChar();
+
+        return new Token(new(prevCharPosition, position));
+    }
+
+    private static readonly Dictionary<char, string> EscapeSequences = new()
+    {
+        { 'a', "\a" },
+        { 'b', "\b" },
+        { 'f', "\f" },
+        { 'n', "\n" },
+        { 'r', "\r" },
+        { 't', "\t" },
+        { 'v', "\v" },
+        { '\\', "\\" },
+        { '"', "\"" },
+        { '\'', "'" },
+        { '\n', "\n" },
+    };
+
+    /// <summary>
+    /// Reads a single-line string literal.
+    /// </summary>
+    private Token ReadString()
+    {
+        var start = position;
+        char delimiter = CurChar;
+        StringBuilder value = new();
+
+        AdvanceChar();
+
+        while (!ReachedEnd && CurChar != delimiter)
+        {
+            if (CurChar == '\n')
+            {
+                // TODO error: unfinished string
+                AdvanceChar();
+                break;
+            }
+
+            if (CurChar == '\\')
+            {
+                AdvanceChar();
+                if (char.IsAsciiDigit(CurChar))
+                {
+                    // A backslash followed by at most 3 digits is a decimal character code.
+                    int code = 0;
+                    for (int i = 0; i < 3 && char.IsAsciiDigit(CurChar); i++)
+                    {
+                        code = code * 10 + (CurChar - '0');
+                        AdvanceChar();
+                    }
+
+                    value.Append((char)code);
+                }
+                else if (Code.Substring(index, 2) == "\r\n")
+                {
+                    // A CRLF after a backslash is a newline in the string.
+                    AdvanceChar(2);
+                    value.Append('\n');
+                }
+                else if (EscapeSequences.TryGetValue(CurChar, out var escapedChar))
+                {
+                    // Any of the valid escape characters.
+                    AdvanceChar();
+                    value.Append(escapedChar);
+                }
+                else
+                {
+                    // TODO error: invalid escape sequence
+                }
+            }
+            else
+            {
+                value.Append(CurChar);
+                AdvanceChar();
+            }
+        }
+
+        if (CurChar == delimiter)
+        {
+            AdvanceChar();
+        }
+
+        return new Token.String(new(start, prevCharPosition), value.ToString());
     }
 
     /// <summary>
