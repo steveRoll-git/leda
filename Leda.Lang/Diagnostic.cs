@@ -90,6 +90,24 @@ public class Diagnostic
             Message = "Unfinished long comment.";
         }
     }
+
+    public class ExpectedTokenButGotToken : Diagnostic
+    {
+        public ExpectedTokenButGotToken(Source source, Token expected, Token got) : base(source, got.Range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"Expected {expected.KindName}, but got {got.Value}.";
+        }
+    }
+
+    public class ExpectedExpressionButGotToken : Diagnostic
+    {
+        public ExpectedExpressionButGotToken(Source source, Token got) : base(source, got.Range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"Expected an expression, but got {got.Value}.";
+        }
+    }
 }
 
 public enum DiagnosticSeverity

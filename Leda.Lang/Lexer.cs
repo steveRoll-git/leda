@@ -161,7 +161,7 @@ public class Lexer
                 reporter.Report(new Diagnostic.UnfinishedLongString(source, range));
             }
 
-            return new Token.LongString(level, range, value);
+            return new Token.LongString(level, range, value.Replace("\r\n", "\n"));
         }
 
         // If `CurChar` is a digit, or a period with a digit right after it...
@@ -386,8 +386,8 @@ public class Lexer
     }
 
     /// <summary>
-    /// Reads a long string, delimited by long brackets - a pair of square brackets with zero or more equal signs
-    /// in-between.
+    /// Reads a long string or comment, delimited by long brackets - a pair of square brackets with zero or more equal
+    /// signs in-between.
     /// </summary>
     /// <returns>The level of the long brackets (how many equal signs are in the brackets), the range they occupy, and
     /// the contents. If the opening long bracket is invalid, a level of -1 is returned.</returns>

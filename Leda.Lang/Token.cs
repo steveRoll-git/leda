@@ -23,6 +23,25 @@ public record Token
     /// </summary>
     public virtual string Value { get; } = "";
 
+    /// <summary>
+    /// The name of this kind of token. (May be the same as the token's value.)
+    /// </summary>
+    public virtual string KindName => $"\"{Value}\"";
+
+    public virtual bool IsBinary { get; } = false;
+
+    /// <summary>
+    /// The token's binary precedence, if it's a binary operator.
+    /// </summary>
+    public virtual int Precedence { get; } = -1;
+
+    /// <summary>
+    /// Whether this operator is right associative, if it's a binary operator.
+    /// </summary>
+    public virtual bool RightAssociative { get; } = false;
+
+    public virtual bool IsUnary { get; } = false;
+
     public Token() { }
 
     public Token(Range range)
@@ -51,12 +70,15 @@ public record Token
     /// </summary>
     public sealed record Name : Token
     {
+        public Name() { }
+
         public Name(Position position, string value) : base(FromWordRange(position, value))
         {
             Value = value;
         }
 
         public override string Value { get; }
+        public override string KindName => "name";
     }
 
     /// <summary>
@@ -70,6 +92,7 @@ public record Token
         }
 
         public override string Value { get; }
+        public override string KindName => "number";
     }
 
     /// <summary>
@@ -83,6 +106,7 @@ public record Token
         }
 
         public override string Value { get; }
+        public override string KindName => "string";
     }
 
     /// <summary>
@@ -102,6 +126,7 @@ public record Token
         public int Level { get; }
 
         public override string Value { get; }
+        public override string KindName => "string";
     }
 
     #region Keyword Tokens
@@ -113,6 +138,7 @@ public record Token
     {
         public const string Keyword = "and";
         public override string Value { get; } = Keyword;
+        public override int Precedence { get; } = 1;
     }
 
     /// <summary>
@@ -230,6 +256,7 @@ public record Token
     {
         public const string Keyword = "not";
         public override string Value { get; } = Keyword;
+        public override bool IsUnary { get; } = true;
     }
 
     /// <summary>
@@ -239,6 +266,7 @@ public record Token
     {
         public const string Keyword = "or";
         public override string Value { get; } = Keyword;
+        public override int Precedence { get; } = 0;
     }
 
     /// <summary>
@@ -303,78 +331,93 @@ public record Token
     {
         public const string Punctuation = "+";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 4;
     }
 
     public sealed record Minus : Token
     {
         public const string Punctuation = "-";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 4;
+        public override bool IsUnary { get; } = true;
     }
 
     public sealed record Multiply : Token
     {
         public const string Punctuation = "*";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 5;
     }
 
     public sealed record Divide : Token
     {
         public const string Punctuation = "/";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 5;
     }
 
     public sealed record Modulo : Token
     {
         public const string Punctuation = "%";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 5;
     }
 
     public sealed record Power : Token
     {
         public const string Punctuation = "^";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 6;
+        public override bool RightAssociative { get; } = true;
     }
 
     public sealed record Length : Token
     {
         public const string Punctuation = "#";
         public override string Value { get; } = Punctuation;
+        public override bool IsUnary { get; } = true;
     }
 
     public sealed record Equal : Token
     {
         public const string Punctuation = "==";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 2;
     }
 
     public sealed record NotEqual : Token
     {
         public const string Punctuation = "~=";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 2;
     }
 
     public sealed record LessEqual : Token
     {
         public const string Punctuation = "<=";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 2;
     }
 
     public sealed record GreaterEqual : Token
     {
         public const string Punctuation = ">=";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 2;
     }
 
     public sealed record Less : Token
     {
         public const string Punctuation = "<";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 2;
     }
 
     public sealed record Greater : Token
     {
         public const string Punctuation = ">";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 2;
     }
 
     public sealed record Assign : Token
@@ -447,6 +490,8 @@ public record Token
     {
         public const string Punctuation = "..";
         public override string Value { get; } = Punctuation;
+        public override int Precedence { get; } = 3;
+        public override bool RightAssociative { get; } = true;
     }
 
     public sealed record Vararg : Token
