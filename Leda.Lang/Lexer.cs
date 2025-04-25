@@ -9,7 +9,7 @@ public class Lexer
 {
     private readonly Source source;
 
-    private IDiagnosticReporter? reporter;
+    private IDiagnosticReporter reporter;
 
     private string Code => source.Code;
 
@@ -35,7 +35,7 @@ public class Lexer
 
     private char CurChar => CharAt(index);
 
-    public Lexer(Source source, IDiagnosticReporter? reporter = null)
+    public Lexer(Source source, IDiagnosticReporter reporter)
     {
         this.source = source;
         this.reporter = reporter;
@@ -130,7 +130,7 @@ public class Lexer
                     // But if the opening bracket is valid and there's no closing bracket, we'll report that.
                     if (!valid)
                     {
-                        reporter?.Report(new Diagnostic.UnfinishedLongComment(source, new(start, range.End)));
+                        reporter.Report(new Diagnostic.UnfinishedLongComment(source, new(start, range.End)));
                     }
 
                     return ReadToken();
@@ -154,11 +154,11 @@ public class Lexer
             var (level, range, value, valid) = ReadLongString();
             if (level == -1)
             {
-                reporter?.Report(new Diagnostic.InvalidLongStringDelimiter(source, range));
+                reporter.Report(new Diagnostic.InvalidLongStringDelimiter(source, range));
             }
             else if (!valid)
             {
-                reporter?.Report(new Diagnostic.UnfinishedLongString(source, range));
+                reporter.Report(new Diagnostic.UnfinishedLongString(source, range));
             }
 
             return new Token.LongString(level, range, value);
@@ -192,7 +192,7 @@ public class Lexer
 
         var character = CurChar;
         AdvanceChar();
-        reporter?.Report(new Diagnostic.InvalidCharacter(source, new(start, position), character));
+        reporter.Report(new Diagnostic.InvalidCharacter(source, new(start, position), character));
 
         return new Token(new(prevCharPosition, position));
     }
@@ -261,7 +261,7 @@ public class Lexer
                 else
                 {
                     AdvanceChar();
-                    reporter?.Report(new Diagnostic.InvalidEscapeSequence(source, new(slashStart, position)));
+                    reporter.Report(new Diagnostic.InvalidEscapeSequence(source, new(slashStart, position)));
                 }
             }
             else
@@ -273,7 +273,7 @@ public class Lexer
 
         if (CurChar != delimiter)
         {
-            reporter?.Report(new Diagnostic.UnfinishedString(source, new(start, position)));
+            reporter.Report(new Diagnostic.UnfinishedString(source, new(start, position)));
         }
 
         AdvanceChar();
@@ -354,7 +354,7 @@ public class Lexer
 
         if (!valid)
         {
-            reporter?.Report(new Diagnostic.MalformedNumber(source, new(start, position)));
+            reporter.Report(new Diagnostic.MalformedNumber(source, new(start, position)));
         }
 
         return new Token.Number(start, Code.Substring(startIndex, index - startIndex));
