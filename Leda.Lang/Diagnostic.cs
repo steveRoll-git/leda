@@ -108,6 +108,15 @@ public class Diagnostic
             Message = $"Expected an expression, but got {got.Value}.";
         }
     }
+
+    public class DidNotExpectTokenHere : Diagnostic
+    {
+        public DidNotExpectTokenHere(Source source, Token got) : base(source, got.Range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"Did not expect {got.Value} here.";
+        }
+    }
 }
 
 public enum DiagnosticSeverity

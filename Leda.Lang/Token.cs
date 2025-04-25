@@ -21,26 +21,26 @@ public record Token
     /// <summary>
     /// This token's contents as a string.
     /// </summary>
-    public virtual string Value { get; } = "";
+    public virtual string Value => "";
 
     /// <summary>
     /// The name of this kind of token. (May be the same as the token's value.)
     /// </summary>
     public virtual string KindName => $"\"{Value}\"";
 
-    public virtual bool IsBinary { get; } = false;
+    public virtual bool IsBinary => false;
 
     /// <summary>
     /// The token's binary precedence, if it's a binary operator.
     /// </summary>
-    public virtual int Precedence { get; } = -1;
+    public virtual int Precedence => -1;
 
     /// <summary>
     /// Whether this operator is right associative, if it's a binary operator.
     /// </summary>
-    public virtual bool RightAssociative { get; } = false;
+    public virtual bool RightAssociative => false;
 
-    public virtual bool IsUnary { get; } = false;
+    public virtual bool IsUnary => false;
 
     public Token() { }
 
@@ -62,7 +62,7 @@ public record Token
     {
         public Eof(Position position) : base(new Range(position, position)) { }
 
-        public override string Value { get; } = "<EOF>";
+        public override string Value => "<EOF>";
     }
 
     /// <summary>
@@ -139,8 +139,8 @@ public record Token
     public sealed record And : Token
     {
         public const string Keyword = "and";
-        public override string Value { get; } = Keyword;
-        public override int Precedence { get; } = 1;
+        public override string Value => Keyword;
+        public override int Precedence => 1;
     }
 
     /// <summary>
@@ -149,7 +149,7 @@ public record Token
     public sealed record Break : Token
     {
         public const string Keyword = "break";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -158,7 +158,7 @@ public record Token
     public sealed record Do : Token
     {
         public const string Keyword = "do";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -167,7 +167,7 @@ public record Token
     public sealed record Else : Token
     {
         public const string Keyword = "else";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -176,7 +176,7 @@ public record Token
     public sealed record Elseif : Token
     {
         public const string Keyword = "elseif";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -185,7 +185,7 @@ public record Token
     public sealed record End : Token
     {
         public const string Keyword = "end";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -194,7 +194,7 @@ public record Token
     public sealed record False : Token
     {
         public const string Keyword = "false";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -203,7 +203,7 @@ public record Token
     public sealed record For : Token
     {
         public const string Keyword = "for";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -212,7 +212,7 @@ public record Token
     public sealed record Function : Token
     {
         public const string Keyword = "function";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -221,7 +221,7 @@ public record Token
     public sealed record If : Token
     {
         public const string Keyword = "if";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -230,7 +230,7 @@ public record Token
     public sealed record In : Token
     {
         public const string Keyword = "in";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -239,7 +239,7 @@ public record Token
     public sealed record Local : Token
     {
         public const string Keyword = "local";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -248,7 +248,7 @@ public record Token
     public sealed record Nil : Token
     {
         public const string Keyword = "nil";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -257,8 +257,8 @@ public record Token
     public sealed record Not : Token
     {
         public const string Keyword = "not";
-        public override string Value { get; } = Keyword;
-        public override bool IsUnary { get; } = true;
+        public override string Value => Keyword;
+        public override bool IsUnary => true;
     }
 
     /// <summary>
@@ -267,8 +267,8 @@ public record Token
     public sealed record Or : Token
     {
         public const string Keyword = "or";
-        public override string Value { get; } = Keyword;
-        public override int Precedence { get; } = 0;
+        public override string Value => Keyword;
+        public override int Precedence => 0;
     }
 
     /// <summary>
@@ -277,7 +277,7 @@ public record Token
     public sealed record Repeat : Token
     {
         public const string Keyword = "repeat";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -286,7 +286,7 @@ public record Token
     public sealed record Return : Token
     {
         public const string Keyword = "return";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -295,7 +295,7 @@ public record Token
     public sealed record Then : Token
     {
         public const string Keyword = "then";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -304,7 +304,7 @@ public record Token
     public sealed record True : Token
     {
         public const string Keyword = "true";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -313,7 +313,7 @@ public record Token
     public sealed record Until : Token
     {
         public const string Keyword = "until";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     /// <summary>
@@ -322,7 +322,7 @@ public record Token
     public sealed record While : Token
     {
         public const string Keyword = "while";
-        public override string Value { get; } = Keyword;
+        public override string Value => Keyword;
     }
 
     #endregion
@@ -332,174 +332,187 @@ public record Token
     public sealed record Plus : Token
     {
         public const string Punctuation = "+";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 4;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 4;
     }
 
     public sealed record Minus : Token
     {
         public const string Punctuation = "-";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 4;
-        public override bool IsUnary { get; } = true;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 4;
+        public override bool IsUnary => true;
     }
 
     public sealed record Multiply : Token
     {
         public const string Punctuation = "*";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 5;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 5;
     }
 
     public sealed record Divide : Token
     {
         public const string Punctuation = "/";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 5;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 5;
     }
 
     public sealed record Modulo : Token
     {
         public const string Punctuation = "%";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 5;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 5;
     }
 
     public sealed record Power : Token
     {
         public const string Punctuation = "^";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 6;
-        public override bool RightAssociative { get; } = true;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 6;
+        public override bool RightAssociative => true;
     }
 
     public sealed record Length : Token
     {
         public const string Punctuation = "#";
-        public override string Value { get; } = Punctuation;
-        public override bool IsUnary { get; } = true;
+        public override string Value => Punctuation;
+        public override bool IsUnary => true;
     }
 
     public sealed record Equal : Token
     {
         public const string Punctuation = "==";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 2;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 2;
     }
 
     public sealed record NotEqual : Token
     {
         public const string Punctuation = "~=";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 2;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 2;
     }
 
     public sealed record LessEqual : Token
     {
         public const string Punctuation = "<=";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 2;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 2;
     }
 
     public sealed record GreaterEqual : Token
     {
         public const string Punctuation = ">=";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 2;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 2;
     }
 
     public sealed record Less : Token
     {
         public const string Punctuation = "<";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 2;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 2;
     }
 
     public sealed record Greater : Token
     {
         public const string Punctuation = ">";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 2;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 2;
     }
 
     public sealed record Assign : Token
     {
         public const string Punctuation = "=";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     public sealed record LParen : Token
     {
         public const string Punctuation = "(";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     public sealed record RParen : Token
     {
         public const string Punctuation = ")";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     public sealed record LCurly : Token
     {
         public const string Punctuation = "{";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     public sealed record RCurly : Token
     {
         public const string Punctuation = "}";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     public sealed record LSquare : Token
     {
         public const string Punctuation = "[";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     public sealed record RSquare : Token
     {
         public const string Punctuation = "]";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     public sealed record Semicolon : Token
     {
         public const string Punctuation = ";";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     public sealed record Colon : Token
     {
         public const string Punctuation = ":";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     public sealed record Comma : Token
     {
         public const string Punctuation = ",";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     public sealed record Dot : Token
     {
         public const string Punctuation = ".";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     public sealed record Concat : Token
     {
         public const string Punctuation = "..";
-        public override string Value { get; } = Punctuation;
-        public override int Precedence { get; } = 3;
-        public override bool RightAssociative { get; } = true;
+        public override string Value => Punctuation;
+        public override bool IsBinary => true;
+        public override int Precedence => 3;
+        public override bool RightAssociative => true;
     }
 
     public sealed record Vararg : Token
     {
         public const string Punctuation = "...";
-        public override string Value { get; } = Punctuation;
+        public override string Value => Punctuation;
     }
 
     #endregion
@@ -507,7 +520,7 @@ public record Token
     /// <summary>
     /// A map of strings to their respective tokens.
     /// </summary>
-    public static Dictionary<string, Token> StringTokenMap = new()
+    public static readonly Dictionary<string, Token> StringTokenMap = new()
     {
         { And.Keyword, new And() },
         { Break.Keyword, new Break() },

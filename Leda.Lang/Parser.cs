@@ -7,13 +7,14 @@ public class Parser
 {
     private static readonly Token.Name Name = new();
     private static readonly Token.RParen RParen = new();
+    private static readonly Token.RSquare RSquare = new();
     private static readonly Token.Assign Assign = new();
 
     private readonly Source source;
 
     private IDiagnosticReporter reporter;
 
-    private Lexer lexer;
+    private readonly Lexer lexer;
 
     /// <summary>
     /// The last token that was read.
@@ -67,10 +68,9 @@ public class Parser
     /// </summary>
     private T Expect<T>(T expected) where T : Token
     {
-        var got = token;
+        var got = Consume();
         if (got is T gotT)
         {
-            NextToken();
             return gotT;
         }
 
@@ -116,14 +116,9 @@ public class Parser
         // 'return' [explist]
         if (Accept<Token.Return>())
         {
-            if (token is Token.Semicolon or Token.End or Token.Eof)
-            {
-                return new Tree.Return(null);
-            }
-            else
-            {
-                return new Tree.Return(ParseExpression());
-            }
+            return token is Token.Semicolon or Token.End or Token.Eof
+                ? new Tree.Return(null)
+                : new Tree.Return(ParseExpression());
         }
 
         if (Accept<Token.Break>())
@@ -133,7 +128,7 @@ public class Parser
 
         var value = ParsePrefixExpression();
 
-        if (value is Tree.Call)
+        if (value is Tree.Call or Tree.Error)
         {
             return value;
         }
@@ -147,6 +142,10 @@ public class Parser
         return new Tree.Assignment([value], expressions);
     }
 
+    /// <summary>
+    /// Parses either an access, or a function call.
+    /// </summary>
+    /// <returns></returns>
     private Tree ParsePrefixExpression()
     {
         // '(' exp ')'
@@ -157,30 +156,44 @@ public class Parser
             return ParsePrefixExpression(expression);
         }
 
-        var name = Expect(Name);
-        return ParsePrefixExpression(new Tree.Name(name.Value));
+        if (token is Token.Name)
+        {
+            var name = Consume();
+            return ParsePrefixExpression(new Tree.Name(name.Value));
+        }
+
+        reporter.Report(new Diagnostic.DidNotExpectTokenHere(source, Consume()));
+
+        return new Tree.Error();
     }
 
     private Tree ParsePrefixExpression(Tree previous)
     {
-        // '.' Name
+        // Access with a dot: '.' Name
         if (Accept<Token.Dot>())
         {
             var name = Expect(Name);
             return ParsePrefixExpression(new Tree.Access(previous, new Tree.String(name.Value)));
         }
 
-        // '[' exp ']'
+        // Access with square brackets: '[' exp ']'
         if (Accept<Token.LSquare>())
         {
             var expression = ParseExpression();
+            Expect(RSquare);
             return ParsePrefixExpression(new Tree.Access(previous, expression));
         }
 
-        // '(' explist ')'
+        // Function call: '(' explist ')'
         if (Accept<Token.LParen>())
         {
+            if (Accept<Token.RParen>())
+            {
+                return ParsePrefixExpression(new Tree.Call(previous, []));
+            }
+
             var parameters = ParseExpressionList();
+            Expect(RParen);
             return ParsePrefixExpression(new Tree.Call(previous, parameters));
         }
 
