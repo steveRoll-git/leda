@@ -284,7 +284,7 @@ public class Parser
         if (token is Token.Number numberToken)
         {
             NextToken();
-            return new Tree.Number();
+            return new Tree.Number(numberToken.Value, numberToken.NumberValue);
         }
 
         if (token is Token.String stringToken)

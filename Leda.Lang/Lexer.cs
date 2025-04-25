@@ -357,7 +357,8 @@ public class Lexer
             reporter.Report(new Diagnostic.MalformedNumber(source, new(start, position)));
         }
 
-        return new Token.Number(start, Code.Substring(startIndex, index - startIndex));
+        var value = Code.Substring(startIndex, index - startIndex);
+        return new Token.Number(start, value, valid ? double.Parse(value) : double.NaN);
     }
 
 

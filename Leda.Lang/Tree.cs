@@ -57,7 +57,11 @@ public abstract class Tree
     /// <summary>
     /// A numerical constant.
     /// </summary>
-    public class Number : Tree;
+    public class Number(string value, double numberValue) : Tree
+    {
+        public string Value => value;
+        public double NumberValue => numberValue;
+    };
 
     /// <summary>
     /// A string literal.

@@ -86,12 +86,14 @@ public record Token
     /// </summary>
     public sealed record Number : Token
     {
-        public Number(Position position, string value) : base(FromWordRange(position, value))
+        public Number(Position position, string value, double numberValue) : base(FromWordRange(position, value))
         {
             Value = value;
+            NumberValue = numberValue;
         }
 
         public override string Value { get; }
+        public double NumberValue { get; }
         public override string KindName => "number";
     }
 
