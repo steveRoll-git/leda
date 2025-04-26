@@ -11,6 +11,20 @@ public abstract class Tree
     public class Error : Tree;
 
     /// <summary>
+    /// A type.
+    /// </summary>
+    public class Type
+    {
+        /// <summary>
+        /// A reference to a named type.
+        /// </summary>
+        public class Name(string value) : Type
+        {
+            public string Value => value;
+        }
+    }
+
+    /// <summary>
     /// A list of statements.
     /// </summary>
     public class Block(List<Tree> statements) : Tree
@@ -38,6 +52,15 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// Declarations of one or more local variables.
+    /// </summary>
+    public class LocalDeclaration(List<Declaration> declarations, List<Tree> values) : Tree
+    {
+        public List<Declaration> Declarations => declarations;
+        public List<Tree> Values => values;
+    }
+
+    /// <summary>
     /// A `return` statement, with an optional return expression.
     /// </summary>
     public class Return(Tree? expression) : Tree
@@ -49,6 +72,12 @@ public abstract class Tree
     /// A `break` statement.
     /// </summary>
     public class Break : Tree;
+
+    public class Declaration(string name, Type? type)
+    {
+        public string Name => name;
+        public Type? Type => type;
+    }
 
     /// <summary>
     /// A named reference to a variable or type.

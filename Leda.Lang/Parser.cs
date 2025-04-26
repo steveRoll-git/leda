@@ -12,6 +12,7 @@ public class Parser
     private static readonly Token.If If = new();
     private static readonly Token.Then Then = new();
     private static readonly Token.End End = new();
+    private static readonly Token.Local Local = new();
 
     private readonly Source source;
 
@@ -134,6 +135,12 @@ public class Parser
             return ParseIfStatement();
         }
 
+        if (token is Token.Local)
+        {
+            return ParseLocalDeclaration();
+        }
+
+        // Parse assignment or function call.
         var value = ParsePrefixExpression();
 
         if (value is Tree.Call or Tree.Error)
@@ -189,6 +196,46 @@ public class Parser
         Expect(End);
 
         return new Tree.If(primary, elseIfs, elseBody);
+    }
+
+    private Tree.Declaration ParseDeclaration()
+    {
+        // name [':' type]
+        var name = Expect(Name).Value;
+
+        Tree.Type? type = null;
+        if (Accept<Token.Colon>())
+        {
+            type = ParseType();
+        }
+
+        return new Tree.Declaration(name, type);
+    }
+
+    private Tree.Type ParseType()
+    {
+        // TODO incomplete
+        return new Tree.Type.Name(Expect(Name).Value);
+    }
+
+    private Tree.LocalDeclaration ParseLocalDeclaration()
+    {
+        // 'local' declaration [',' declaration] = explist
+        Expect(Local);
+
+        List<Tree.Declaration> declarations = [];
+        do
+        {
+            declarations.Add(ParseDeclaration());
+        } while (Accept<Token.Comma>());
+
+        List<Tree> values = [];
+        if (Accept<Token.Assign>())
+        {
+            values = ParseExpressionList();
+        }
+
+        return new Tree.LocalDeclaration(declarations, values);
     }
 
     /// <summary>
