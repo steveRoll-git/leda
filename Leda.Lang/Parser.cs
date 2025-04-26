@@ -300,6 +300,7 @@ public class Parser
                 Token.Divide => new Tree.Divide(left, right),
                 Token.Modulo => new Tree.Modulo(left, right),
                 Token.Power => new Tree.Power(left, right),
+                Token.Concat => new Tree.Concat(left, right),
                 _ => throw new Exception() // Unreachable.
             };
         }

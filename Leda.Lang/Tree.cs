@@ -191,6 +191,12 @@ public abstract class Tree
         public Tree Right => right;
     }
 
+    public class Concat(Tree left, Tree right) : Tree
+    {
+        public Tree Left => left;
+        public Tree Right => right;
+    }
+
     /// <summary>
     /// Indexed value access - target.key or target[key].
     /// </summary>
