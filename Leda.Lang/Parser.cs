@@ -88,14 +88,8 @@ public class Parser
     public Tree.Block ParseBlock()
     {
         var statements = new List<Tree>();
-        while (true)
+        while (token is not (Token.End or Token.Else or Token.Elseif or Token.Eof))
         {
-            if (token is Token.End or Token.Else or Token.Elseif or Token.Eof)
-            {
-                // `end` will be consumed by this method's caller.
-                break;
-            }
-
             var statement = ParseStatement();
             statements.Add(statement);
 
