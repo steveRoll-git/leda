@@ -9,6 +9,9 @@ public class Parser
     private static readonly Token.RParen RParen = new();
     private static readonly Token.RSquare RSquare = new();
     private static readonly Token.Assign Assign = new();
+    private static readonly Token.If If = new();
+    private static readonly Token.Then Then = new();
+    private static readonly Token.End End = new();
 
     private readonly Source source;
 
@@ -86,7 +89,7 @@ public class Parser
         var statements = new List<Tree>();
         while (true)
         {
-            if (token is Token.End or Token.Eof)
+            if (token is Token.End or Token.Else or Token.Elseif or Token.Eof)
             {
                 // `end` will be consumed by this method's caller.
                 break;
@@ -126,6 +129,11 @@ public class Parser
             return new Tree.Break();
         }
 
+        if (token is Token.If)
+        {
+            return ParseIfStatement();
+        }
+
         var value = ParsePrefixExpression();
 
         if (value is Tree.Call or Tree.Error)
@@ -140,6 +148,47 @@ public class Parser
         var expressions = ParseExpressionList();
 
         return new Tree.Assignment([value], expressions);
+    }
+
+    /// <summary>
+    /// Parse an if statement, along with any elseifs and a final else.
+    /// </summary>
+    /// <returns></returns>
+    private Tree.If ParseIfStatement()
+    {
+        Tree.IfBranch primary;
+
+        // 'if' exp 'then' block
+        {
+            Expect(If);
+            var condition = ParseExpression();
+            Expect(Then);
+            var body = ParseBlock();
+            primary = new Tree.IfBranch(condition, body);
+        }
+
+        List<Tree.IfBranch> elseIfs = [];
+
+        // 'elseif' exp 'then' block
+        while (Accept<Token.Elseif>())
+        {
+            var condition = ParseExpression();
+            Expect(Then);
+            var body = ParseBlock();
+            elseIfs.Add(new Tree.IfBranch(condition, body));
+        }
+
+        Tree? elseBody = null;
+
+        // 'else' block
+        if (Accept<Token.Else>())
+        {
+            elseBody = ParseBlock();
+        }
+
+        Expect(End);
+
+        return new Tree.If(primary, elseIfs, elseBody);
     }
 
     /// <summary>
@@ -206,7 +255,7 @@ public class Parser
     private List<Tree> ParseExpressionList()
     {
         // {exp ','} exp
-        List<Tree> values = new();
+        List<Tree> values = [];
         while (true)
         {
             values.Add(ParseExpression());

@@ -19,6 +19,25 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// A branch in an `if` statement.
+    /// </summary>
+    public class IfBranch(Tree condition, Tree body)
+    {
+        public Tree Condition => condition;
+        public Tree Body => body;
+    }
+
+    /// <summary>
+    /// An `if` statement, with zero or more `elseif` branches and an optional `else` branch.
+    /// </summary>
+    public class If(IfBranch primary, List<IfBranch> elseIfs, Tree? elseBody) : Tree
+    {
+        public IfBranch Primary => primary;
+        public List<IfBranch> ElseIfs => elseIfs;
+        public Tree? ElseBody => elseBody;
+    }
+
+    /// <summary>
     /// A `return` statement, with an optional return expression.
     /// </summary>
     public class Return(Tree? expression) : Tree

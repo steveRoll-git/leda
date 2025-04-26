@@ -111,7 +111,7 @@ public class Lexer
         var start = position;
 
         // Single line strings start with single or double quotes.
-        if (CurChar == '\'' || CurChar == '"')
+        if (CurChar is '\'' or '"')
         {
             return ReadString();
         }
@@ -215,7 +215,7 @@ public class Lexer
     /// <summary>
     /// Reads a single-line string literal.
     /// </summary>
-    private Token ReadString()
+    private Token.String ReadString()
     {
         var start = position;
         char delimiter = CurChar;
@@ -334,7 +334,7 @@ public class Lexer
                 {
                     AdvanceChar();
                     // A '+' or '-' may optionally appear after the exponent character.
-                    if (CurChar == '+' || CurChar == '-')
+                    if (CurChar is '+' or '-')
                     {
                         AdvanceChar();
                     }

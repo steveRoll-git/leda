@@ -6,7 +6,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        var p = new Parser(new("test", "thing = (1 + ) * 3) a()"), new ConsoleReporter());
+        var p = new Parser(new("test", "if 1 then a() elseif false then b() end"), new ConsoleReporter());
         var b = (p.ParseBlock());
     }
 }
