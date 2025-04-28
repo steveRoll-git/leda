@@ -274,7 +274,7 @@ public class Parser
             return ParsePrefixExpression(new Tree.Access(previous, expression));
         }
 
-        // Function call: '(' explist ')'
+        // Function call: '(' [explist] ')'
         if (Accept<Token.LParen>())
         {
             if (Accept<Token.RParen>())
@@ -354,8 +354,8 @@ public class Parser
         // unop exp
         if (token.IsUnary)
         {
-            var op = token;
-            var expression = ParseExpression();
+            var op = Consume();
+            var expression = ParsePrimary();
             return op switch
             {
                 Token.Not => new Tree.Not(expression),
