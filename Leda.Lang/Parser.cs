@@ -66,7 +66,7 @@ public class Parser
     }
 
     /// <summary>
-    /// If the current token is of type `T`, consumes it and returns it, otherwise reports and error and returns the
+    /// If the current token is of type `T`, consumes it and returns it, otherwise reports an error and returns the
     /// template token.<br/>
     /// This method receives a token value because it needs to print information about it in case of an error.
     /// </summary>
@@ -103,7 +103,7 @@ public class Parser
             }
         }
 
-        return new Tree.Block(statements);
+        return new Tree.Block(statements, []);
     }
 
     /// <summary>
@@ -192,12 +192,15 @@ public class Parser
         return new Tree.If(primary, elseIfs, elseBody);
     }
 
+    /// <summary>
+    /// Parses the declaration of a variable or parameter.
+    /// </summary>
     private Tree.Declaration ParseDeclaration()
     {
         // name [':' type]
         var name = Expect(Name).Value;
 
-        Tree.Type? type = null;
+        Tree.TypeDeclaration? type = null;
         if (Accept<Token.Colon>())
         {
             type = ParseType();
@@ -206,10 +209,10 @@ public class Parser
         return new Tree.Declaration(name, type);
     }
 
-    private Tree.Type ParseType()
+    private Tree.TypeDeclaration ParseType()
     {
         // TODO incomplete
-        return new Tree.Type.Name(Expect(Name).Value);
+        return new Tree.TypeDeclaration.Name(Expect(Name).Value);
     }
 
     private Tree.LocalDeclaration ParseLocalDeclaration()

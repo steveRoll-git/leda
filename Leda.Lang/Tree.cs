@@ -11,25 +11,35 @@ public abstract class Tree
     public class Error : Tree;
 
     /// <summary>
-    /// A type.
+    /// A type declaration.
     /// </summary>
-    public class Type
+    public class TypeDeclaration
     {
         /// <summary>
         /// A reference to a named type.
         /// </summary>
-        public class Name(string value) : Type
+        public class Name(string value) : TypeDeclaration
         {
             public string Value => value;
+        }
+
+        public class Union(List<TypeDeclaration> types) : TypeDeclaration
+        {
+            public List<TypeDeclaration> Types => types;
         }
     }
 
     /// <summary>
     /// A list of statements.
     /// </summary>
-    public class Block(List<Tree> statements) : Tree
+    public class Block(List<Tree> statements, List<TypeDeclaration> typeDeclarations) : Tree
     {
-        public readonly List<Tree> Statements = statements;
+        public List<Tree> Statements => statements;
+
+        /// <summary>
+        /// All types that were declared in this block.
+        /// </summary>
+        public List<TypeDeclaration> TypeDeclarations => typeDeclarations;
     }
 
     /// <summary>
@@ -73,10 +83,13 @@ public abstract class Tree
     /// </summary>
     public class Break : Tree;
 
-    public class Declaration(string name, Type? type)
+    /// <summary>
+    /// A declaration of a named value, with an optional type.
+    /// </summary>
+    public class Declaration(string name, TypeDeclaration? type)
     {
         public string Name => name;
-        public Type? Type => type;
+        public TypeDeclaration? Type => type;
     }
 
     /// <summary>
