@@ -156,6 +156,10 @@ public class Emitter
                 Emit(']');
             }
         }
+        else if (expression is Tree.Call call)
+        {
+            EmitCall(call);
+        }
         else if (expression is Tree.Binary binary)
         {
             if (binary.Left is Tree.Binary leftBinary && leftBinary.Precedence < binary.Precedence)
