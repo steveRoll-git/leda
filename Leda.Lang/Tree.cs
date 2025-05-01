@@ -180,63 +180,77 @@ public abstract class Tree
     }
 
     /// <summary>
-    /// Addition (+).
+    /// A binary operator.
     /// </summary>
-    public class Add(Tree left, Tree right) : Tree
+    public abstract class Binary(Tree left, Tree right) : Tree
     {
         public Tree Left => left;
         public Tree Right => right;
+        public abstract string Character { get; }
+        public abstract int Precedence { get; }
+    }
+
+    /// <summary>
+    /// Addition (+).
+    /// </summary>
+    public class Add(Tree left, Tree right) : Binary(left, right)
+    {
+        public override string Character => "+";
+        public override int Precedence => 4;
     }
 
     /// <summary>
     /// Subtraction (-).
     /// </summary>
-    public class Subtract(Tree left, Tree right) : Tree
+    public class Subtract(Tree left, Tree right) : Binary(left, right)
     {
-        public Tree Left => left;
-        public Tree Right => right;
+        public override string Character => "-";
+        public override int Precedence => 4;
     }
 
     /// <summary>
     /// Multiplication (*).
     /// </summary>
-    public class Multiply(Tree left, Tree right) : Tree
+    public class Multiply(Tree left, Tree right) : Binary(left, right)
     {
-        public Tree Left => left;
-        public Tree Right => right;
+        public override string Character => "*";
+        public override int Precedence => 5;
     }
 
     /// <summary>
     /// Division (/).
     /// </summary>
-    public class Divide(Tree left, Tree right) : Tree
+    public class Divide(Tree left, Tree right) : Binary(left, right)
     {
-        public Tree Left => left;
-        public Tree Right => right;
+        public override string Character => "/";
+        public override int Precedence => 5;
     }
 
     /// <summary>
     /// Modulo (%).
     /// </summary>
-    public class Modulo(Tree left, Tree right) : Tree
+    public class Modulo(Tree left, Tree right) : Binary(left, right)
     {
-        public Tree Left => left;
-        public Tree Right => right;
+        public override string Character => "%";
+        public override int Precedence => 5;
     }
 
     /// <summary>
     /// Power (^).
     /// </summary>
-    public class Power(Tree left, Tree right) : Tree
+    public class Power(Tree left, Tree right) : Binary(left, right)
     {
-        public Tree Left => left;
-        public Tree Right => right;
+        public override string Character => "^";
+        public override int Precedence => 6;
     }
 
-    public class Concat(Tree left, Tree right) : Tree
+    /// <summary>
+    /// Concat (..).
+    /// </summary>
+    public class Concat(Tree left, Tree right) : Binary(left, right)
     {
-        public Tree Left => left;
-        public Tree Right => right;
+        public override string Character => "..";
+        public override int Precedence => 3;
     }
 
     /// <summary>

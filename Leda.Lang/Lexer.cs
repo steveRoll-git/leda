@@ -446,7 +446,7 @@ public class Lexer
     /// <summary>
     /// Returns whether `c` is a character that can appear in names.
     /// </summary>
-    private static bool IsNameChar(char c)
+    public static bool IsNameChar(char c)
     {
         return c == '_' || char.IsLetterOrDigit(c);
     }
