@@ -190,7 +190,6 @@ public class Parser
     /// <summary>
     /// Parse an if statement, along with any elseifs and a final else.
     /// </summary>
-    /// <returns></returns>
     private Tree.If ParseIfStatement()
     {
         Tree.IfBranch primary;
@@ -381,6 +380,14 @@ public class Parser
                 Token.Modulo => new Tree.Modulo(left, right),
                 Token.Power => new Tree.Power(left, right),
                 Token.Concat => new Tree.Concat(left, right),
+                Token.Equal => new Tree.Equal(left, right),
+                Token.NotEqual => new Tree.NotEqual(left, right),
+                Token.LessEqual => new Tree.LessEqual(left, right),
+                Token.GreaterEqual => new Tree.GreaterEqual(left, right),
+                Token.Less => new Tree.Less(left, right),
+                Token.Greater => new Tree.Greater(left, right),
+                Token.And => new Tree.And(left, right),
+                Token.Or => new Tree.Or(left, right),
                 _ => throw new Exception() // Unreachable.
             };
         }

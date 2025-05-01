@@ -140,6 +140,7 @@ public record Token
     {
         public const string Keyword = "and";
         public override string Value => Keyword;
+        public override bool IsBinary => true;
         public override int Precedence => 1;
     }
 
@@ -268,6 +269,7 @@ public record Token
     {
         public const string Keyword = "or";
         public override string Value => Keyword;
+        public override bool IsBinary => true;
         public override int Precedence => 0;
     }
 

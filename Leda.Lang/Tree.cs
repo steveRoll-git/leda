@@ -275,6 +275,78 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// Equal (==).
+    /// </summary>
+    public class Equal(Tree left, Tree right) : Binary(left, right)
+    {
+        public override string Character => "==";
+        public override int Precedence => 2;
+    }
+
+    /// <summary>
+    /// Not equal (~=).
+    /// </summary>
+    public class NotEqual(Tree left, Tree right) : Binary(left, right)
+    {
+        public override string Character => "~=";
+        public override int Precedence => 2;
+    }
+
+    /// <summary>
+    /// Less equal (&lt;=).
+    /// </summary>
+    public class LessEqual(Tree left, Tree right) : Binary(left, right)
+    {
+        public override string Character => "<=";
+        public override int Precedence => 2;
+    }
+
+    /// <summary>
+    /// Greater equal (>=).
+    /// </summary>
+    public class GreaterEqual(Tree left, Tree right) : Binary(left, right)
+    {
+        public override string Character => ">=";
+        public override int Precedence => 2;
+    }
+
+    /// <summary>
+    /// Less (&lt;).
+    /// </summary>
+    public class Less(Tree left, Tree right) : Binary(left, right)
+    {
+        public override string Character => "<";
+        public override int Precedence => 2;
+    }
+
+    /// <summary>
+    /// Greater (>).
+    /// </summary>
+    public class Greater(Tree left, Tree right) : Binary(left, right)
+    {
+        public override string Character => ">";
+        public override int Precedence => 2;
+    }
+
+    /// <summary>
+    /// Boolean and.
+    /// </summary>
+    public class And(Tree left, Tree right) : Binary(left, right)
+    {
+        public override string Character => "and";
+        public override int Precedence => 1;
+    }
+
+    /// <summary>
+    /// Boolean or.
+    /// </summary>
+    public class Or(Tree left, Tree right) : Binary(left, right)
+    {
+        public override string Character => "or";
+        public override int Precedence => 0;
+    }
+
+    /// <summary>
     /// Indexed value access - target.key or target[key].
     /// </summary>
     public class Access(Tree target, Tree key) : Tree
