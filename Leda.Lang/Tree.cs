@@ -122,6 +122,8 @@ public abstract class Tree
     {
         public string Value => value;
         public double NumberValue => numberValue;
+
+        public override string ToString() => Value;
     };
 
     /// <summary>
@@ -135,6 +137,8 @@ public abstract class Tree
         {
             Value = value;
         }
+
+        public override string ToString() => Value;
     }
 
     /// <summary>
