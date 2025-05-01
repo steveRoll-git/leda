@@ -143,7 +143,7 @@ public class Emitter
         }
         else if (expression is Tree.Access access)
         {
-            EmitPrefixExpression(access.Target);
+            EmitPrefixExpression(access.Target, false);
             if (access.Key is Tree.String stringKey && IsSimpleKey(stringKey.Value))
             {
                 Emit('.');
@@ -158,7 +158,7 @@ public class Emitter
         }
         else if (expression is Tree.Call call)
         {
-            EmitCall(call);
+            EmitCall(call, false);
         }
         else if (expression is Tree.Binary binary)
         {
@@ -206,10 +206,16 @@ public class Emitter
         }
     }
 
-    private void EmitPrefixExpression(Tree expression)
+    private void EmitPrefixExpression(Tree expression, bool isStatement)
     {
         if (expression is not (Tree.Call or Tree.Access or Tree.Name))
         {
+            if (isStatement)
+            {
+                // Prevent ambiguities if the line starts with a '('
+                Emit(';');
+            }
+
             Emit('(');
             EmitExpression(expression);
             Emit(')');
@@ -220,9 +226,9 @@ public class Emitter
         }
     }
 
-    private void EmitCall(Tree.Call call)
+    private void EmitCall(Tree.Call call, bool isStatement)
     {
-        EmitPrefixExpression(call.Target);
+        EmitPrefixExpression(call.Target, isStatement);
         Emit('(');
         EmitExpressionList(call.Parameters);
         Emit(')');
@@ -244,7 +250,7 @@ public class Emitter
         }
         else if (statement is Tree.Call call)
         {
-            EmitCall(call);
+            EmitCall(call, true);
         }
         else if (statement is Tree.Return returnStatement)
         {
