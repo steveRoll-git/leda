@@ -214,7 +214,7 @@ public class Parser
             elseIfs.Add(new Tree.IfBranch(condition, body));
         }
 
-        Tree? elseBody = null;
+        Tree.Block? elseBody = null;
 
         // 'else' block
         if (Accept<Token.Else>())

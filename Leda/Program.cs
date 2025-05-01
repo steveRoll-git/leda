@@ -6,7 +6,13 @@ class Program
 {
     static void Main(string[] args)
     {
-        var p = new Parser(new("test", "return {123, x = \"a\", [true] = \"POOP\", asdf = 4 + 5}"), new ConsoleReporter());
+        var p = new Parser(new("test", """
+                                       if 1 + (2 == 3) and cool then
+                                       print("wow")
+                                       else
+                                       return 1
+                                       end
+                                       """), new ConsoleReporter());
         var b = p.ParseBlock();
         Console.WriteLine(Emitter.Emit(b));
     }

@@ -251,6 +251,32 @@ public class Emitter
                 EmitExpression(returnStatement.Expression);
             }
         }
+        else if (statement is Tree.If ifStatement)
+        {
+            Emit("if ");
+            EmitExpression(ifStatement.Primary.Condition);
+            Emit(" then\n");
+            EmitBlock(ifStatement.Primary.Body, indent + 1);
+            EmitIndent(indent);
+
+            foreach (var branch in ifStatement.ElseIfs)
+            {
+                Emit("elseif ");
+                EmitExpression(branch.Condition);
+                Emit(" then\n");
+                EmitBlock(branch.Body, indent + 1);
+                EmitIndent(indent);
+            }
+
+            if (ifStatement.ElseBody != null)
+            {
+                Emit("else\n");
+                EmitBlock(ifStatement.ElseBody, indent + 1);
+                EmitIndent(indent);
+            }
+
+            Emit("end");
+        }
         else
         {
             throw new Exception();
@@ -259,7 +285,7 @@ public class Emitter
         Emit('\n');
     }
 
-    private void EmitBlock(Tree.Block block, int indent = 0)
+    private void EmitBlock(Tree.Block block, int indent)
     {
         foreach (var statement in block.Statements)
         {
@@ -270,7 +296,7 @@ public class Emitter
     public static string Emit(Tree.Block block)
     {
         var emitter = new Emitter();
-        emitter.EmitBlock(block);
+        emitter.EmitBlock(block, 0);
         return emitter.builder.ToString();
     }
 }
