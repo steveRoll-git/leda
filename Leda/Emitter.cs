@@ -208,6 +208,15 @@ public class Emitter
         {
             EmitCall(call);
         }
+        else if (statement is Tree.Return returnStatement)
+        {
+            Emit("return");
+            if (returnStatement.Expression != null)
+            {
+                Emit(" ");
+                EmitExpression(returnStatement.Expression);
+            }
+        }
         else
         {
             throw new Exception();
