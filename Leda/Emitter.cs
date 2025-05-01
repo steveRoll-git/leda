@@ -107,6 +107,40 @@ public class Emitter
             Emit('=', longString.Level);
             Emit(']');
         }
+        else if (expression is Tree.Table table)
+        {
+            Emit('{');
+            var lastNumberIndex = 1;
+            for (var i = 0; i < table.Fields.Count; i++)
+            {
+                var field = table.Fields[i];
+                if (field.Key is Tree.Number numberKey && numberKey.NumberValue == lastNumberIndex)
+                {
+                    EmitExpression(field.Value);
+                    lastNumberIndex++;
+                }
+                else if (field.Key is Tree.String stringKey && IsSimpleKey(stringKey.Value))
+                {
+                    Emit(stringKey.Value);
+                    Emit(" = ");
+                    EmitExpression(field.Value);
+                }
+                else
+                {
+                    Emit('[');
+                    EmitExpression(field.Key);
+                    Emit("] = ");
+                    EmitExpression(field.Value);
+                }
+
+                if (i < table.Fields.Count - 1)
+                {
+                    Emit(", ");
+                }
+            }
+
+            Emit('}');
+        }
         else if (expression is Tree.Access access)
         {
             EmitPrefixExpression(access.Target);

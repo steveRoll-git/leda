@@ -155,6 +155,23 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// A field in a table constructor.
+    /// </summary>
+    public class TableField(Tree key, Tree value)
+    {
+        public Tree Key => key;
+        public Tree Value => value;
+    }
+
+    /// <summary>
+    /// A table constructor.
+    /// </summary>
+    public class Table(List<TableField> fields) : Tree
+    {
+        public List<TableField> Fields => fields;
+    }
+
+    /// <summary>
     /// A vararg expression (...).
     /// </summary>
     public class Vararg : Tree { }

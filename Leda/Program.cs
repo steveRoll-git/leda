@@ -6,7 +6,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        var p = new Parser(new("test", "local a: number, b = 1, 2\na[43]()"), new ConsoleReporter());
+        var p = new Parser(new("test", "return {123, x = \"a\", [true] = \"POOP\", asdf = 4 + 5}"), new ConsoleReporter());
         var b = p.ParseBlock();
         Console.WriteLine(Emitter.Emit(b));
     }

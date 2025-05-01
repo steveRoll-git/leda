@@ -6,8 +6,10 @@ namespace Leda.Lang;
 public class Parser
 {
     private static readonly Token.Name Name = new();
+    private static readonly Token.LCurly LCurly = new();
     private static readonly Token.RParen RParen = new();
     private static readonly Token.RSquare RSquare = new();
+    private static readonly Token.RCurly RCurly = new();
     private static readonly Token.Assign Assign = new();
     private static readonly Token.If If = new();
     private static readonly Token.Then Then = new();
@@ -25,6 +27,11 @@ public class Parser
     /// </summary>
     private Token token;
 
+    /// <summary>
+    /// Stores tokens that were received when Lookahead was called.
+    /// </summary>
+    private List<Token> lookaheadTokens = [];
+
     public Parser(Source source, IDiagnosticReporter reporter)
     {
         this.source = source;
@@ -38,7 +45,15 @@ public class Parser
     /// </summary>
     private void NextToken()
     {
-        token = lexer.ReadToken();
+        if (lookaheadTokens.Count > 0)
+        {
+            token = lookaheadTokens[0];
+            lookaheadTokens.RemoveAt(0);
+        }
+        else
+        {
+            token = lexer.ReadToken();
+        }
     }
 
     /// <summary>
@@ -56,13 +71,13 @@ public class Parser
     /// </summary>
     private bool Accept<T>() where T : Token
     {
-        if (token is T)
+        if (token is not T)
         {
-            NextToken();
-            return true;
+            return false;
         }
 
-        return false;
+        NextToken();
+        return true;
     }
 
     /// <summary>
@@ -80,6 +95,27 @@ public class Parser
 
         reporter.Report(new Diagnostic.ExpectedTokenButGotToken(source, expected, got));
         return expected;
+    }
+
+    /// <summary>
+    /// Looks ahead in the token stream and returns the `i`th next token. (0 is the current token, 1 is the token after
+    /// that, etc.)
+    /// </summary>
+    private Token Lookahead(int index)
+    {
+        if (index == 0)
+        {
+            return token;
+        }
+
+        var listStart = lookaheadTokens.Count;
+
+        for (var i = 0; i < index; i++)
+        {
+            lookaheadTokens.Add(lexer.ReadToken());
+        }
+
+        return lookaheadTokens[listStart + index - 1];
     }
 
     /// <summary>
@@ -352,6 +388,51 @@ public class Parser
         return left;
     }
 
+    private Tree.Table ParseTableConstructor()
+    {
+        Expect(LCurly);
+
+        var lastNumberIndex = 1;
+        List<Tree.TableField> fields = [];
+
+        while (!Accept<Token.RCurly>())
+        {
+            Tree key;
+            // '[' exp ']' '=' exp
+            if (Accept<Token.LSquare>())
+            {
+                key = ParseExpression();
+                Expect(RSquare);
+                Expect(Assign);
+            }
+            // name '=' exp
+            else if (token is Token.Name name && Lookahead(1) is Token.Assign)
+            {
+                key = new Tree.String(name.Value);
+                NextToken();
+                NextToken();
+            }
+            // Just an expression, will be added at the last number index
+            else
+            {
+                key = new Tree.Number(lastNumberIndex.ToString(), lastNumberIndex);
+                lastNumberIndex++;
+            }
+
+            var value = ParseExpression();
+            fields.Add(new(key, value));
+
+            if (!Accept<Token.Comma>())
+            {
+                Expect(RCurly);
+                break;
+            }
+        }
+
+
+        return new(fields);
+    }
+
     private Tree ParsePrimary()
     {
         // unop exp
@@ -404,6 +485,11 @@ public class Parser
         {
             NextToken();
             return new Tree.LongString(longString.Value, longString.Level);
+        }
+
+        if (token is Token.LCurly)
+        {
+            return ParseTableConstructor();
         }
 
         return ParsePrefixExpression();
