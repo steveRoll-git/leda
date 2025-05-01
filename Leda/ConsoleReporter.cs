@@ -35,7 +35,7 @@ public class ConsoleReporter : IDiagnosticReporter
             sourceLine);
         var endCharacter = diagnostic.Range.End.Line == start.Line ? diagnostic.Range.End.Character : sourceLine.Length;
         var highlightLine = new string(' ', numberColumnWidth + numberColumnSeparator.Length + start.Character) +
-                            new string('^', endCharacter - start.Character);
+                            new string('^', Math.Max(endCharacter - start.Character, 1));
         Console.ForegroundColor = severityColor;
         Console.WriteLine(highlightLine);
 
