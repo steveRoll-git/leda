@@ -84,6 +84,15 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// A while loop.
+    /// </summary>
+    public class While(Tree condition, Block body) : Tree
+    {
+        public Tree Condition => condition;
+        public Block Body => body;
+    }
+
+    /// <summary>
     /// Declarations of one or more local variables.
     /// </summary>
     public class LocalDeclaration(List<Declaration> declarations, List<Tree> values) : Tree

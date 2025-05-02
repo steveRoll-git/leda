@@ -325,6 +325,15 @@ public class Emitter
             EmitIndent(indent);
             Emit("end");
         }
+        else if (statement is Tree.While whileLoop)
+        {
+            Emit("while ");
+            EmitExpression(whileLoop.Condition);
+            Emit(" do\n");
+            EmitBlock(whileLoop.Body, indent + 1);
+            EmitIndent(indent);
+            Emit("end");
+        }
         else
         {
             throw new Exception();

@@ -7,8 +7,8 @@ class Program
     static void Main(string[] args)
     {
         var p = new Parser(new("test", """
-                                       for i, v in ipairs(list) do
-                                       print(i)
+                                       while next(t) do
+                                        print(123)
                                        end
                                        """), new ConsoleReporter());
         var b = p.ParseBlock();

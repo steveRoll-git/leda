@@ -16,6 +16,7 @@ public class Parser
     private static readonly Token.Then Then = new();
     private static readonly Token.For For = new();
     private static readonly Token.In In = new();
+    private static readonly Token.While While = new();
     private static readonly Token.Do Do = new();
     private static readonly Token.End End = new();
     private static readonly Token.Local Local = new();
@@ -174,6 +175,11 @@ public class Parser
             return ParseForLoop();
         }
 
+        if (token is Token.While)
+        {
+            return ParseWhileLoop();
+        }
+
         if (token is Token.Local)
         {
             return ParseLocalDeclaration();
@@ -275,6 +281,17 @@ public class Parser
             var body = ParseBlock();
             return new Tree.IteratorFor(declarations, iterator, body);
         }
+    }
+
+    private Tree.While ParseWhileLoop()
+    {
+        // 'while' exp 'do' block 'end'
+        Expect(While);
+        var condition = ParseExpression();
+        Expect(Do);
+        var body = ParseBlock();
+        Expect(End);
+        return new(condition, body);
     }
 
     /// <summary>
