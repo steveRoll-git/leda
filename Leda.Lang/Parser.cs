@@ -167,6 +167,11 @@ public class Parser
             return new Tree.Break();
         }
 
+        if (token is Token.Do)
+        {
+            return ParseDo();
+        }
+
         if (token is Token.If)
         {
             return ParseIfStatement();
@@ -207,6 +212,15 @@ public class Parser
         var expressions = ParseExpressionList();
 
         return new Tree.Assignment([value], expressions);
+    }
+
+    private Tree.Do ParseDo()
+    {
+        // do 'block' end
+        Expect(Do);
+        var block = ParseBlock();
+        Expect(End);
+        return new(block);
     }
 
     /// <summary>
@@ -303,6 +317,7 @@ public class Parser
 
     private Tree.RepeatUntil ParseRepeatUntilLoop()
     {
+        // 'repeat' block 'until' exp
         Expect(Repeat);
         var body = ParseBlock();
         Expect(Until);

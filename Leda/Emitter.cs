@@ -269,6 +269,13 @@ public class Emitter
                 EmitExpression(returnStatement.Expression);
             }
         }
+        else if (statement is Tree.Do doBlock)
+        {
+            Emit("do\n");
+            EmitBlock(doBlock.Body, indent + 1);
+            EmitIndent(indent);
+            Emit("end");
+        }
         else if (statement is Tree.If ifStatement)
         {
             Emit("if ");

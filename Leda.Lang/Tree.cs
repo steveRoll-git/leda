@@ -43,6 +43,14 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// A do-end block.
+    /// </summary>
+    public class Do(Block body) : Tree
+    {
+        public Block Body => body;
+    }
+
+    /// <summary>
     /// A branch in an `if` statement.
     /// </summary>
     public class IfBranch(Tree condition, Block body)
