@@ -24,6 +24,12 @@ public class Parser
     private static readonly Token.End End = new();
     private static readonly Token.Local Local = new();
 
+    /// <summary>
+    /// Returns whether `token` can end a statement.
+    /// </summary>
+    private static bool IsStatementEndingToken(Token token) =>
+        token is Token.End or Token.Else or Token.Elseif or Token.Until or Token.Eof;
+
     private readonly Source source;
 
     private IDiagnosticReporter reporter;
@@ -132,7 +138,7 @@ public class Parser
     public Tree.Block ParseBlock()
     {
         var statements = new List<Tree>();
-        while (token is not (Token.End or Token.Else or Token.Elseif or Token.Until or Token.Eof))
+        while (!IsStatementEndingToken(token))
         {
             var statement = ParseStatement();
             statements.Add(statement);
@@ -158,7 +164,7 @@ public class Parser
         // 'return' [explist]
         if (Accept<Token.Return>())
         {
-            return token is Token.Semicolon or Token.End or Token.Eof
+            return IsStatementEndingToken(token)
                 ? new Tree.Return(null)
                 : new Tree.Return(ParseExpression());
         }
