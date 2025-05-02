@@ -6,6 +6,7 @@ namespace Leda.Lang;
 public class Parser
 {
     private static readonly Token.Name Name = new();
+    private static readonly Token.LParen LParen = new();
     private static readonly Token.LCurly LCurly = new();
     private static readonly Token.RParen RParen = new();
     private static readonly Token.RSquare RSquare = new();
@@ -205,13 +206,26 @@ public class Parser
             return value;
         }
 
-        // TODO parse varlist if there's a comma
+        List<Tree> targets = [value];
+        while (Accept<Token.Comma>())
+        {
+            var target = ParsePrefixExpression();
+            if (target is Tree.Call)
+            {
+                reporter.Report(new Diagnostic.CannotAssignToFunctionCall(source)); // TODO fix range
+                targets.Add(new Tree.Error());
+            }
+            else
+            {
+                targets.Add(target);
+            }
+        }
 
         Expect(Assign);
 
         var expressions = ParseExpressionList();
 
-        return new Tree.Assignment([value], expressions);
+        return new Tree.Assignment(targets, expressions);
     }
 
     private Tree.Do ParseDo()
@@ -360,11 +374,19 @@ public class Parser
         return declarations;
     }
 
-    private Tree.LocalDeclaration ParseLocalDeclaration()
+    private Tree ParseLocalDeclaration()
     {
-        // 'local' declaration {',' declaration} = explist
         Expect(Local);
 
+        if (Accept<Token.Function>())
+        {
+            // 'local' name funcbody
+            var name = Expect(Name);
+            var function = ParseFunctionBody();
+            return new Tree.LocalFunctionDeclaration(name.Value, function);
+        }
+
+        // 'local' declaration {',' declaration} ['=' explist]
         var declarations = ParseDeclarationList();
 
         List<Tree> values = [];
@@ -374,6 +396,32 @@ public class Parser
         }
 
         return new Tree.LocalDeclaration(declarations, values);
+    }
+
+    /// <summary>
+    /// Parses a function body - used in function declarations and in anonymous functions.
+    /// </summary>
+    private Tree.Function ParseFunctionBody()
+    {
+        // '(' declarations ')' block 'end'
+        Expect(LParen);
+        List<Tree.Declaration> parameters = [];
+        if (!Accept<Token.RParen>())
+        {
+            parameters = ParseDeclarationList();
+            Expect(RParen);
+        }
+
+        Tree.TypeDeclaration? returnType = null;
+        if (Accept<Token.Colon>())
+        {
+            returnType = ParseType();
+        }
+
+        var body = ParseBlock();
+        Expect(End);
+
+        return new(parameters, returnType, body);
     }
 
     /// <summary>
@@ -603,6 +651,11 @@ public class Parser
         if (token is Token.LCurly)
         {
             return ParseTableConstructor();
+        }
+
+        if (Accept<Token.Function>())
+        {
+            return ParseFunctionBody();
         }
 
         return ParsePrefixExpression();

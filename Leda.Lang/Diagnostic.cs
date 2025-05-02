@@ -117,6 +117,15 @@ public class Diagnostic
             Message = $"Did not expect {got.Value} here.";
         }
     }
+
+    public class CannotAssignToFunctionCall : Diagnostic
+    {
+        public CannotAssignToFunctionCall(Source source) : base(source, new()) // TODO fix range
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = "Cannot assign to a function call.";
+        }
+    }
 }
 
 public enum DiagnosticSeverity

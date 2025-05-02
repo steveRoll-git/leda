@@ -119,6 +119,17 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// A local function declaration.<br/>
+    /// (This is different from a `LocalDeclaration`, because here, the function's name is made available in the body,
+    /// allowing for recursion.)
+    /// </summary>
+    public class LocalFunctionDeclaration(string name, Function function) : Tree
+    {
+        public string Name => name;
+        public Function Function => function;
+    }
+
+    /// <summary>
     /// A `return` statement, with an optional return expression.
     /// </summary>
     public class Return(Tree? expression) : Tree
@@ -217,6 +228,16 @@ public abstract class Tree
     public class Table(List<TableField> fields) : Tree
     {
         public List<TableField> Fields => fields;
+    }
+
+    /// <summary>
+    /// A function value.
+    /// </summary>
+    public class Function(List<Declaration> parameters, TypeDeclaration? returnType, Block body) : Tree
+    {
+        public List<Declaration> Parameters => parameters;
+        public TypeDeclaration? ReturnType => returnType;
+        public Block Body => body;
     }
 
     /// <summary>

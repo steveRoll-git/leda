@@ -62,7 +62,17 @@ public class Emitter
         }
     }
 
-    private void EmitExpression(Tree expression)
+    private void EmitFunctionBody(Tree.Function function, int indent)
+    {
+        Emit('(');
+        EmitDeclarationList(function.Parameters);
+        Emit(")\n");
+        EmitBlock(function.Body, indent + 1);
+        EmitIndent(indent);
+        Emit("end");
+    }
+
+    private void EmitExpression(Tree expression, int indent)
     {
         if (expression is Tree.Name name)
         {
@@ -122,23 +132,24 @@ public class Emitter
             for (var i = 0; i < table.Fields.Count; i++)
             {
                 var field = table.Fields[i];
+                // ReSharper disable once CompareOfFloatsByEqualityOperator
                 if (field.Key is Tree.Number numberKey && numberKey.NumberValue == lastNumberIndex)
                 {
-                    EmitExpression(field.Value);
+                    EmitExpression(field.Value, indent);
                     lastNumberIndex++;
                 }
                 else if (field.Key is Tree.String stringKey && IsSimpleKey(stringKey.Value))
                 {
                     Emit(stringKey.Value);
                     Emit(" = ");
-                    EmitExpression(field.Value);
+                    EmitExpression(field.Value, indent);
                 }
                 else
                 {
                     Emit('[');
-                    EmitExpression(field.Key);
+                    EmitExpression(field.Key, indent);
                     Emit("] = ");
-                    EmitExpression(field.Value);
+                    EmitExpression(field.Value, indent);
                 }
 
                 if (i < table.Fields.Count - 1)
@@ -149,9 +160,14 @@ public class Emitter
 
             Emit('}');
         }
+        else if (expression is Tree.Function function)
+        {
+            Emit("function");
+            EmitFunctionBody(function, indent);
+        }
         else if (expression is Tree.Access access)
         {
-            EmitPrefixExpression(access.Target, false);
+            EmitPrefixExpression(access.Target, false, indent);
             if (access.Key is Tree.String stringKey && IsSimpleKey(stringKey.Value))
             {
                 Emit('.');
@@ -160,25 +176,25 @@ public class Emitter
             else
             {
                 Emit('[');
-                EmitExpression(access.Key);
+                EmitExpression(access.Key, indent);
                 Emit(']');
             }
         }
         else if (expression is Tree.Call call)
         {
-            EmitCall(call, false);
+            EmitCall(call, false, indent);
         }
         else if (expression is Tree.Binary binary)
         {
             if (binary.Left is Tree.Binary leftBinary && leftBinary.Precedence < binary.Precedence)
             {
                 Emit('(');
-                EmitExpression(binary.Left);
+                EmitExpression(binary.Left, indent);
                 Emit(')');
             }
             else
             {
-                EmitExpression(binary.Left);
+                EmitExpression(binary.Left, indent);
             }
 
             Emit(' ');
@@ -188,12 +204,12 @@ public class Emitter
             if (binary.Right is Tree.Binary rightBinary && rightBinary.Precedence < binary.Precedence)
             {
                 Emit('(');
-                EmitExpression(binary.Right);
+                EmitExpression(binary.Right, indent);
                 Emit(')');
             }
             else
             {
-                EmitExpression(binary.Right);
+                EmitExpression(binary.Right, indent);
             }
         }
         else
@@ -202,11 +218,11 @@ public class Emitter
         }
     }
 
-    private void EmitExpressionList(List<Tree> values)
+    private void EmitExpressionList(List<Tree> values, int indent)
     {
         for (var i = 0; i < values.Count; i++)
         {
-            EmitExpression(values[i]);
+            EmitExpression(values[i], indent);
             if (i < values.Count - 1)
             {
                 Emit(", ");
@@ -214,7 +230,7 @@ public class Emitter
         }
     }
 
-    private void EmitPrefixExpression(Tree expression, bool isStatement)
+    private void EmitPrefixExpression(Tree expression, bool isStatement, int indent)
     {
         if (expression is not (Tree.Call or Tree.Access or Tree.Name))
         {
@@ -225,20 +241,20 @@ public class Emitter
             }
 
             Emit('(');
-            EmitExpression(expression);
+            EmitExpression(expression, indent);
             Emit(')');
         }
         else
         {
-            EmitExpression(expression);
+            EmitExpression(expression, indent);
         }
     }
 
-    private void EmitCall(Tree.Call call, bool isStatement)
+    private void EmitCall(Tree.Call call, bool isStatement, int indent)
     {
-        EmitPrefixExpression(call.Target, isStatement);
+        EmitPrefixExpression(call.Target, isStatement, indent);
         Emit('(');
-        EmitExpressionList(call.Parameters);
+        EmitExpressionList(call.Parameters, indent);
         Emit(')');
     }
 
@@ -253,12 +269,18 @@ public class Emitter
             if (localDeclaration.Values.Count > 0)
             {
                 Emit(" = ");
-                EmitExpressionList(localDeclaration.Values);
+                EmitExpressionList(localDeclaration.Values, indent);
             }
+        }
+        else if (statement is Tree.LocalFunctionDeclaration functionDeclaration)
+        {
+            Emit("local function ");
+            Emit(functionDeclaration.Name);
+            EmitFunctionBody(functionDeclaration.Function, indent);
         }
         else if (statement is Tree.Call call)
         {
-            EmitCall(call, true);
+            EmitCall(call, true, indent);
         }
         else if (statement is Tree.Return returnStatement)
         {
@@ -266,7 +288,7 @@ public class Emitter
             if (returnStatement.Expression != null)
             {
                 Emit(" ");
-                EmitExpression(returnStatement.Expression);
+                EmitExpression(returnStatement.Expression, indent);
             }
         }
         else if (statement is Tree.Do doBlock)
@@ -279,7 +301,7 @@ public class Emitter
         else if (statement is Tree.If ifStatement)
         {
             Emit("if ");
-            EmitExpression(ifStatement.Primary.Condition);
+            EmitExpression(ifStatement.Primary.Condition, indent);
             Emit(" then\n");
             EmitBlock(ifStatement.Primary.Body, indent + 1);
             EmitIndent(indent);
@@ -287,7 +309,7 @@ public class Emitter
             foreach (var branch in ifStatement.ElseIfs)
             {
                 Emit("elseif ");
-                EmitExpression(branch.Condition);
+                EmitExpression(branch.Condition, indent);
                 Emit(" then\n");
                 EmitBlock(branch.Body, indent + 1);
                 EmitIndent(indent);
@@ -307,13 +329,13 @@ public class Emitter
             Emit("for ");
             Emit(numericalFor.Counter.Value);
             Emit(" = ");
-            EmitExpression(numericalFor.Start);
+            EmitExpression(numericalFor.Start, indent);
             Emit(", ");
-            EmitExpression(numericalFor.End);
+            EmitExpression(numericalFor.End, indent);
             if (numericalFor.Step != null)
             {
                 Emit(", ");
-                EmitExpression(numericalFor.Step);
+                EmitExpression(numericalFor.Step, indent);
             }
 
             Emit(" do\n");
@@ -326,7 +348,7 @@ public class Emitter
             Emit("for ");
             EmitDeclarationList(iteratorFor.Declarations);
             Emit(" in ");
-            EmitExpression(iteratorFor.Iterator);
+            EmitExpression(iteratorFor.Iterator, indent);
             Emit(" do\n");
             EmitBlock(iteratorFor.Body, indent + 1);
             EmitIndent(indent);
@@ -335,7 +357,7 @@ public class Emitter
         else if (statement is Tree.While whileLoop)
         {
             Emit("while ");
-            EmitExpression(whileLoop.Condition);
+            EmitExpression(whileLoop.Condition, indent);
             Emit(" do\n");
             EmitBlock(whileLoop.Body, indent + 1);
             EmitIndent(indent);
@@ -347,7 +369,13 @@ public class Emitter
             EmitBlock(repeatUntil.Body, indent + 1);
             EmitIndent(indent);
             Emit("until ");
-            EmitExpression(repeatUntil.Condition);
+            EmitExpression(repeatUntil.Condition, indent);
+        }
+        else if (statement is Tree.Assignment assignment)
+        {
+            EmitExpressionList(assignment.Targets, indent);
+            Emit(" = ");
+            EmitExpressionList(assignment.Values, indent);
         }
         else
         {
