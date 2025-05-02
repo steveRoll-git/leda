@@ -17,7 +17,9 @@ public class Parser
     private static readonly Token.For For = new();
     private static readonly Token.In In = new();
     private static readonly Token.While While = new();
+    private static readonly Token.Repeat Repeat = new();
     private static readonly Token.Do Do = new();
+    private static readonly Token.Until Until = new();
     private static readonly Token.End End = new();
     private static readonly Token.Local Local = new();
 
@@ -129,7 +131,7 @@ public class Parser
     public Tree.Block ParseBlock()
     {
         var statements = new List<Tree>();
-        while (token is not (Token.End or Token.Else or Token.Elseif or Token.Eof))
+        while (token is not (Token.End or Token.Else or Token.Elseif or Token.Until or Token.Eof))
         {
             var statement = ParseStatement();
             statements.Add(statement);
@@ -178,6 +180,11 @@ public class Parser
         if (token is Token.While)
         {
             return ParseWhileLoop();
+        }
+
+        if (token is Token.Repeat)
+        {
+            return ParseRepeatUntilLoop();
         }
 
         if (token is Token.Local)
@@ -292,6 +299,15 @@ public class Parser
         var body = ParseBlock();
         Expect(End);
         return new(condition, body);
+    }
+
+    private Tree.RepeatUntil ParseRepeatUntilLoop()
+    {
+        Expect(Repeat);
+        var body = ParseBlock();
+        Expect(Until);
+        var condition = ParseExpression();
+        return new(body, condition);
     }
 
     /// <summary>

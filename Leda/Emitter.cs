@@ -334,6 +334,14 @@ public class Emitter
             EmitIndent(indent);
             Emit("end");
         }
+        else if (statement is Tree.RepeatUntil repeatUntil)
+        {
+            Emit("repeat\n");
+            EmitBlock(repeatUntil.Body, indent + 1);
+            EmitIndent(indent);
+            Emit("until ");
+            EmitExpression(repeatUntil.Condition);
+        }
         else
         {
             throw new Exception();

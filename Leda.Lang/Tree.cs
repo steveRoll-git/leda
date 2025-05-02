@@ -93,6 +93,15 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// A repeat-until loop.
+    /// </summary>
+    public class RepeatUntil(Block body, Tree condition) : Tree
+    {
+        public Block Body => body;
+        public Tree Condition => condition;
+    }
+
+    /// <summary>
     /// Declarations of one or more local variables.
     /// </summary>
     public class LocalDeclaration(List<Declaration> declarations, List<Tree> values) : Tree
