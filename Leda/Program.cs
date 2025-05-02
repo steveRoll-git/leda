@@ -7,10 +7,8 @@ class Program
     static void Main(string[] args)
     {
         var p = new Parser(new("test", """
-                                       if 1 + (2 == 3) and cool then
-                                       print("wow")
-                                       else
-                                       return 1
+                                       for i, v in ipairs(list) do
+                                       print(i)
                                        end
                                        """), new ConsoleReporter());
         var b = p.ParseBlock();

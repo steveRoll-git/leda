@@ -62,6 +62,28 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// A numerical for loop.
+    /// </summary>
+    public class NumericalFor(Name counter, Tree start, Tree end, Tree? step, Block body) : Tree
+    {
+        public Name Counter => counter;
+        public Tree Start => start;
+        public Tree End => end;
+        public Tree? Step => step;
+        public Block Body => body;
+    }
+
+    /// <summary>
+    /// A for loop with an iterator.
+    /// </summary>
+    public class IteratorFor(List<Declaration> declarations, Tree iterator, Block body) : Tree
+    {
+        public List<Declaration> Declarations => declarations;
+        public Tree Iterator => iterator;
+        public Block Body => body;
+    }
+
+    /// <summary>
     /// Declarations of one or more local variables.
     /// </summary>
     public class LocalDeclaration(List<Declaration> declarations, List<Tree> values) : Tree

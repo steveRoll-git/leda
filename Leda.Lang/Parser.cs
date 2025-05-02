@@ -11,8 +11,12 @@ public class Parser
     private static readonly Token.RSquare RSquare = new();
     private static readonly Token.RCurly RCurly = new();
     private static readonly Token.Assign Assign = new();
+    private static readonly Token.Comma Comma = new();
     private static readonly Token.If If = new();
     private static readonly Token.Then Then = new();
+    private static readonly Token.For For = new();
+    private static readonly Token.In In = new();
+    private static readonly Token.Do Do = new();
     private static readonly Token.End End = new();
     private static readonly Token.Local Local = new();
 
@@ -165,6 +169,11 @@ public class Parser
             return ParseIfStatement();
         }
 
+        if (token is Token.For)
+        {
+            return ParseForLoop();
+        }
+
         if (token is Token.Local)
         {
             return ParseLocalDeclaration();
@@ -227,6 +236,47 @@ public class Parser
         return new Tree.If(primary, elseIfs, elseBody);
     }
 
+    private Tree ParseForLoop()
+    {
+        Expect(For);
+        if (token is not Token.Name)
+        {
+            reporter.Report(new Diagnostic.ExpectedTokenButGotToken(source, Name, token));
+        }
+
+        // 'for' name '=' exp ',' exp [',' exp] 'do' block 'end'
+        if (Lookahead(1) is Token.Assign)
+        {
+            var counter = new Tree.Name(Expect(Name).Value);
+            Expect(Assign);
+            var start = ParseExpression();
+            Expect(Comma);
+            var end = ParseExpression();
+
+            Tree? step = null;
+            if (Accept<Token.Comma>())
+            {
+                step = ParseExpression();
+            }
+
+            Expect(Do);
+            var body = ParseBlock();
+            Expect(End);
+
+            return new Tree.NumericalFor(counter, start, end, step, body);
+        }
+
+        // 'for' declarations 'in' exp 'do' block 'end'
+        {
+            var declarations = ParseDeclarationList();
+            Expect(In);
+            var iterator = ParseExpression();
+            Expect(Do);
+            var body = ParseBlock();
+            return new Tree.IteratorFor(declarations, iterator, body);
+        }
+    }
+
     /// <summary>
     /// Parses the declaration of a variable or parameter.
     /// </summary>
@@ -250,16 +300,24 @@ public class Parser
         return new Tree.TypeDeclaration.Name(Expect(Name).Value);
     }
 
-    private Tree.LocalDeclaration ParseLocalDeclaration()
+    private List<Tree.Declaration> ParseDeclarationList()
     {
-        // 'local' declaration [',' declaration] = explist
-        Expect(Local);
-
         List<Tree.Declaration> declarations = [];
+        // declaration {',' declaration}
         do
         {
             declarations.Add(ParseDeclaration());
         } while (Accept<Token.Comma>());
+
+        return declarations;
+    }
+
+    private Tree.LocalDeclaration ParseLocalDeclaration()
+    {
+        // 'local' declaration {',' declaration} = explist
+        Expect(Local);
+
+        var declarations = ParseDeclarationList();
 
         List<Tree> values = [];
         if (Accept<Token.Assign>())

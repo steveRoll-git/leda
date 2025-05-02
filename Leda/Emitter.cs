@@ -295,6 +295,36 @@ public class Emitter
 
             Emit("end");
         }
+        else if (statement is Tree.NumericalFor numericalFor)
+        {
+            Emit("for ");
+            Emit(numericalFor.Counter.Value);
+            Emit(" = ");
+            EmitExpression(numericalFor.Start);
+            Emit(", ");
+            EmitExpression(numericalFor.End);
+            if (numericalFor.Step != null)
+            {
+                Emit(", ");
+                EmitExpression(numericalFor.Step);
+            }
+
+            Emit(" do\n");
+            EmitBlock(numericalFor.Body, indent + 1);
+            EmitIndent(indent);
+            Emit("end");
+        }
+        else if (statement is Tree.IteratorFor iteratorFor)
+        {
+            Emit("for ");
+            EmitDeclarationList(iteratorFor.Declarations);
+            Emit(" in ");
+            EmitExpression(iteratorFor.Iterator);
+            Emit(" do\n");
+            EmitBlock(iteratorFor.Body, indent + 1);
+            EmitIndent(indent);
+            Emit("end");
+        }
         else
         {
             throw new Exception();
