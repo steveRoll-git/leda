@@ -80,6 +80,14 @@ public class Emitter
         {
             Emit("false");
         }
+        else if (expression is Tree.Nil)
+        {
+            Emit("nil");
+        }
+        else if (expression is Tree.Vararg)
+        {
+            Emit("...");
+        }
         else if (expression is Tree.String str)
         {
             Emit('"');
