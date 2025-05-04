@@ -625,7 +625,7 @@ public class Parser
             var value = ParseExpression();
             fields.Add(new(key, value));
 
-            if (!Accept<Token.Comma>())
+            if (!Accept<Token.Comma>() && !Accept<Token.Semicolon>())
             {
                 Expect(RCurly);
                 break;
