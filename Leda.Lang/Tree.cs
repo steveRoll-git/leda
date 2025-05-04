@@ -6,6 +6,11 @@ namespace Leda.Lang;
 public abstract class Tree
 {
     /// <summary>
+    /// The range in the source code that this tree occupies.
+    /// </summary>
+    public Range Range { get; internal set; }
+
+    /// <summary>
     /// An invalid tree node - returned when an error was encountered during parsing.
     /// </summary>
     public class Error : Tree;
@@ -154,7 +159,7 @@ public abstract class Tree
     /// <summary>
     /// A declaration of a named value, with an optional type.
     /// </summary>
-    public class Declaration(string name, TypeDeclaration? type)
+    public class Declaration(string name, TypeDeclaration? type) : Tree
     {
         public string Name => name;
         public TypeDeclaration? Type => type;
@@ -227,7 +232,7 @@ public abstract class Tree
     /// <summary>
     /// A field in a table constructor.
     /// </summary>
-    public class TableField(Tree key, Tree value)
+    public class TableField(Tree key, Tree value) : Tree
     {
         public Tree Key => key;
         public Tree Value => value;

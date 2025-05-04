@@ -120,7 +120,7 @@ public class Diagnostic
 
     public class CannotAssignToFunctionCall : Diagnostic
     {
-        public CannotAssignToFunctionCall(Source source) : base(source, new()) // TODO fix range
+        public CannotAssignToFunctionCall(Source source, Range range) : base(source, range)
         {
             Severity = DiagnosticSeverity.Error;
             Message = "Cannot assign to a function call.";
@@ -129,7 +129,7 @@ public class Diagnostic
 
     public class NoImplicitGlobalFunction : Diagnostic
     {
-        public NoImplicitGlobalFunction(Source source) : base(source, new()) // TODO fix range
+        public NoImplicitGlobalFunction(Source source, Range range) : base(source, range)
         {
             Severity = DiagnosticSeverity.Error;
             Message = "Function is implicitly global. Prefix 'global' if this is intentional.";
