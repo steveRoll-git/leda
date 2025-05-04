@@ -198,7 +198,7 @@ public class Emitter
             }
 
             Emit(' ');
-            Emit(binary.Character);
+            Emit(binary.Token);
             Emit(' ');
 
             if (binary.Right is Tree.Binary rightBinary && rightBinary.Precedence < binary.Precedence)
@@ -211,6 +211,11 @@ public class Emitter
             {
                 EmitExpression(binary.Right, indent);
             }
+        }
+        else if (expression is Tree.Unary unary)
+        {
+            Emit(unary.Token);
+            EmitExpression(unary.Expression, indent);
         }
         else
         {

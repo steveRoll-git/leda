@@ -261,28 +261,34 @@ public abstract class Tree
     /// </summary>
     public class Vararg : Tree { }
 
+    public abstract class Unary(Tree expression) : Tree
+    {
+        public Tree Expression => expression;
+        public abstract string Token { get; }
+    }
+
     /// <summary>
     /// Unary negation.
     /// </summary>
-    public class Negate(Tree expression) : Tree
+    public class Negate(Tree expression) : Unary(expression)
     {
-        public Tree Expression => expression;
+        public override string Token => "-";
     }
 
     /// <summary>
     /// Unary not.
     /// </summary>
-    public class Not(Tree expression) : Tree
+    public class Not(Tree expression) : Unary(expression)
     {
-        public Tree Expression => expression;
+        public override string Token => "not ";
     }
 
     /// <summary>
     /// Unary length (#).
     /// </summary>
-    public class Length(Tree expression) : Tree
+    public class Length(Tree expression) : Unary(expression)
     {
-        public Tree Expression => expression;
+        public override string Token => "#";
     }
 
     /// <summary>
@@ -292,7 +298,7 @@ public abstract class Tree
     {
         public Tree Left => left;
         public Tree Right => right;
-        public abstract string Character { get; }
+        public abstract string Token { get; }
         public abstract int Precedence { get; }
     }
 
@@ -301,7 +307,7 @@ public abstract class Tree
     /// </summary>
     public class Add(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "+";
+        public override string Token => "+";
         public override int Precedence => 4;
     }
 
@@ -310,7 +316,7 @@ public abstract class Tree
     /// </summary>
     public class Subtract(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "-";
+        public override string Token => "-";
         public override int Precedence => 4;
     }
 
@@ -319,7 +325,7 @@ public abstract class Tree
     /// </summary>
     public class Multiply(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "*";
+        public override string Token => "*";
         public override int Precedence => 5;
     }
 
@@ -328,7 +334,7 @@ public abstract class Tree
     /// </summary>
     public class Divide(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "/";
+        public override string Token => "/";
         public override int Precedence => 5;
     }
 
@@ -337,7 +343,7 @@ public abstract class Tree
     /// </summary>
     public class Modulo(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "%";
+        public override string Token => "%";
         public override int Precedence => 5;
     }
 
@@ -346,7 +352,7 @@ public abstract class Tree
     /// </summary>
     public class Power(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "^";
+        public override string Token => "^";
         public override int Precedence => 6;
     }
 
@@ -355,7 +361,7 @@ public abstract class Tree
     /// </summary>
     public class Concat(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "..";
+        public override string Token => "..";
         public override int Precedence => 3;
     }
 
@@ -364,7 +370,7 @@ public abstract class Tree
     /// </summary>
     public class Equal(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "==";
+        public override string Token => "==";
         public override int Precedence => 2;
     }
 
@@ -373,7 +379,7 @@ public abstract class Tree
     /// </summary>
     public class NotEqual(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "~=";
+        public override string Token => "~=";
         public override int Precedence => 2;
     }
 
@@ -382,7 +388,7 @@ public abstract class Tree
     /// </summary>
     public class LessEqual(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "<=";
+        public override string Token => "<=";
         public override int Precedence => 2;
     }
 
@@ -391,7 +397,7 @@ public abstract class Tree
     /// </summary>
     public class GreaterEqual(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => ">=";
+        public override string Token => ">=";
         public override int Precedence => 2;
     }
 
@@ -400,7 +406,7 @@ public abstract class Tree
     /// </summary>
     public class Less(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "<";
+        public override string Token => "<";
         public override int Precedence => 2;
     }
 
@@ -409,7 +415,7 @@ public abstract class Tree
     /// </summary>
     public class Greater(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => ">";
+        public override string Token => ">";
         public override int Precedence => 2;
     }
 
@@ -418,7 +424,7 @@ public abstract class Tree
     /// </summary>
     public class And(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "and";
+        public override string Token => "and";
         public override int Precedence => 1;
     }
 
@@ -427,7 +433,7 @@ public abstract class Tree
     /// </summary>
     public class Or(Tree left, Tree right) : Binary(left, right)
     {
-        public override string Character => "or";
+        public override string Token => "or";
         public override int Precedence => 0;
     }
 
