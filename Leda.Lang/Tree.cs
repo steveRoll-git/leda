@@ -119,6 +119,15 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// Declarations of one or more global variables.
+    /// </summary>
+    public class GlobalDeclaration(List<Declaration> declarations, List<Tree> values) : Tree
+    {
+        public List<Declaration> Declarations => declarations;
+        public List<Tree> Values => values;
+    }
+
+    /// <summary>
     /// A local function declaration.<br/>
     /// (This is different from a `LocalDeclaration`, because here, the function's name is made available in the body,
     /// allowing for recursion.)
@@ -157,6 +166,8 @@ public abstract class Tree
     public class Name(string value) : Tree
     {
         public string Value => value;
+
+        public override string ToString() => Value;
     }
 
     /// <summary>
@@ -233,11 +244,16 @@ public abstract class Tree
     /// <summary>
     /// A function value.
     /// </summary>
-    public class Function(List<Declaration> parameters, TypeDeclaration? returnType, Block body) : Tree
+    public class Function(List<Declaration> parameters, TypeDeclaration? returnType, Block body, bool isMethod) : Tree
     {
         public List<Declaration> Parameters => parameters;
         public TypeDeclaration? ReturnType => returnType;
         public Block Body => body;
+
+        /// <summary>
+        /// Whether this function was defined with a `:`.
+        /// </summary>
+        public bool IsMethod => isMethod;
     }
 
     /// <summary>

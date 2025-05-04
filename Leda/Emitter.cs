@@ -278,6 +278,15 @@ public class Emitter
             Emit(functionDeclaration.Name);
             EmitFunctionBody(functionDeclaration.Function, indent);
         }
+        else if (statement is Tree.GlobalDeclaration globalDeclaration)
+        {
+            EmitDeclarationList(globalDeclaration.Declarations);
+            if (globalDeclaration.Values.Count > 0)
+            {
+                Emit(" = ");
+                EmitExpressionList(globalDeclaration.Values, indent);
+            }
+        }
         else if (statement is Tree.Call call)
         {
             EmitCall(call, true, indent);

@@ -22,6 +22,7 @@ public class Parser
     private static readonly Token.Do Do = new();
     private static readonly Token.Until Until = new();
     private static readonly Token.End End = new();
+    private static readonly Token.Function Function = new();
     private static readonly Token.Local Local = new();
 
     /// <summary>
@@ -202,6 +203,11 @@ public class Parser
         if (token is Token.Local)
         {
             return ParseLocalDeclaration();
+        }
+
+        if (token is Token.Function)
+        {
+            return ParseFunctionDeclaration();
         }
 
         // Parse assignment or function call.
@@ -388,7 +394,7 @@ public class Parser
         {
             // 'local' name funcbody
             var name = Expect(Name);
-            var function = ParseFunctionBody();
+            var function = ParseFunctionBody(false);
             return new Tree.LocalFunctionDeclaration(name.Value, function);
         }
 
@@ -404,14 +410,44 @@ public class Parser
         return new Tree.LocalDeclaration(declarations, values);
     }
 
+    private Tree ParseFunctionDeclaration()
+    {
+        // 'function' name {'.' name} [':' name]
+        Expect(Function);
+        Tree path = new Tree.Name(Expect(Name).Value);
+        var isMethod = false;
+        while (token is Token.Dot or Token.Colon)
+        {
+            var separator = Consume();
+            var nextName = new Tree.String(Expect(Name).Value);
+
+            path = new Tree.Access(path, nextName);
+
+            if (separator is Token.Colon)
+            {
+                isMethod = true;
+                break;
+            }
+        }
+
+        var function = ParseFunctionBody(isMethod);
+
+        return new Tree.Assignment([path], [function]);
+    }
+
     /// <summary>
     /// Parses a function body - used in function declarations and in anonymous functions.
     /// </summary>
-    private Tree.Function ParseFunctionBody()
+    private Tree.Function ParseFunctionBody(bool isMethod)
     {
         // '(' declarations ')' block 'end'
         Expect(LParen);
         List<Tree.Declaration> parameters = [];
+        if (isMethod)
+        {
+            parameters.Add(new("self", null));
+        }
+
         if (!Accept<Token.RParen>())
         {
             parameters = ParseDeclarationList();
@@ -427,7 +463,7 @@ public class Parser
         var body = ParseBlock();
         Expect(End);
 
-        return new(parameters, returnType, body);
+        return new(parameters, returnType, body, isMethod);
     }
 
     /// <summary>
@@ -661,7 +697,7 @@ public class Parser
 
         if (Accept<Token.Function>())
         {
-            return ParseFunctionBody();
+            return ParseFunctionBody(false);
         }
 
         return ParsePrefixExpression();

@@ -126,6 +126,15 @@ public class Diagnostic
             Message = "Cannot assign to a function call.";
         }
     }
+
+    public class NoImplicitGlobalFunction : Diagnostic
+    {
+        public NoImplicitGlobalFunction(Source source) : base(source, new()) // TODO fix range
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = "Function is implicitly global. Prefix 'global' if this is intentional.";
+        }
+    }
 }
 
 public enum DiagnosticSeverity
