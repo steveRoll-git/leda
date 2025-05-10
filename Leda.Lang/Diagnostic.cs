@@ -118,6 +118,15 @@ public class Diagnostic
         }
     }
 
+    public class AmbiguousSyntax : Diagnostic
+    {
+        public AmbiguousSyntax(Source source, Range range) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = "Ambiguous syntax. Prepend ';' or move characters to same line.";
+        }
+    }
+
     public class CannotAssignToFunctionCall : Diagnostic
     {
         public CannotAssignToFunctionCall(Source source, Range range) : base(source, range)

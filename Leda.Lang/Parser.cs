@@ -223,7 +223,7 @@ public class Parser
         if (token is Token.Return)
         {
             StartTree();
-            NextToken();
+            NextToken(); // skip 'return'
             return EndTree(IsStatementEndingToken(token)
                 ? new Tree.Return(null)
                 : new Tree.Return(ParseExpression()));
@@ -590,8 +590,16 @@ public class Parser
         }
 
         // Function call: '(' [explist] ')'
-        if (Accept<Token.LParen>())
+        if (token is Token.LParen)
         {
+            // If the '(' is on a new line, it could be a new statement that starts with it - report ambiguous syntax.
+            if (previous.Range.End.Line < token.Range.Start.Line)
+            {
+                reporter.Report(new Diagnostic.AmbiguousSyntax(source, token.Range));
+            }
+
+            NextToken(); // skip '('
+
             if (Accept<Token.RParen>())
             {
                 return ParsePrefixExpression(EndTree(new Tree.Call(previous, [])));
@@ -699,7 +707,7 @@ public class Parser
             else if (token is Token.Name name && Lookahead(1) is Token.Assign)
             {
                 key = ConsumeTree(new Tree.String(name.Value));
-                NextToken();
+                NextToken(); // skip '='
             }
             // Just an expression, will be added at the last number index
             else
@@ -782,7 +790,7 @@ public class Parser
         if (token is Token.Function)
         {
             StartTree();
-            NextToken();
+            NextToken(); // skip 'function'
             return EndTree(ParseFunctionBody(false));
         }
 
