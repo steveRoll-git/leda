@@ -181,14 +181,12 @@ public class Parser
             return token;
         }
 
-        var listStart = lookaheadTokens.Count;
-
-        for (var i = 0; i < index; i++)
+        while (lookaheadTokens.Count < index)
         {
             lookaheadTokens.Add(lexer.ReadToken());
         }
 
-        return lookaheadTokens[listStart + index - 1];
+        return lookaheadTokens[index - 1];
     }
 
     /// <summary>
@@ -701,7 +699,6 @@ public class Parser
             else if (token is Token.Name name && Lookahead(1) is Token.Assign)
             {
                 key = ConsumeTree(new Tree.String(name.Value));
-                NextToken();
                 NextToken();
             }
             // Just an expression, will be added at the last number index
