@@ -127,12 +127,12 @@ public class Diagnostic
         }
     }
 
-    public class CannotAssignToFunctionCall : Diagnostic
+    public class CannotAssignToThis : Diagnostic
     {
-        public CannotAssignToFunctionCall(Source source, Range range) : base(source, range)
+        public CannotAssignToThis(Source source, Range range) : base(source, range)
         {
             Severity = DiagnosticSeverity.Error;
-            Message = "Cannot assign to a function call.";
+            Message = "This expression cannot be assigned to.";
         }
     }
 

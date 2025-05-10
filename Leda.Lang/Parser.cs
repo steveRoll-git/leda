@@ -57,6 +57,8 @@ public class Parser
     /// </summary>
     private readonly Stack<Position> startPositions = new();
 
+    private static bool IsAssignableTo(Tree tree) => tree is Tree.Name or Tree.Access;
+
     public Parser(Source source, IDiagnosticReporter reporter)
     {
         this.source = source;
@@ -279,26 +281,32 @@ public class Parser
             return EndTree(value);
         }
 
-        List<Tree> targets = [value];
-        while (Accept<Token.Comma>())
+        if (IsAssignableTo(value))
         {
-            var target = ParsePrefixExpression();
-            if (target is Tree.Call)
+            List<Tree> targets = [value];
+            while (Accept<Token.Comma>())
             {
-                reporter.Report(new Diagnostic.CannotAssignToFunctionCall(source, target.Range));
-                targets.Add(new Tree.Error());
+                var target = ParsePrefixExpression();
+                if (!IsAssignableTo(target))
+                {
+                    reporter.Report(new Diagnostic.CannotAssignToThis(source, target.Range));
+                    targets.Add(new Tree.Error());
+                }
+                else
+                {
+                    targets.Add(target);
+                }
             }
-            else
-            {
-                targets.Add(target);
-            }
+
+            Expect(Assign);
+
+            var expressions = ParseExpressionList();
+
+            return EndTree(new Tree.Assignment(targets, expressions));
         }
 
-        Expect(Assign);
-
-        var expressions = ParseExpressionList();
-
-        return EndTree(new Tree.Assignment(targets, expressions));
+        reporter.Report(new Diagnostic.DidNotExpectTokenHere(source, Consume()));
+        return new Tree.Error();
     }
 
     private Tree.Do ParseDo()
