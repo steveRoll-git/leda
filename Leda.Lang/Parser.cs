@@ -276,7 +276,7 @@ public class Parser
         // Parse assignment or function call.
         var value = ParsePrefixExpression();
 
-        if (value is Tree.Call or Tree.Error)
+        if (value is Tree.Call or Tree.MethodCall or Tree.Error)
         {
             return EndTree(value);
         }
@@ -587,6 +587,22 @@ public class Parser
         {
             var name = StartEndTree(new Tree.String(Expect(Name).Value));
             return ParsePrefixExpression(EndTree(new Tree.Access(previous, name)));
+        }
+
+        // Method call: ':' Name  '(' [explist] ')'
+        if (Accept<Token.Colon>())
+        {
+            var funcName = Expect(Name).Value;
+            Expect(LParen);
+
+            if (Accept<Token.RParen>())
+            {
+                return ParsePrefixExpression(EndTree(new Tree.MethodCall(previous, funcName, [])));
+            }
+
+            var parameters = ParseExpressionList();
+            Expect(RParen);
+            return ParsePrefixExpression(EndTree(new Tree.MethodCall(previous, funcName, parameters)));
         }
 
         // Access with square brackets: '[' exp ']'

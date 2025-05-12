@@ -461,6 +461,16 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// A method call using `:` syntax.
+    /// </summary>
+    public class MethodCall(Tree target, string funcName, List<Tree> parameters) : Tree
+    {
+        public Tree Target => target;
+        public string FuncName => funcName;
+        public List<Tree> Parameters => parameters;
+    }
+
+    /// <summary>
     /// An assignment of one or more values to one or more targets.
     /// </summary>
     public class Assignment(List<Tree> targets, List<Tree> values) : Tree

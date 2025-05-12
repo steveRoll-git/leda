@@ -184,6 +184,10 @@ public class Emitter
         {
             EmitCall(call, false, indent);
         }
+        else if (expression is Tree.MethodCall methodCall)
+        {
+            EmitMethodCall(methodCall, false, indent);
+        }
         else if (expression is Tree.Binary binary)
         {
             if (binary.Left is Tree.Binary leftBinary && leftBinary.Precedence < binary.Precedence)
@@ -263,6 +267,16 @@ public class Emitter
         Emit(')');
     }
 
+    private void EmitMethodCall(Tree.MethodCall call, bool isStatement, int indent)
+    {
+        EmitPrefixExpression(call.Target, isStatement, indent);
+        Emit(':');
+        Emit(call.FuncName);
+        Emit('(');
+        EmitExpressionList(call.Parameters, indent);
+        Emit(')');
+    }
+
     private void EmitStatement(Tree statement, int indent)
     {
         EmitIndent(indent);
@@ -295,6 +309,10 @@ public class Emitter
         else if (statement is Tree.Call call)
         {
             EmitCall(call, true, indent);
+        }
+        else if (statement is Tree.MethodCall methodCall)
+        {
+            EmitMethodCall(methodCall, true, indent);
         }
         else if (statement is Tree.Return returnStatement)
         {
