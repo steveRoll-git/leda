@@ -79,6 +79,7 @@ public record Token
 
         public override string Value { get; }
         public override string KindName => "name";
+        public override string ToString() => Value;
     }
 
     /// <summary>

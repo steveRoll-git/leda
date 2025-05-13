@@ -194,9 +194,8 @@ public class Parser
     /// <summary>
     /// Parse a block of statements.
     /// </summary>
-    public Tree.Block ParseBlock()
+    private Tree.Block ParseBlock()
     {
-        StartTree();
         var statements = new List<Tree>();
         while (!IsStatementEndingToken(token))
         {
@@ -213,7 +212,7 @@ public class Parser
             }
         }
 
-        return EndTree(new Tree.Block(statements, []));
+        return new Tree.Block(statements, []);
     }
 
     /// <summary>
@@ -819,5 +818,13 @@ public class Parser
         }
 
         return ParsePrefixExpression();
+    }
+
+    /// <summary>
+    /// Parse this source's contents and return the file's syntax tree.
+    /// </summary>
+    public static Tree.Block ParseFile(Source source, IDiagnosticReporter reporter)
+    {
+        return new Parser(source, reporter).ParseBlock();
     }
 }

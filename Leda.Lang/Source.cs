@@ -21,6 +21,21 @@ public class Source
     private Dictionary<int, int> newlines = new() { { 0, 0 } };
 
     /// <summary>
+    /// The syntax tree for this file.
+    /// </summary>
+    public Tree.Block Tree { get; private set; }
+
+    /// <summary>
+    /// Maps Tree nodes to the Symbol they refer to.
+    /// </summary>
+    private Dictionary<Tree, Symbol> symbolMap = [];
+
+    /// <summary>
+    /// A list of any symbols referenced in this Source that are defined in other Sources.
+    /// </summary>
+    private List<string> externalSymbols = [];
+
+    /// <summary>
     /// Creates a new source with the given path, and reads the file at that path into Code.
     /// </summary>
     public Source(string path) : this(path, File.ReadAllText(path)) { }
@@ -61,5 +76,26 @@ public class Source
         }
 
         return "";
+    }
+
+    /// <summary>
+    /// Parse the source's contents and store the syntax tree.
+    /// </summary>
+    public void Parse(IDiagnosticReporter reporter)
+    {
+        Tree = Parser.ParseFile(this, reporter);
+    }
+
+    public void Bind(IDiagnosticReporter reporter)
+    {
+        Binder.Bind(this, Tree, reporter);
+    }
+
+    /// <summary>
+    /// Associates this tree node with the given symbol.
+    /// </summary>
+    internal void AttachSymbol(Tree tree, Symbol symbol)
+    {
+        symbolMap.Add(tree, symbol);
     }
 }

@@ -1,0 +1,288 @@
+using System.Diagnostics.CodeAnalysis;
+
+namespace Leda.Lang;
+
+using Scope = Dictionary<string, Symbol>;
+
+/// <summary>
+/// Visits each node of a Tree to create new Symbols for each declaration that's found, and associates names with
+/// known Symbols.
+/// </summary>
+public class Binder : Tree.IVisitor
+{
+    private readonly Source source;
+    private readonly IDiagnosticReporter reporter;
+
+    /// <summary>
+    /// A list of lexical scopes, where each scope is a dictionary of names with their symbols.
+    /// </summary>
+    private readonly List<Scope> scopes = [];
+
+    private Scope CurrentScope => scopes[^1];
+
+    private Binder(Source source, IDiagnosticReporter reporter)
+    {
+        this.source = source;
+        this.reporter = reporter;
+
+        // Add the standard types.
+        // TODO maybe these should originate from a declaration file instead
+        scopes.Add(new()
+        {
+            [Type.Boolean.Name] = new Symbol.TypeSymbol(Type.Boolean),
+            [Type.Number.Name] = new Symbol.TypeSymbol(Type.Number),
+            [Type.String.Name] = new Symbol.TypeSymbol(Type.String)
+        });
+    }
+
+    private void PushScope()
+    {
+        scopes.Add(new Scope());
+    }
+
+    private void PopScope()
+    {
+        scopes.RemoveAt(scopes.Count - 1);
+    }
+
+    /// <summary>
+    /// Attempts to find a symbol by its name.
+    /// </summary>
+    /// <param name="name">The name of the symbol to look for.</param>
+    /// <param name="symbol">Out variable to store the symbol at.</param>
+    /// <param name="scope">Out variable to store the scope where the symbol was found.</param>
+    /// <returns>True if a symbol with this name was found, false otherwise.</returns>
+    private bool TryGetSymbol(string name, [NotNullWhen(true)] out Symbol? symbol, [NotNullWhen(true)] out Scope? scope)
+    {
+        for (var i = scopes.Count - 1; i >= 0; i--)
+        {
+            if (scopes[i].TryGetValue(name, out symbol))
+            {
+                scope = scopes[i];
+                return true;
+            }
+        }
+
+        scope = null;
+        symbol = null;
+        return false;
+    }
+
+    private bool TryGetSymbol(string name, [NotNullWhen(true)] out Symbol? symbol)
+    {
+        return TryGetSymbol(name, out symbol, out _);
+    }
+
+    /// <summary>
+    /// Adds a named symbol to the current scope. Reports a diagnostic if a symbol with this name has already been
+    /// declared in the same scope.
+    /// </summary>
+    private void AddSymbol(string name, Range range, Symbol symbol)
+    {
+        // TODO report warning if a name is shadowed
+        if (TryGetSymbol(name, out var existingSymbol, out var existingScope) && existingScope == CurrentScope)
+        {
+            reporter.Report(new Diagnostic.NameAlreadyDeclared(source, range, name, existingSymbol));
+        }
+
+        CurrentScope[name] = symbol;
+
+        symbol.Definition = new(source, range);
+    }
+
+    /// <summary>
+    /// Visits all of a block's statements.
+    /// </summary>
+    public void VisitBlock(Tree.Block block)
+    {
+        // TODO iterate over block's type declarations
+        foreach (var statement in block.Statements)
+        {
+            statement.AcceptVisitor(this);
+        }
+    }
+
+    public void Visit(Tree.Do block)
+    {
+        PushScope();
+        VisitBlock(block.Body);
+        PopScope();
+    }
+
+    public void Visit(Tree.NumericalFor numericalFor)
+    {
+        PushScope();
+        numericalFor.Start.AcceptVisitor(this);
+        numericalFor.End.AcceptVisitor(this);
+        numericalFor.Step?.AcceptVisitor(this);
+        AddSymbol(numericalFor.Counter.Value, numericalFor.Counter.Range, new Symbol.LocalVariable());
+        VisitBlock(numericalFor.Body);
+        PopScope();
+    }
+
+    private void VisitIfBranch(Tree.IfBranch branch)
+    {
+        branch.Condition.AcceptVisitor(this);
+        PushScope();
+        VisitBlock(branch.Body);
+        PopScope();
+    }
+
+    public void Visit(Tree.If ifStatement)
+    {
+        VisitIfBranch(ifStatement.Primary);
+        foreach (var branch in ifStatement.ElseIfs)
+        {
+            VisitIfBranch(branch);
+        }
+
+        if (ifStatement.ElseBody != null)
+        {
+            PushScope();
+            VisitBlock(ifStatement.ElseBody);
+            PopScope();
+        }
+    }
+
+    public void Visit(Tree.Assignment assignment)
+    {
+        foreach (var target in assignment.Targets)
+        {
+            target.AcceptVisitor(this);
+        }
+
+        foreach (var value in assignment.Values)
+        {
+            value.AcceptVisitor(this);
+        }
+    }
+
+    public void Visit(Tree.MethodCall methodCall)
+    {
+        methodCall.Target.AcceptVisitor(this);
+        foreach (var parameter in methodCall.Parameters)
+        {
+            parameter.AcceptVisitor(this);
+        }
+    }
+
+    public void Visit(Tree.Call call)
+    {
+        call.Target.AcceptVisitor(this);
+        foreach (var parameter in call.Parameters)
+        {
+            parameter.AcceptVisitor(this);
+        }
+    }
+
+    public void Visit(Tree.Access access)
+    {
+        access.Target.AcceptVisitor(this);
+        access.Key.AcceptVisitor(this);
+    }
+
+    public void Visit(Tree.Binary binary)
+    {
+        binary.Left.AcceptVisitor(this);
+        binary.Right.AcceptVisitor(this);
+    }
+
+    public void Visit(Tree.Unary unary)
+    {
+        unary.Expression.AcceptVisitor(this);
+    }
+
+    public void Visit(Tree.Function function)
+    {
+        PushScope();
+        VisitFunction(function);
+        PopScope();
+    }
+
+    public void VisitFunction(Tree.Function function)
+    {
+        foreach (var parameter in function.Parameters)
+        {
+            AddSymbol(parameter.Name, parameter.Range, new Symbol.Parameter());
+        }
+
+        VisitBlock(function.Body);
+    }
+
+    public void Visit(Tree.Name name)
+    {
+        if (TryGetSymbol(name.Value, out var symbol))
+        {
+            source.AttachSymbol(name, symbol);
+        }
+        else
+        {
+            // TODO defer to check for global
+            reporter.Report(new Diagnostic.NameNotFound(source, name));
+        }
+    }
+
+    public void Visit(Tree.Return returnStatement)
+    {
+        returnStatement.Expression?.AcceptVisitor(this);
+    }
+
+    public void Visit(Tree.LocalFunctionDeclaration declaration)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Visit(Tree.GlobalDeclaration declaration)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Visit(Tree.LocalDeclaration localDeclaration)
+    {
+        foreach (var declaration in localDeclaration.Declarations)
+        {
+            AddSymbol(declaration.Name, declaration.Range, new Symbol.LocalVariable());
+        }
+    }
+
+    public void Visit(Tree.RepeatUntil repeatUntil)
+    {
+        PushScope();
+        VisitBlock(repeatUntil.Body);
+        repeatUntil.Condition.AcceptVisitor(this);
+        PopScope();
+    }
+
+    public void Visit(Tree.While whileLoop)
+    {
+        whileLoop.Condition.AcceptVisitor(this);
+        PushScope();
+        VisitBlock(whileLoop.Body);
+        PopScope();
+    }
+
+    public void Visit(Tree.IteratorFor forLoop)
+    {
+        forLoop.Iterator.AcceptVisitor(this);
+
+        PushScope();
+
+        foreach (var declaration in forLoop.Declarations)
+        {
+            AddSymbol(declaration.Name, declaration.Range, new Symbol.LocalVariable());
+        }
+
+        VisitBlock(forLoop.Body);
+
+        PopScope();
+    }
+
+    /// <summary>
+    /// Visits all nodes in the given tree and updates the infoStore with the relevant information.
+    /// </summary>
+    public static void Bind(Source source, Tree.Block block, IDiagnosticReporter reporter)
+    {
+        var binder = new Binder(source, reporter);
+        binder.VisitBlock(block);
+    }
+}

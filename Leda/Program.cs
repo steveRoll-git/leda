@@ -6,10 +6,13 @@ class Program
 {
     static void Main(string[] args)
     {
-        var p = new Parser(new("test", """
-                                       s = {not a; -123; #function() end}
-                                       """), new ConsoleReporter());
-        var b = p.ParseBlock();
-        Console.WriteLine(Emitter.Emit(b));
+        var source = new Source("test", """
+                                        local t = {}
+                                        t:a("zyszdf")
+                                        g = 123
+                                        """);
+        source.Parse(new ConsoleReporter());
+        Console.WriteLine(Emitter.Emit(source.Tree));
+        source.Bind(new ConsoleReporter());
     }
 }

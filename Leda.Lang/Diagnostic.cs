@@ -144,6 +144,31 @@ public class Diagnostic
             Message = "Function is implicitly global. Prefix 'global' if this is intentional.";
         }
     }
+
+    public class NameNotFound : Diagnostic
+    {
+        public NameNotFound(Source source, Tree.Name name) : base(source, name.Range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"Cannot find name '{name.Value}'.";
+        }
+    }
+
+    public class NameAlreadyDeclared : Diagnostic
+    {
+        public NameAlreadyDeclared(Source source, Range range, string name, Symbol existingSymbol) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Error;
+
+            var noun = existingSymbol switch
+            {
+                Symbol.LocalVariable => "local variable",
+                Symbol.TypeSymbol => "type",
+                _ => "value"
+            };
+            Message = $"A {noun} named '{name}' has already been declared.";
+        }
+    }
 }
 
 public enum DiagnosticSeverity

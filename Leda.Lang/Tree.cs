@@ -6,9 +6,39 @@ namespace Leda.Lang;
 public abstract class Tree
 {
     /// <summary>
+    /// An interface for visiting all nodes of a tree.
+    /// </summary>
+    public interface IVisitor
+    {
+        void Visit(Do block);
+        void Visit(NumericalFor numericalFor);
+        void Visit(If ifStatement);
+        void Visit(Assignment assignment);
+        void Visit(MethodCall methodCall);
+        void Visit(Call call);
+        void Visit(Access access);
+        void Visit(Binary binary);
+        void Visit(Unary unary);
+        void Visit(Function function);
+        void Visit(Name name);
+        void Visit(Return returnStatement);
+        void Visit(LocalFunctionDeclaration declaration);
+        void Visit(GlobalDeclaration declaration);
+        void Visit(LocalDeclaration localDeclaration);
+        void Visit(RepeatUntil repeatUntil);
+        void Visit(While whileLoop);
+        void Visit(IteratorFor forLoop);
+    }
+
+    /// <summary>
     /// The range in the source code that this tree occupies.
     /// </summary>
     public Range Range { get; internal set; }
+
+    /// <summary>
+    /// Calls the `visitor`'s `Visit` and `PostVisit` methods on this node and all its children.
+    /// </summary>
+    public virtual void AcceptVisitor(IVisitor visitor) { }
 
     /// <summary>
     /// An invalid tree node - returned when an error was encountered during parsing.
@@ -37,7 +67,7 @@ public abstract class Tree
     /// <summary>
     /// A list of statements.
     /// </summary>
-    public class Block(List<Tree> statements, List<TypeDeclaration> typeDeclarations) : Tree
+    public class Block(List<Tree> statements, List<TypeDeclaration> typeDeclarations)
     {
         public List<Tree> Statements => statements;
 
@@ -53,6 +83,11 @@ public abstract class Tree
     public class Do(Block body) : Tree
     {
         public Block Body => body;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -72,6 +107,11 @@ public abstract class Tree
         public IfBranch Primary => primary;
         public List<IfBranch> ElseIfs => elseIfs;
         public Block? ElseBody => elseBody;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -84,6 +124,11 @@ public abstract class Tree
         public Tree End => end;
         public Tree? Step => step;
         public Block Body => body;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -94,6 +139,11 @@ public abstract class Tree
         public List<Declaration> Declarations => declarations;
         public Tree Iterator => iterator;
         public Block Body => body;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -103,6 +153,11 @@ public abstract class Tree
     {
         public Tree Condition => condition;
         public Block Body => body;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -112,49 +167,12 @@ public abstract class Tree
     {
         public Block Body => body;
         public Tree Condition => condition;
-    }
 
-    /// <summary>
-    /// Declarations of one or more local variables.
-    /// </summary>
-    public class LocalDeclaration(List<Declaration> declarations, List<Tree> values) : Tree
-    {
-        public List<Declaration> Declarations => declarations;
-        public List<Tree> Values => values;
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
-
-    /// <summary>
-    /// Declarations of one or more global variables.
-    /// </summary>
-    public class GlobalDeclaration(List<Declaration> declarations, List<Tree> values) : Tree
-    {
-        public List<Declaration> Declarations => declarations;
-        public List<Tree> Values => values;
-    }
-
-    /// <summary>
-    /// A local function declaration.<br/>
-    /// (This is different from a `LocalDeclaration`, because here, the function's name is made available in the body,
-    /// allowing for recursion.)
-    /// </summary>
-    public class LocalFunctionDeclaration(string name, Function function) : Tree
-    {
-        public string Name => name;
-        public Function Function => function;
-    }
-
-    /// <summary>
-    /// A `return` statement, with an optional return expression.
-    /// </summary>
-    public class Return(Tree? expression) : Tree
-    {
-        public readonly Tree? Expression = expression;
-    }
-
-    /// <summary>
-    /// A `break` statement.
-    /// </summary>
-    public class Break : Tree;
 
     /// <summary>
     /// A declaration of a named value, with an optional type.
@@ -166,6 +184,68 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// Declarations of one or more local variables.
+    /// </summary>
+    public class LocalDeclaration(List<Declaration> declarations, List<Tree> values) : Tree
+    {
+        public List<Declaration> Declarations => declarations;
+        public List<Tree> Values => values;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+    }
+
+    /// <summary>
+    /// Declarations of one or more global variables.
+    /// </summary>
+    public class GlobalDeclaration(List<Declaration> declarations, List<Tree> values) : Tree
+    {
+        public List<Declaration> Declarations => declarations;
+        public List<Tree> Values => values;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+    }
+
+    /// <summary>
+    /// A local function declaration.<br/>
+    /// (This is different from a `LocalDeclaration`, because here, the function's name is made available in the body,
+    /// allowing for recursion.)
+    /// </summary>
+    public class LocalFunctionDeclaration(string name, Function function) : Tree
+    {
+        public string Name => name;
+        public Function Function => function;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+    }
+
+    /// <summary>
+    /// A `return` statement, with an optional return expression.
+    /// </summary>
+    public class Return(Tree? expression) : Tree
+    {
+        public Tree? Expression => expression;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+    }
+
+    /// <summary>
+    /// A `break` statement.
+    /// </summary>
+    public class Break : Tree;
+
+    /// <summary>
     /// A named reference to a variable or type.
     /// </summary>
     public class Name(string value) : Tree
@@ -173,6 +253,11 @@ public abstract class Tree
         public string Value => value;
 
         public override string ToString() => Value;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -259,6 +344,11 @@ public abstract class Tree
         /// Whether this function was defined with a `:`.
         /// </summary>
         public bool IsMethod => isMethod;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -270,6 +360,11 @@ public abstract class Tree
     {
         public Tree Expression => expression;
         public abstract string Token { get; }
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -305,6 +400,11 @@ public abstract class Tree
         public Tree Right => right;
         public abstract string Token { get; }
         public abstract int Precedence { get; }
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -449,6 +549,11 @@ public abstract class Tree
     {
         public Tree Target => target;
         public Tree Key => key;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -458,6 +563,11 @@ public abstract class Tree
     {
         public Tree Target => target;
         public List<Tree> Parameters => parameters;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -468,6 +578,11 @@ public abstract class Tree
         public Tree Target => target;
         public string FuncName => funcName;
         public List<Tree> Parameters => parameters;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 
     /// <summary>
@@ -477,5 +592,10 @@ public abstract class Tree
     {
         public List<Tree> Targets => targets;
         public List<Tree> Values => values;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
     }
 }
