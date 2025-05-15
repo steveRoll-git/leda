@@ -278,13 +278,12 @@ public class Lexer
 
         AdvanceChar();
 
-        return new Token.String(new(start, prevCharPosition), value.ToString());
+        return new Token.String(new(start, position), value.ToString());
     }
 
     /// <summary>
     /// Reads a number token. Checks if the number is properly formed.
     /// </summary>
-    /// <returns></returns>
     private Token.Number ReadNumber()
     {
         var startIndex = index;
