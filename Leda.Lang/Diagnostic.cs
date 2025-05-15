@@ -169,6 +169,51 @@ public class Diagnostic
             Message = $"A {noun} named '{name}' has already been declared.";
         }
     }
+
+    public class CantGetLength : Diagnostic
+    {
+        public CantGetLength(Source source, Range range, Type got) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"Cannot get the length of a '{got}' value.";
+        }
+    }
+
+    public class CantNegate : Diagnostic
+    {
+        public CantNegate(Source source, Range range, Type got) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"Cannot negate a '{got}' value.";
+        }
+    }
+
+    public class ForLoopStartNotNumber : Diagnostic
+    {
+        public ForLoopStartNotNumber(Source source, Range range, Type got) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"Starting value of `for` loop must be 'number', but is '{got}'.";
+        }
+    }
+
+    public class ForLoopLimitNotNumber : Diagnostic
+    {
+        public ForLoopLimitNotNumber(Source source, Range range, Type got) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"Limit value of `for` loop must be 'number', but is '{got}'.";
+        }
+    }
+
+    public class ForLoopStepNotNumber : Diagnostic
+    {
+        public ForLoopStepNotNumber(Source source, Range range, Type got) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"Step value of `for` loop must be 'number', but is '{got}'.";
+        }
+    }
 }
 
 public enum DiagnosticSeverity

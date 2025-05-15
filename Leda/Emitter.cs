@@ -54,7 +54,7 @@ public class Emitter
     {
         for (var i = 0; i < declarations.Count; i++)
         {
-            Emit(declarations[i].Name);
+            Emit(declarations[i].Name.Value);
             if (i < declarations.Count - 1)
             {
                 Emit(", ");
@@ -363,7 +363,7 @@ public class Emitter
             Emit(" = ");
             EmitExpression(numericalFor.Start, indent);
             Emit(", ");
-            EmitExpression(numericalFor.End, indent);
+            EmitExpression(numericalFor.Limit, indent);
             if (numericalFor.Step != null)
             {
                 Emit(", ");

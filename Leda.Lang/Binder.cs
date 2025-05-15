@@ -77,17 +77,17 @@ public class Binder : Tree.IVisitor
     /// Adds a named symbol to the current scope. Reports a diagnostic if a symbol with this name has already been
     /// declared in the same scope.
     /// </summary>
-    private void AddSymbol(string name, Range range, Symbol symbol)
+    private void AddSymbol(Tree.Name name, Symbol symbol)
     {
         // TODO report warning if a name is shadowed
-        if (TryGetSymbol(name, out var existingSymbol, out var existingScope) && existingScope == CurrentScope)
+        if (TryGetSymbol(name.Value, out var existingSymbol, out var existingScope) && existingScope == CurrentScope)
         {
-            reporter.Report(new Diagnostic.NameAlreadyDeclared(source, range, name, existingSymbol));
+            reporter.Report(new Diagnostic.NameAlreadyDeclared(source, name.Range, name.Value, existingSymbol));
         }
 
-        CurrentScope[name] = symbol;
-
-        symbol.Definition = new(source, range);
+        CurrentScope[name.Value] = symbol;
+        symbol.Definition = new(source, name.Range);
+        source.AttachSymbol(name, symbol);
     }
 
     /// <summary>
@@ -113,9 +113,9 @@ public class Binder : Tree.IVisitor
     {
         PushScope();
         numericalFor.Start.AcceptVisitor(this);
-        numericalFor.End.AcceptVisitor(this);
+        numericalFor.Limit.AcceptVisitor(this);
         numericalFor.Step?.AcceptVisitor(this);
-        AddSymbol(numericalFor.Counter.Value, numericalFor.Counter.Range, new Symbol.LocalVariable());
+        AddSymbol(numericalFor.Counter, new Symbol.LocalVariable());
         VisitBlock(numericalFor.Body);
         PopScope();
     }
@@ -203,7 +203,7 @@ public class Binder : Tree.IVisitor
     {
         foreach (var parameter in function.Parameters)
         {
-            AddSymbol(parameter.Name, parameter.Range, new Symbol.Parameter());
+            AddSymbol(parameter.Name, new Symbol.Parameter());
         }
 
         VisitBlock(function.Body);
@@ -241,7 +241,7 @@ public class Binder : Tree.IVisitor
     {
         foreach (var declaration in localDeclaration.Declarations)
         {
-            AddSymbol(declaration.Name, declaration.Range, new Symbol.LocalVariable());
+            AddSymbol(declaration.Name, new Symbol.LocalVariable());
         }
     }
 
@@ -269,7 +269,7 @@ public class Binder : Tree.IVisitor
 
         foreach (var declaration in forLoop.Declarations)
         {
-            AddSymbol(declaration.Name, declaration.Range, new Symbol.LocalVariable());
+            AddSymbol(declaration.Name, new Symbol.LocalVariable());
         }
 
         VisitBlock(forLoop.Body);

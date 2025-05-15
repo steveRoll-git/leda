@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Leda.Lang;
 
 /// <summary>
@@ -86,9 +88,21 @@ public class Source
         Tree = Parser.ParseFile(this, reporter);
     }
 
+    /// <summary>
+    /// Associates all top level `Name` nodes with symbols.
+    /// </summary>
     public void Bind(IDiagnosticReporter reporter)
     {
+        symbolMap = [];
         Binder.Bind(this, Tree, reporter);
+    }
+
+    /// <summary>
+    /// Checks the types of all nodes.
+    /// </summary>
+    public void Check(IDiagnosticReporter reporter)
+    {
+        Checker.Check(this, reporter);
     }
 
     /// <summary>
@@ -97,5 +111,14 @@ public class Source
     internal void AttachSymbol(Tree tree, Symbol symbol)
     {
         symbolMap.Add(tree, symbol);
+    }
+
+    /// <summary>
+    /// Finds the symbol that this tree refers to.
+    /// </summary>
+    /// <returns>True if this tree has a corresponding symbol, false otherwise.</returns>
+    internal bool TryGetSymbol(Tree tree, [NotNullWhen(true)] out Symbol? symbol)
+    {
+        return symbolMap.TryGetValue(tree, out symbol);
     }
 }

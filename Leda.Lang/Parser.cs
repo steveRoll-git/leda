@@ -434,7 +434,7 @@ public class Parser
         StartTree();
 
         // name [':' type]
-        var name = Expect(Name).Value;
+        var name = ConsumeTree(new Tree.Name(Expect(Name).Value));
 
         Tree.TypeDeclaration? type = null;
         if (Accept<Token.Colon>())
@@ -526,11 +526,13 @@ public class Parser
         StartTree();
 
         // '(' declarations ')' block 'end'
+        var lParenRange = token.Range;
         Expect(LParen);
+
         List<Tree.Declaration> parameters = [];
         if (isMethod)
         {
-            parameters.Add(new("self", null));
+            parameters.Add(new(new Tree.Name("self") { Range = lParenRange }, null));
         }
 
         if (!Accept<Token.RParen>())
