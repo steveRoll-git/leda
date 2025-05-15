@@ -434,7 +434,7 @@ public class Parser
         StartTree();
 
         // name [':' type]
-        var name = ConsumeTree(new Tree.Name(Expect(Name).Value));
+        var name = StartEndTree(new Tree.Name(Expect(Name).Value));
 
         Tree.TypeDeclaration? type = null;
         if (Accept<Token.Colon>())
