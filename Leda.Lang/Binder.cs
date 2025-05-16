@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Leda.Lang;
 
-using Scope = Dictionary<string, Symbol>;
+using Scope = Dictionary<string, Binder.Binding>;
 
 /// <summary>
 /// Visits each node of a Tree to create new Symbols for each declaration that's found, and associates names with
@@ -18,6 +18,15 @@ public class Binder : Tree.IVisitor
     /// </summary>
     private readonly List<Scope> scopes = [];
 
+    /// <summary>
+    /// Any name in the source code might refer to a value, or a type, or both.
+    /// </summary>
+    internal class Binding(Symbol? value, Symbol? type)
+    {
+        public Symbol? ValueSymbol { get; set; } = value;
+        public Symbol? TypeSymbol { get; set; } = type;
+    }
+
     private Scope CurrentScope => scopes[^1];
 
     private Binder(Source source, IDiagnosticReporter reporter)
@@ -29,9 +38,9 @@ public class Binder : Tree.IVisitor
         // TODO maybe these should originate from a declaration file instead
         scopes.Add(new()
         {
-            [Type.Boolean.Name] = new Symbol.TypeSymbol(Type.Boolean),
-            [Type.Number.Name] = new Symbol.TypeSymbol(Type.Number),
-            [Type.String.Name] = new Symbol.TypeSymbol(Type.String)
+            [Type.Boolean.Name] = new(null, new Symbol.TypeSymbol(Type.Boolean)),
+            [Type.Number.Name] = new(null, new Symbol.TypeSymbol(Type.Number)),
+            [Type.String.Name] = new(null, new Symbol.TypeSymbol(Type.String)) // TODO stringlib should be a value here
         });
     }
 
@@ -46,13 +55,14 @@ public class Binder : Tree.IVisitor
     }
 
     /// <summary>
-    /// Attempts to find a symbol by its name.
+    /// Attempts to find a binding by its name.
     /// </summary>
     /// <param name="name">The name of the symbol to look for.</param>
     /// <param name="symbol">Out variable to store the symbol at.</param>
     /// <param name="scope">Out variable to store the scope where the symbol was found.</param>
     /// <returns>True if a symbol with this name was found, false otherwise.</returns>
-    private bool TryGetSymbol(string name, [NotNullWhen(true)] out Symbol? symbol, [NotNullWhen(true)] out Scope? scope)
+    private bool TryGetBinding(string name, [NotNullWhen(true)] out Binding? symbol,
+        [NotNullWhen(true)] out Scope? scope)
     {
         for (var i = scopes.Count - 1; i >= 0; i--)
         {
@@ -68,9 +78,9 @@ public class Binder : Tree.IVisitor
         return false;
     }
 
-    private bool TryGetSymbol(string name, [NotNullWhen(true)] out Symbol? symbol)
+    private bool TryGetBinding(string name, [NotNullWhen(true)] out Binding? symbol)
     {
-        return TryGetSymbol(name, out symbol, out _);
+        return TryGetBinding(name, out symbol, out _);
     }
 
     /// <summary>
@@ -80,14 +90,36 @@ public class Binder : Tree.IVisitor
     private void AddSymbol(Tree.Name name, Symbol symbol)
     {
         // TODO report warning if a name is shadowed
-        if (TryGetSymbol(name.Value, out var existingSymbol, out var existingScope) && existingScope == CurrentScope)
+        if (TryGetBinding(name.Value, out var existingBinding, out var existingScope) && existingScope == CurrentScope)
         {
-            reporter.Report(new Diagnostic.NameAlreadyDeclared(source, name.Range, name.Value, existingSymbol));
+            if (symbol is Symbol.TypeSymbol && existingBinding.TypeSymbol != null)
+            {
+                reporter.Report(new Diagnostic.TypeAlreadyDeclared(source, name.Range, name.Value));
+            }
+            else if (symbol is not Symbol.TypeSymbol && existingBinding.ValueSymbol != null)
+            {
+                reporter.Report(new Diagnostic.ValueAlreadyDeclared(source, name.Range, name.Value,
+                    existingBinding.ValueSymbol));
+            }
         }
 
-        CurrentScope[name.Value] = symbol;
+        if (!CurrentScope.TryGetValue(name.Value, out var currentBinding))
+        {
+            currentBinding = new Binding(null, null);
+            CurrentScope[name.Value] = currentBinding;
+        }
+
+        if (symbol is Symbol.TypeSymbol)
+        {
+            currentBinding.TypeSymbol = symbol;
+        }
+        else
+        {
+            currentBinding.ValueSymbol = symbol;
+        }
+
         symbol.Definition = new(source, name.Range);
-        source.AttachSymbol(name, symbol);
+        source.AttachValueSymbol(name, symbol);
     }
 
     /// <summary>
@@ -211,9 +243,17 @@ public class Binder : Tree.IVisitor
 
     public void Visit(Tree.Name name)
     {
-        if (TryGetSymbol(name.Value, out var symbol))
+        if (TryGetBinding(name.Value, out var binding))
         {
-            source.AttachSymbol(name, symbol);
+            if (binding.ValueSymbol != null)
+            {
+                source.AttachValueSymbol(name, binding.ValueSymbol);
+            }
+
+            if (binding.TypeSymbol != null)
+            {
+                source.AttachTypeSymbol(name, binding.TypeSymbol);
+            }
         }
         else
         {

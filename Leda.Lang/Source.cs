@@ -28,9 +28,14 @@ public class Source
     public Tree.Block Tree { get; private set; }
 
     /// <summary>
-    /// Maps Tree nodes to the Symbol they refer to.
+    /// Maps Tree nodes to the value symbol they refer to.
     /// </summary>
-    private Dictionary<Tree, Symbol> symbolMap = [];
+    private Dictionary<Tree, Symbol> valueSymbolMap = [];
+
+    /// <summary>
+    /// Maps Tree nodes to the type symbol they refer to.
+    /// </summary>
+    private Dictionary<Tree, Symbol> typeSymbolMap = [];
 
     /// <summary>
     /// A list of any symbols referenced in this Source that are defined in other Sources.
@@ -93,7 +98,7 @@ public class Source
     /// </summary>
     public void Bind(IDiagnosticReporter reporter)
     {
-        symbolMap = [];
+        valueSymbolMap = [];
         Binder.Bind(this, Tree, reporter);
     }
 
@@ -106,19 +111,27 @@ public class Source
     }
 
     /// <summary>
-    /// Associates this tree node with the given symbol.
+    /// Associates this tree node with the given value symbol.
     /// </summary>
-    internal void AttachSymbol(Tree tree, Symbol symbol)
+    internal void AttachValueSymbol(Tree tree, Symbol symbol)
     {
-        symbolMap.Add(tree, symbol);
+        valueSymbolMap.Add(tree, symbol);
     }
 
     /// <summary>
-    /// Finds the symbol that this tree refers to.
+    /// Associates this tree node with the given type symbol.
     /// </summary>
-    /// <returns>True if this tree has a corresponding symbol, false otherwise.</returns>
-    internal bool TryGetSymbol(Tree tree, [NotNullWhen(true)] out Symbol? symbol)
+    internal void AttachTypeSymbol(Tree tree, Symbol symbol)
     {
-        return symbolMap.TryGetValue(tree, out symbol);
+        typeSymbolMap.Add(tree, symbol);
+    }
+
+    /// <summary>
+    /// Finds the value symbol that this tree refers to.
+    /// </summary>
+    /// <returns>True if this tree has a corresponding value symbol, false otherwise.</returns>
+    internal bool TryGetValueSymbol(Tree tree, [NotNullWhen(true)] out Symbol? symbol)
+    {
+        return valueSymbolMap.TryGetValue(tree, out symbol);
     }
 }

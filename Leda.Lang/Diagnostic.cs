@@ -154,19 +154,28 @@ public class Diagnostic
         }
     }
 
-    public class NameAlreadyDeclared : Diagnostic
+    public class ValueAlreadyDeclared : Diagnostic
     {
-        public NameAlreadyDeclared(Source source, Range range, string name, Symbol existingSymbol) : base(source, range)
+        public ValueAlreadyDeclared(Source source, Range range, string name, Symbol existingSymbol) : base(source,
+            range)
         {
             Severity = DiagnosticSeverity.Error;
 
             var noun = existingSymbol switch
             {
                 Symbol.LocalVariable => "local variable",
-                Symbol.TypeSymbol => "type",
                 _ => "value"
             };
             Message = $"A {noun} named '{name}' has already been declared.";
+        }
+    }
+
+    public class TypeAlreadyDeclared : Diagnostic
+    {
+        public TypeAlreadyDeclared(Source source, Range range, string name) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"A type named '{name}' has already been declared.";
         }
     }
 

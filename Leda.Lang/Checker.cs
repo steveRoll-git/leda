@@ -50,7 +50,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>
             }
         }
 
-        if (!source.TryGetSymbol(numericalFor.Counter, out var counterSymbol))
+        if (!source.TryGetValueSymbol(numericalFor.Counter, out var counterSymbol))
         {
             throw new Exception("No symbol for `for` loop counter");
         }
@@ -198,7 +198,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>
 
     public Type VisitExpression(Tree.Name name)
     {
-        if (!source.TryGetSymbol(name, out var symbol))
+        if (!source.TryGetValueSymbol(name, out var symbol))
         {
             // Unresolved names should be reported by the Binder.
             return Type.Unknown;
