@@ -223,6 +223,15 @@ public class Diagnostic
             Message = $"Step value of `for` loop must be 'number', but is '{got}'.";
         }
     }
+
+    public class TypeNotAssignableToType : Diagnostic
+    {
+        public TypeNotAssignableToType(Source source, Range range, Type expected, Type got) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"Type '{got}' is not assignable to type '{expected}'.";
+        }
+    }
 }
 
 public enum DiagnosticSeverity

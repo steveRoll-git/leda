@@ -21,10 +21,10 @@ public class Binder : Tree.IVisitor
     /// <summary>
     /// Any name in the source code might refer to a value, or a type, or both.
     /// </summary>
-    internal class Binding(Symbol? value, Symbol? type)
+    internal class Binding(Symbol? value, Symbol.TypeSymbol? type)
     {
         public Symbol? ValueSymbol { get; set; } = value;
-        public Symbol? TypeSymbol { get; set; } = type;
+        public Symbol.TypeSymbol? TypeSymbol { get; set; } = type;
     }
 
     private Scope CurrentScope => scopes[^1];
@@ -109,9 +109,9 @@ public class Binder : Tree.IVisitor
             CurrentScope[name.Value] = currentBinding;
         }
 
-        if (symbol is Symbol.TypeSymbol)
+        if (symbol is Symbol.TypeSymbol typeSymbol)
         {
-            currentBinding.TypeSymbol = symbol;
+            currentBinding.TypeSymbol = typeSymbol;
         }
         else
         {
@@ -281,7 +281,14 @@ public class Binder : Tree.IVisitor
     {
         foreach (var declaration in localDeclaration.Declarations)
         {
+            // TODO should the declaration node be the definition?
             AddSymbol(declaration.Name, new Symbol.LocalVariable());
+            declaration.Type?.AcceptVisitor(this);
+        }
+
+        foreach (var value in localDeclaration.Values)
+        {
+            value.AcceptVisitor(this);
         }
     }
 

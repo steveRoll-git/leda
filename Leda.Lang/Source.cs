@@ -35,7 +35,7 @@ public class Source
     /// <summary>
     /// Maps Tree nodes to the type symbol they refer to.
     /// </summary>
-    private Dictionary<Tree, Symbol> typeSymbolMap = [];
+    private Dictionary<Tree, Symbol.TypeSymbol> typeSymbolMap = [];
 
     /// <summary>
     /// A list of any symbols referenced in this Source that are defined in other Sources.
@@ -121,7 +121,7 @@ public class Source
     /// <summary>
     /// Associates this tree node with the given type symbol.
     /// </summary>
-    internal void AttachTypeSymbol(Tree tree, Symbol symbol)
+    internal void AttachTypeSymbol(Tree tree, Symbol.TypeSymbol symbol)
     {
         typeSymbolMap.Add(tree, symbol);
     }
@@ -133,5 +133,14 @@ public class Source
     internal bool TryGetValueSymbol(Tree tree, [NotNullWhen(true)] out Symbol? symbol)
     {
         return valueSymbolMap.TryGetValue(tree, out symbol);
+    }
+
+    /// <summary>
+    /// Finds the type symbol that this tree refers to.
+    /// </summary>
+    /// <returns>True if this tree has a corresponding type symbol, false otherwise.</returns>
+    internal bool TryGetTypeSymbol(Tree tree, [NotNullWhen(true)] out Symbol.TypeSymbol? symbol)
+    {
+        return typeSymbolMap.TryGetValue(tree, out symbol);
     }
 }

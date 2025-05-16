@@ -154,12 +154,12 @@ public class Parser
     }
 
     /// <summary>
-    /// Sets the tree's range to the current token's range.
+    /// Sets the tree's range to the last token's range.
     /// </summary>
     /// <returns>The same tree for convenience.</returns>
     private T StartEndTree<T>(T tree) where T : Tree
     {
-        tree.Range = token.Range;
+        tree.Range = lastToken.Range;
         return tree;
     }
 
@@ -436,7 +436,7 @@ public class Parser
         // name [':' type]
         var name = StartEndTree(new Tree.Name(Expect(Name).Value));
 
-        Tree.TypeDeclaration? type = null;
+        Tree? type = null;
         if (Accept<Token.Colon>())
         {
             type = ParseType();
@@ -445,10 +445,10 @@ public class Parser
         return EndTree(new Tree.Declaration(name, type));
     }
 
-    private Tree.TypeDeclaration ParseType()
+    private Tree ParseType()
     {
         // TODO incomplete
-        return new Tree.TypeDeclaration.Name(Expect(Name).Value);
+        return StartEndTree(new Tree.Name(Expect(Name).Value));
     }
 
     private List<Tree.Declaration> ParseDeclarationList()
@@ -541,7 +541,7 @@ public class Parser
             Expect(RParen);
         }
 
-        Tree.TypeDeclaration? returnType = null;
+        Tree? returnType = null;
         if (Accept<Token.Colon>())
         {
             returnType = ParseType();

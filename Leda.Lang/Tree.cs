@@ -28,8 +28,6 @@ public abstract class Tree
         void Visit(RepeatUntil repeatUntil);
         void Visit(While whileLoop);
         void Visit(IteratorFor forLoop);
-
-        public void VisitBlock(Block block) { }
     }
 
     public interface IExpressionVisitor<T>
@@ -50,6 +48,11 @@ public abstract class Tree
         T VisitExpression(Error error);
     }
 
+    public interface ITypeVisitor<T>
+    {
+        T VisitType(Name name);
+    }
+
     /// <summary>
     /// The range in the source code that this tree occupies.
     /// </summary>
@@ -68,6 +71,11 @@ public abstract class Tree
         throw new InvalidOperationException("This node is not an expression");
     }
 
+    public virtual T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
+    {
+        throw new InvalidOperationException("This node is not a type");
+    }
+
     /// <summary>
     /// An invalid tree node - returned when an error was encountered during parsing.
     /// </summary>
@@ -77,21 +85,13 @@ public abstract class Tree
         {
             return visitor.VisitExpression(this);
         }
-    };
+    }
 
     /// <summary>
     /// A type declaration.
     /// </summary>
-    public class TypeDeclaration
+    public class TypeDeclaration : Tree
     {
-        /// <summary>
-        /// A reference to a named type.
-        /// </summary>
-        public class Name(string value) : TypeDeclaration
-        {
-            public string Value => value;
-        }
-
         public class Union(List<TypeDeclaration> types) : TypeDeclaration
         {
             public List<TypeDeclaration> Types => types;
@@ -211,10 +211,10 @@ public abstract class Tree
     /// <summary>
     /// A declaration of a named value, with an optional type.
     /// </summary>
-    public class Declaration(Name name, TypeDeclaration? type) : Tree
+    public class Declaration(Name name, Tree? type) : Tree
     {
         public Name Name => name;
-        public TypeDeclaration? Type => type;
+        public Tree? Type => type;
     }
 
     /// <summary>
@@ -296,6 +296,11 @@ public abstract class Tree
         public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor)
         {
             return visitor.VisitExpression(this);
+        }
+
+        public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
+        {
+            return visitor.VisitType(this);
         }
     }
 
@@ -411,10 +416,10 @@ public abstract class Tree
     /// <summary>
     /// A function value.
     /// </summary>
-    public class Function(List<Declaration> parameters, TypeDeclaration? returnType, Block body, bool isMethod) : Tree
+    public class Function(List<Declaration> parameters, Tree? returnType, Block body, bool isMethod) : Tree
     {
         public List<Declaration> Parameters => parameters;
-        public TypeDeclaration? ReturnType => returnType;
+        public Tree? ReturnType => returnType;
         public Block Body => body;
 
         /// <summary>

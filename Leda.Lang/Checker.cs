@@ -1,6 +1,6 @@
 namespace Leda.Lang;
 
-public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>
+public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeVisitor<Type>
 {
     private readonly Source source;
     private readonly IDiagnosticReporter reporter;
@@ -120,7 +120,49 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.LocalDeclaration localDeclaration) { }
+    public void Visit(Tree.LocalDeclaration localDeclaration)
+    {
+        for (var i = 0; i < localDeclaration.Declarations.Count; i++)
+        {
+            var declaration = localDeclaration.Declarations[i];
+
+            var valueType = Type.Nil;
+            if (i <= localDeclaration.Values.Count)
+            {
+                valueType = localDeclaration.Values[i].AcceptExpressionVisitor(this);
+            }
+            else
+            {
+                // TODO report error/warning
+            }
+
+            Type variableType;
+
+            if (declaration.Type != null)
+            {
+                var declarationType = declaration.Type.AcceptTypeVisitor(this);
+                if (!declarationType.IsAssignableFrom(valueType))
+                {
+                    reporter.Report(new Diagnostic.TypeNotAssignableToType(source, declaration.Name.Range,
+                        declarationType, valueType));
+                }
+
+                variableType = declarationType;
+            }
+            else
+            {
+                // The variable's type is inferred from the value.
+                variableType = valueType;
+            }
+
+            if (!source.TryGetValueSymbol(declaration.Name, out var symbol))
+            {
+                throw new Exception("Variable doesn't have a symbol");
+            }
+
+            typeMap.Add(symbol, variableType);
+        }
+    }
 
     public void Visit(Tree.RepeatUntil repeatUntil)
     {
@@ -258,5 +300,16 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>
     public static void Check(Source source, IDiagnosticReporter reporter)
     {
         new Checker(source, reporter).VisitBlock(source.Tree);
+    }
+
+    public Type VisitType(Tree.Name name)
+    {
+        if (source.TryGetTypeSymbol(name, out var symbol))
+        {
+            return symbol.Type;
+        }
+
+        // TODO report error?
+        return Type.Unknown;
     }
 }

@@ -7,7 +7,8 @@ class Program
     static void Main(string[] args)
     {
         var source = new Source("test", """
-                                        for i = nil, 10 do end
+                                        local goog = a
+                                        local a: string = {}
                                         """);
         source.Parse(new ConsoleReporter());
         Console.WriteLine(Emitter.Emit(source.Tree));
