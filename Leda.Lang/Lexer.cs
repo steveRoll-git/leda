@@ -39,6 +39,7 @@ public class Lexer
     {
         this.source = source;
         this.reporter = reporter;
+        ReachedEnd = source.Code.Length == 0;
     }
 
     /// <summary>

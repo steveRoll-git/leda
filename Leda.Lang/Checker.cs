@@ -73,7 +73,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             var targetType = target.AcceptExpressionVisitor(this);
 
             var valueType = Type.Nil;
-            if (i <= assignment.Values.Count)
+            if (i < assignment.Values.Count)
             {
                 valueType = assignment.Values[i].AcceptExpressionVisitor(this);
             }
@@ -146,7 +146,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             var declaration = localDeclaration.Declarations[i];
 
             var valueType = Type.Nil;
-            if (i <= localDeclaration.Values.Count)
+            if (i < localDeclaration.Values.Count)
             {
                 valueType = localDeclaration.Values[i].AcceptExpressionVisitor(this);
             }

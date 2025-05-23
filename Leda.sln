@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leda.Lang", "Leda.Lang\Leda
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leda", "Leda\Leda.csproj", "{07895619-2681-47F7-9D06-1891BB881192}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leda.LSP", "Leda.LSP\Leda.LSP.csproj", "{2671D4B0-EACE-4661-92A2-1F5CB77F3E5C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{07895619-2681-47F7-9D06-1891BB881192}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{07895619-2681-47F7-9D06-1891BB881192}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{07895619-2681-47F7-9D06-1891BB881192}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2671D4B0-EACE-4661-92A2-1F5CB77F3E5C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2671D4B0-EACE-4661-92A2-1F5CB77F3E5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2671D4B0-EACE-4661-92A2-1F5CB77F3E5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2671D4B0-EACE-4661-92A2-1F5CB77F3E5C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
