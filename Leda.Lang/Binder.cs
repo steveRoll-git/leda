@@ -279,16 +279,16 @@ public class Binder : Tree.IVisitor
 
     public void Visit(Tree.LocalDeclaration localDeclaration)
     {
+        foreach (var value in localDeclaration.Values)
+        {
+            value.AcceptVisitor(this);
+        }
+
         foreach (var declaration in localDeclaration.Declarations)
         {
             // TODO should the declaration node be the definition?
             AddSymbol(declaration.Name, new Symbol.LocalVariable());
             declaration.Type?.AcceptVisitor(this);
-        }
-
-        foreach (var value in localDeclaration.Values)
-        {
-            value.AcceptVisitor(this);
         }
     }
 
