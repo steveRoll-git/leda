@@ -37,6 +37,15 @@ public class Diagnostic
         }
     }
 
+    public class HexNumbersNotSupported : Diagnostic
+    {
+        public HexNumbersNotSupported(Source source, Range range) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Warning;
+            Message = "Hex number literals with decimal points/exponents are not yet fully supported.";
+        }
+    }
+
     public class InvalidEscapeSequence : Diagnostic
     {
         public InvalidEscapeSequence(Source source, Range range) : base(source, range)

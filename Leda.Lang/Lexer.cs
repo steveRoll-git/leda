@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace Leda.Lang;
@@ -340,11 +341,11 @@ public class Lexer
                     }
 
                     seenExp = true;
-                    isHex = false; // Numbers following the exponent are decimal.
                     continue;
                 }
             }
-            else if (!IsNumberChar(CurChar) || !(isHex ? char.IsAsciiHexDigit(CurChar) : char.IsDigit(CurChar)))
+            else if (!IsNumberChar(CurChar) ||
+                     !(isHex && !seenExp ? char.IsAsciiHexDigit(CurChar) : char.IsDigit(CurChar)))
             {
                 valid = false;
             }
@@ -352,20 +353,39 @@ public class Lexer
             AdvanceChar();
         } while (!ReachedEnd && IsNumberChar(CurChar));
 
-        if (!valid)
+        var value = Code.Substring(startIndex, index - startIndex);
+        double numberValue = double.NaN;
+        if (valid)
+        {
+            if (isHex)
+            {
+                if (seenExp || seenDot)
+                {
+                    // Hex numbers with decimal points or exponents are not parsed natively by C# - need to find some code that does that.
+                    reporter.Report(new Diagnostic.HexNumbersNotSupported(source, new(start, position)));
+                }
+                else
+                {
+                    numberValue = Convert.ToInt32(value, 16);
+                }
+            }
+            else
+            {
+                numberValue = double.Parse(value);
+            }
+        }
+        else
         {
             reporter.Report(new Diagnostic.MalformedNumber(source, new(start, position)));
         }
 
-        var value = Code.Substring(startIndex, index - startIndex);
-        return new Token.Number(start, value, valid ? double.Parse(value) : double.NaN);
+        return new Token.Number(start, value, numberValue);
     }
 
 
     /// <summary>
     /// Reads the next name, and returns its corresponding keyword token, or a Name token.
     /// </summary>
-    /// <returns></returns>
     private Token ReadName()
     {
         var startIndex = index;
