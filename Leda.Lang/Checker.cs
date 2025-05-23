@@ -67,7 +67,26 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.Assignment assignment)
     {
-        throw new NotImplementedException();
+        for (var i = 0; i < assignment.Targets.Count; i++)
+        {
+            var target = assignment.Targets[i];
+            var targetType = target.AcceptExpressionVisitor(this);
+
+            var valueType = Type.Nil;
+            if (i <= assignment.Values.Count)
+            {
+                valueType = assignment.Values[i].AcceptExpressionVisitor(this);
+            }
+            else
+            {
+                // TODO report error/warning
+            }
+
+            if (!targetType.IsAssignableFrom(valueType))
+            {
+                reporter.Report(new Diagnostic.TypeNotAssignableToType(source, target.Range, targetType, valueType));
+            }
+        }
     }
 
     public void Visit(Tree.MethodCall methodCall)
