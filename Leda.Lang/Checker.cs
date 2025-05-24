@@ -62,7 +62,19 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.If ifStatement)
     {
-        throw new NotImplementedException();
+        ifStatement.Primary.Condition.AcceptExpressionVisitor(this);
+        VisitBlock(ifStatement.Primary.Body);
+
+        foreach (var branch in ifStatement.ElseIfs)
+        {
+            branch.Condition.AcceptExpressionVisitor(this);
+            VisitBlock(branch.Body);
+        }
+
+        if (ifStatement.ElseBody != null)
+        {
+            VisitBlock(ifStatement.ElseBody);
+        }
     }
 
     public void Visit(Tree.Assignment assignment)
