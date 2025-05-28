@@ -105,7 +105,7 @@ public class Diagnostic
         public ExpectedTokenButGotToken(Source source, Token expected, Token got) : base(source, got.Range)
         {
             Severity = DiagnosticSeverity.Error;
-            Message = $"Expected {expected.KindName}, but got {got.Value}.";
+            Message = $"Expected \"{expected.KindName}\", but got \"{got.Value}\".";
         }
     }
 
@@ -114,7 +114,7 @@ public class Diagnostic
         public ExpectedExpressionButGotToken(Source source, Token got) : base(source, got.Range)
         {
             Severity = DiagnosticSeverity.Error;
-            Message = $"Expected an expression, but got {got.Value}.";
+            Message = $"Expected an expression, but got \"{got.Value}\".";
         }
     }
 
@@ -123,7 +123,7 @@ public class Diagnostic
         public DidNotExpectTokenHere(Source source, Token got) : base(source, got.Range)
         {
             Severity = DiagnosticSeverity.Error;
-            Message = $"Did not expect {got.Value} here.";
+            Message = $"Did not expect \"{got.Value}\" here.";
         }
     }
 

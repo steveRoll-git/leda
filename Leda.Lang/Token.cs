@@ -26,7 +26,7 @@ public record Token
     /// <summary>
     /// The name of this kind of token. (May be the same as the token's value.)
     /// </summary>
-    public virtual string KindName => $"\"{Value}\"";
+    public virtual string KindName => Value;
 
     public virtual bool IsBinary => false;
 
