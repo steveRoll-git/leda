@@ -46,11 +46,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             foreach (var parameter in function.Parameters.Types())
             {
                 var sourceType = Type.Nil;
+                var gotSource = false;
                 if (sourceEnumerator.MoveNext())
                 {
                     // TODO handle the source being a `Rest` value
                     sourceType = sourceEnumerator.Current.Type;
-                    sourceIndex++;
+                    gotSource = true;
                 }
 
                 // TODO deal with a rest type in the target parameters
@@ -60,6 +61,11 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                         ? call.Parameters[sourceIndex].Range
                         : call.Target.Range;
                     reporter.Report(new Diagnostic.TypeNotAssignableToType(source, range, parameter.Type, sourceType));
+                }
+
+                if (gotSource)
+                {
+                    sourceIndex++;
                 }
             }
 
@@ -191,7 +197,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.Call call)
     {
-        throw new NotImplementedException();
+        VisitCall(call);
     }
 
     public void Visit(Tree.Access access)
@@ -209,10 +215,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Function function)
-    {
-        throw new NotImplementedException();
-    }
+    public void Visit(Tree.Function function) { }
 
     public void Visit(Tree.Name name)
     {
@@ -296,7 +299,46 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.Function function)
     {
-        throw new NotImplementedException();
+        List<Type> parameters = [];
+        foreach (var parameter in function.Parameters)
+        {
+            if (parameter.Type != null)
+            {
+                var type = parameter.Type.AcceptTypeVisitor(this);
+                parameters.Add(type);
+
+                if (!source.TryGetValueSymbol(parameter.Name, out var symbol))
+                {
+                    throw new Exception("Parameter doesn't have symbol");
+                }
+
+                typeMap[symbol] = type;
+            }
+            else
+            {
+                // TODO infer parameter types from target
+            }
+        }
+
+        var parameterTypeList = new TypeList { List = parameters };
+        // TODO handle rest parameter
+
+        var returnTypeList = TypeList.None;
+        if (function.ReturnTypes != null)
+        {
+            List<Type> returnTypes = [];
+            foreach (var returnType in function.ReturnTypes)
+            {
+                returnTypes.Add(returnType.AcceptTypeVisitor(this));
+            }
+
+            // TODO handle Rest and Continued
+            returnTypeList = new TypeList { List = returnTypes };
+        }
+
+        VisitBlock(function.Body);
+
+        return new Type.Function { Parameters = parameterTypeList, Return = returnTypeList };
     }
 
     public Type VisitExpression(Tree.MethodCall methodCall)

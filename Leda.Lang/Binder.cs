@@ -237,6 +237,7 @@ public class Binder : Tree.IVisitor
         foreach (var parameter in function.Parameters)
         {
             AddSymbol(parameter.Name, new Symbol.Parameter());
+            parameter.Type?.AcceptVisitor(this);
         }
 
         VisitBlock(function.Body);

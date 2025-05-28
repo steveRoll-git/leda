@@ -78,19 +78,16 @@ public class Type
         /// <summary>
         /// The types of this function's parameters.
         /// </summary>
-        public TypeList Parameters;
+        public TypeList Parameters { get; init; }
 
         /// <summary>
         /// This function's return types.
         /// </summary>
-        public TypeList Return;
+        public TypeList Return { get; init; }
 
         public override bool IsAssignableFrom(Type other)
         {
-            if (other is Function function)
-            {
-                
-            }
+            if (other is Function function) { }
 
             return false;
         }

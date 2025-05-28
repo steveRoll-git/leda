@@ -456,6 +456,17 @@ public class Parser
         return StartEndTree(new Tree.Name(Expect(Name).Value));
     }
 
+    private List<Tree> ParseTypeList()
+    {
+        List<Tree> list = [];
+        do
+        {
+            list.Add(ParseType());
+        } while (Accept<Token.Comma>());
+
+        return list;
+    }
+
     private List<Tree.Declaration> ParseDeclarationList()
     {
         List<Tree.Declaration> declarations = [];
@@ -546,16 +557,16 @@ public class Parser
             Expect(RParen);
         }
 
-        Tree? returnType = null;
+        List<Tree>? returnTypes = null;
         if (Accept<Token.Colon>())
         {
-            returnType = ParseType();
+            returnTypes = ParseTypeList();
         }
 
         var body = ParseBlock();
         Expect(End);
 
-        return EndTree(new Tree.Function(parameters, returnType, body, isMethod));
+        return EndTree(new Tree.Function(parameters, returnTypes, body, isMethod));
     }
 
     /// <summary>

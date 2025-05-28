@@ -416,10 +416,10 @@ public abstract class Tree
     /// <summary>
     /// A function value.
     /// </summary>
-    public class Function(List<Declaration> parameters, Tree? returnType, Block body, bool isMethod) : Tree
+    public class Function(List<Declaration> parameters, List<Tree>? returnTypes, Block body, bool isMethod) : Tree
     {
         public List<Declaration> Parameters => parameters;
-        public Tree? ReturnType => returnType;
+        public List<Tree>? ReturnTypes => returnTypes;
         public Block Body => body;
 
         /// <summary>
