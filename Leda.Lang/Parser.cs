@@ -447,6 +447,11 @@ public class Parser
 
     private Tree ParseType()
     {
+        if (token is Token.Function)
+        {
+            return ConsumeTree(new Tree.Name("function")); // TODO parse rest of function type
+        }
+
         // TODO incomplete
         return StartEndTree(new Tree.Name(Expect(Name).Value));
     }

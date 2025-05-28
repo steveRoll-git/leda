@@ -2,7 +2,7 @@ namespace Leda.Lang;
 
 public class Type
 {
-    public string Name { get; }
+    public string Name { get; } = "<unnamed type>";
 
     /// <summary>
     /// Function that will be called with another type to check if it's assignable to this one.
@@ -19,6 +19,8 @@ public class Type
     {
         Name = name;
     }
+
+    public Type() { }
 
     /// <summary>
     /// The top type - can hold any value.
@@ -68,8 +70,31 @@ public class Type
     /// <summary>
     /// Supertype of all function types.
     /// </summary>
-    public static readonly Type
-        Function = new("function", other => other == Function); // TODO include other function types
+    public static readonly Type FunctionPrimitive =
+        new("function", other => other == FunctionPrimitive || other is Function);
+
+    public class Function : Type
+    {
+        /// <summary>
+        /// The types of this function's parameters.
+        /// </summary>
+        public TypeList Parameters;
+
+        /// <summary>
+        /// This function's return types.
+        /// </summary>
+        public TypeList Return;
+
+        public override bool IsAssignableFrom(Type other)
+        {
+            if (other is Function function)
+            {
+                
+            }
+
+            return false;
+        }
+    }
 
     /// <summary>
     /// A union of two or more types.

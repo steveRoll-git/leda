@@ -13,13 +13,96 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     /// <summary>
     /// Visits all of a block's statements.
     /// </summary>
-    public void VisitBlock(Tree.Block block)
+    private void VisitBlock(Tree.Block block)
     {
         // TODO iterate over block's type declarations
         foreach (var statement in block.Statements)
         {
             statement.AcceptVisitor(this);
         }
+    }
+
+    private TypeList VisitCall(Tree.Call call)
+    {
+        var parameters = VisitExpressionList(call.Parameters);
+        var target = call.Target.AcceptExpressionVisitor(this);
+
+        if (!Type.FunctionPrimitive.IsAssignableFrom(target)) // TODO handle __call metamethod
+        {
+            reporter.Report(new Diagnostic.TypeNotCallable(source, call.Target.Range));
+            return TypeList.None;
+        }
+
+        if (target == Type.FunctionPrimitive)
+        {
+            return TypeList.Any;
+        }
+
+        if (target is Type.Function function)
+        {
+            using var sourceEnumerator = parameters.Types().GetEnumerator();
+            var sourceIndex = 0;
+
+            foreach (var parameter in function.Parameters.Types())
+            {
+                var sourceType = Type.Nil;
+                if (sourceEnumerator.MoveNext())
+                {
+                    // TODO handle the source being a `Rest` value
+                    sourceType = sourceEnumerator.Current.Type;
+                    sourceIndex++;
+                }
+
+                // TODO deal with a rest type in the target parameters
+                if (!parameter.Type.IsAssignableFrom(sourceType))
+                {
+                    var range = sourceIndex < call.Parameters.Count
+                        ? call.Parameters[sourceIndex].Range
+                        : call.Target.Range;
+                    reporter.Report(new Diagnostic.TypeNotAssignableToType(source, range, parameter.Type, sourceType));
+                }
+            }
+
+            return function.Return;
+        }
+
+        throw new NotImplementedException("Types other than `Function` aren't callable yet");
+    }
+
+    private TypeList VisitExpressionList(List<Tree> expressions)
+    {
+        List<Type> list = new(1);
+        TypeList? continued = null;
+        foreach (var expression in expressions)
+        {
+            if (continued != null)
+            {
+                // If more items are present after the last continued list, only its first value is added.
+                // TODO show warning about discarded values?
+                list.Add(continued.Types().First().Type);
+            }
+
+            if (expression is Tree.Call call)
+            {
+                continued = VisitCall(call);
+            }
+            else if (expression is Tree.Vararg)
+            {
+                throw new NotImplementedException();
+            }
+            else
+            {
+                var type = expression.AcceptExpressionVisitor(this);
+                list.Add(type);
+            }
+        }
+
+        if (list.Count == 0)
+        {
+            return continued ?? TypeList.None;
+        }
+
+        return new TypeList { List = list, Continued = continued };
     }
 
     public void Visit(Tree.Do block)
@@ -79,15 +162,15 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.Assignment assignment)
     {
-        for (var i = 0; i < assignment.Targets.Count; i++)
+        using var valueTypes = VisitExpressionList(assignment.Values).Types().GetEnumerator();
+        foreach (var target in assignment.Targets)
         {
-            var target = assignment.Targets[i];
             var targetType = target.AcceptExpressionVisitor(this);
 
             var valueType = Type.Nil;
-            if (i < assignment.Values.Count)
+            if (valueTypes.MoveNext())
             {
-                valueType = assignment.Values[i].AcceptExpressionVisitor(this);
+                valueType = valueTypes.Current.Type; // TODO handle `Rest` values
             }
             else
             {
@@ -153,14 +236,15 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.LocalDeclaration localDeclaration)
     {
+        using var valueTypes = VisitExpressionList(localDeclaration.Values).Types().GetEnumerator();
         for (var i = 0; i < localDeclaration.Declarations.Count; i++)
         {
             var declaration = localDeclaration.Declarations[i];
 
             var valueType = Type.Nil;
-            if (i < localDeclaration.Values.Count)
+            if (valueTypes.MoveNext())
             {
-                valueType = localDeclaration.Values[i].AcceptExpressionVisitor(this);
+                valueType = valueTypes.Current.Type; // TODO handle `Rest` values
             }
             else
             {
@@ -222,7 +306,8 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.Call call)
     {
-        throw new NotImplementedException();
+        // TODO show warning if the call returns more than one value?
+        return VisitCall(call).Types().First().Type;
     }
 
     public Type VisitExpression(Tree.Access access)

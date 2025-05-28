@@ -241,6 +241,24 @@ public class Diagnostic
             Message = $"Type '{got}' is not assignable to type '{expected}'.";
         }
     }
+
+    public class TypeNotCallable : Diagnostic
+    {
+        public TypeNotCallable(Source source, Range range) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = "This expression is not callable.";
+        }
+    }
+
+    public class NotEnoughArguments : Diagnostic
+    {
+        public NotEnoughArguments(Source source, Range range, int expected, int got) : base(source, range)
+        {
+            Severity = DiagnosticSeverity.Error;
+            Message = $"Expected {expected} arguments, but got {got}.";
+        }
+    }
 }
 
 public enum DiagnosticSeverity
