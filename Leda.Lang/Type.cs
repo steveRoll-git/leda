@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Leda.Lang;
 
 public class Type
@@ -85,11 +87,42 @@ public class Type
         /// </summary>
         public TypeList Return { get; init; }
 
-        public override bool IsAssignableFrom(Type other)
+        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
-            if (other is Function function) { }
+            reason = null;
 
+            // TODO accept other types that may be callable like tables with __call
+            if (other is Function function)
+            {
+                List<TypeMismatch> reasons = [];
+                if (!function.Parameters.IsAssignableFrom(Parameters, out var parameterReasons,
+                        TypeList.TypeListKind.FunctionTypeParameter))
+                {
+                    reasons.AddRange(parameterReasons);
+                }
+
+                if (!Return.IsAssignableFrom(function.Return, out var returnReasons,
+                        TypeList.TypeListKind.FunctionTypeReturn))
+                {
+                    reasons.AddRange(returnReasons);
+                }
+
+                if (reasons.Count > 0)
+                {
+                    reason = new TypeMismatch.Primitive(this, other) { Children = reasons };
+                    return false;
+                }
+
+                return true;
+            }
+
+            reason = new TypeMismatch.Primitive(this, other);
             return false;
+        }
+
+        public override string ToString()
+        {
+            return $"function({Parameters}){(Return.Empty ? "" : ": " + Return)}";
         }
     }
 
@@ -100,26 +133,38 @@ public class Type
     {
         public List<Type> Types => types;
 
-        public override bool IsAssignableFrom(Type other)
-        {
-            foreach (var type in types)
-            {
-                if (type.IsAssignableFrom(other))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
+        // public override bool IsAssignableFrom(Type other)
+        // {
+        //     foreach (var type in types)
+        //     {
+        //         if (type.IsAssignableFrom(other))
+        //         {
+        //             return true;
+        //         }
+        //     }
+        //
+        //     return false;
+        // }
     }
 
     /// <summary>
     /// Returns whether a value of type `other` can be assigned to a variable of this type.
     /// </summary>
-    public virtual bool IsAssignableFrom(Type other)
+    public virtual bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
     {
-        return assignableFunc(other);
+        if (!assignableFunc(other))
+        {
+            reason = new TypeMismatch.Primitive(this, other);
+            return false;
+        }
+
+        reason = null;
+        return true;
+    }
+
+    public bool IsAssignableFrom(Type other)
+    {
+        return IsAssignableFrom(other, out _);
     }
 
     public override string ToString() => Name;

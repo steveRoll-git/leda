@@ -65,7 +65,7 @@ public class Emitter
     private void EmitFunctionBody(Tree.Function function, int indent)
     {
         Emit('(');
-        EmitDeclarationList(function.Parameters);
+        EmitDeclarationList(function.Type.Parameters);
         Emit(")\n");
         EmitBlock(function.Body, indent + 1);
         EmitIndent(indent);

@@ -28,6 +28,7 @@ public abstract class Tree
         void Visit(RepeatUntil repeatUntil);
         void Visit(While whileLoop);
         void Visit(IteratorFor forLoop);
+        void Visit(FunctionType functionType);
     }
 
     public interface IExpressionVisitor<T>
@@ -51,6 +52,7 @@ public abstract class Tree
     public interface ITypeVisitor<T>
     {
         T VisitType(Name name);
+        T VisitType(FunctionType function);
     }
 
     /// <summary>
@@ -95,6 +97,25 @@ public abstract class Tree
         public class Union(List<TypeDeclaration> types) : TypeDeclaration
         {
             public List<TypeDeclaration> Types => types;
+        }
+    }
+
+    /// <summary>
+    /// The type of a function.
+    /// </summary>
+    public class FunctionType(List<Declaration> parameters, List<Tree>? returnTypes) : Tree
+    {
+        public List<Declaration> Parameters => parameters;
+        public List<Tree>? ReturnTypes => returnTypes;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+
+        public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
+        {
+            return visitor.VisitType(this);
         }
     }
 
@@ -416,10 +437,9 @@ public abstract class Tree
     /// <summary>
     /// A function value.
     /// </summary>
-    public class Function(List<Declaration> parameters, List<Tree>? returnTypes, Block body, bool isMethod) : Tree
+    public class Function(FunctionType type, Block body, bool isMethod) : Tree
     {
-        public List<Declaration> Parameters => parameters;
-        public List<Tree>? ReturnTypes => returnTypes;
+        public FunctionType Type => type;
         public Block Body => body;
 
         /// <summary>

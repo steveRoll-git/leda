@@ -40,35 +40,6 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
         if (target is Type.Function function)
         {
-            using var sourceEnumerator = parameters.Types().GetEnumerator();
-            var sourceIndex = 0;
-
-            foreach (var parameter in function.Parameters.Types())
-            {
-                var sourceType = Type.Nil;
-                var gotSource = false;
-                if (sourceEnumerator.MoveNext())
-                {
-                    // TODO handle the source being a `Rest` value
-                    sourceType = sourceEnumerator.Current.Type;
-                    gotSource = true;
-                }
-
-                // TODO deal with a rest type in the target parameters
-                if (!parameter.Type.IsAssignableFrom(sourceType))
-                {
-                    var range = sourceIndex < call.Parameters.Count
-                        ? call.Parameters[sourceIndex].Range
-                        : call.Target.Range;
-                    reporter.Report(new Diagnostic.TypeNotAssignableToType(source, range, parameter.Type, sourceType));
-                }
-
-                if (gotSource)
-                {
-                    sourceIndex++;
-                }
-            }
-
             return function.Return;
         }
 
@@ -108,7 +79,24 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             return continued ?? TypeList.None;
         }
 
-        return new TypeList { List = list, Continued = continued };
+        return new TypeList(list, continued);
+    }
+
+    private TypeList? GetFunctionReturnType(Tree.FunctionType functionType)
+    {
+        if (functionType.ReturnTypes != null)
+        {
+            List<Type> returnTypes = [];
+            foreach (var returnType in functionType.ReturnTypes)
+            {
+                returnTypes.Add(returnType.AcceptTypeVisitor(this));
+            }
+
+            // TODO handle Rest and Continued
+            return new TypeList(returnTypes);
+        }
+
+        return null;
     }
 
     public void Visit(Tree.Do block)
@@ -183,9 +171,10 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 // TODO report error/warning
             }
 
-            if (!targetType.IsAssignableFrom(valueType))
+            if (!targetType.IsAssignableFrom(valueType, out var reason))
             {
-                reporter.Report(new Diagnostic.TypeNotAssignableToType(source, target.Range, targetType, valueType));
+                reporter.Report(
+                    new Diagnostic.TypeNotAssignableToType(source, target.Range, reason));
             }
         }
     }
@@ -215,7 +204,10 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Function function) { }
+    public void Visit(Tree.Function function)
+    {
+        throw new NotImplementedException();
+    }
 
     public void Visit(Tree.Name name)
     {
@@ -259,10 +251,9 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             if (declaration.Type != null)
             {
                 var declarationType = declaration.Type.AcceptTypeVisitor(this);
-                if (!declarationType.IsAssignableFrom(valueType))
+                if (!declarationType.IsAssignableFrom(valueType, out var reason))
                 {
-                    reporter.Report(new Diagnostic.TypeNotAssignableToType(source, declaration.Name.Range,
-                        declarationType, valueType));
+                    reporter.Report(new Diagnostic.TypeNotAssignableToType(source, declaration.Name.Range, reason));
                 }
 
                 variableType = declarationType;
@@ -297,10 +288,15 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new NotImplementedException();
     }
 
+    public void Visit(Tree.FunctionType functionType)
+    {
+        throw new NotImplementedException();
+    }
+
     public Type VisitExpression(Tree.Function function)
     {
         List<Type> parameters = [];
-        foreach (var parameter in function.Parameters)
+        foreach (var parameter in function.Type.Parameters)
         {
             if (parameter.Type != null)
             {
@@ -320,25 +316,15 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             }
         }
 
-        var parameterTypeList = new TypeList { List = parameters };
+        var parameterTypeList = new TypeList(parameters);
         // TODO handle rest parameter
 
-        var returnTypeList = TypeList.None;
-        if (function.ReturnTypes != null)
-        {
-            List<Type> returnTypes = [];
-            foreach (var returnType in function.ReturnTypes)
-            {
-                returnTypes.Add(returnType.AcceptTypeVisitor(this));
-            }
+        var returnTypeList = GetFunctionReturnType(function.Type);
+        returnTypeList ??= TypeList.None; // TODO infer return type
 
-            // TODO handle Rest and Continued
-            returnTypeList = new TypeList { List = returnTypes };
-        }
-
+        var functionType = new Type.Function { Parameters = parameterTypeList, Return = returnTypeList };
         VisitBlock(function.Body);
-
-        return new Type.Function { Parameters = parameterTypeList, Return = returnTypeList };
+        return functionType;
     }
 
     public Type VisitExpression(Tree.MethodCall methodCall)
@@ -349,7 +335,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     public Type VisitExpression(Tree.Call call)
     {
         // TODO show warning if the call returns more than one value?
-        return VisitCall(call).Types().First().Type;
+        return VisitCall(call).Types().FirstOrDefault((Type: Type.Nil, false)).Type;
     }
 
     public Type VisitExpression(Tree.Access access)
@@ -469,5 +455,27 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
         // TODO report error?
         return Type.Unknown;
+    }
+
+    public Type VisitType(Tree.FunctionType functionType)
+    {
+        List<Type> parameters = [];
+        foreach (var parameter in functionType.Parameters)
+        {
+            if (parameter.Type != null)
+            {
+                parameters.Add(parameter.Type.AcceptTypeVisitor(this));
+            }
+            else
+            {
+                // TODO warn about implicit any?
+                parameters.Add(Type.Any);
+            }
+        }
+
+        var parameterTypeList = new TypeList(parameters);
+        var returnType = GetFunctionReturnType(functionType);
+
+        return new Type.Function { Parameters = parameterTypeList, Return = returnType ?? TypeList.None };
     }
 }

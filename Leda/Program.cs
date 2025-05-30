@@ -7,8 +7,8 @@ class Program
     static void Main(string[] args)
     {
         var source = new Source("test", """
-                                        local f = function(n: number, s: string) end
-                                        local a = f(123, {})
+                                        local g: function(a: string): number, string = function(a: string): number, number end
+                                        g()
                                         """);
         source.Parse(new ConsoleReporter());
         Console.WriteLine(Emitter.Emit(source.Tree));

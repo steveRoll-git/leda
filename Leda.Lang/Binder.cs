@@ -234,10 +234,11 @@ public class Binder : Tree.IVisitor
 
     public void VisitFunction(Tree.Function function)
     {
-        foreach (var parameter in function.Parameters)
+        Visit(function.Type);
+
+        foreach (var parameter in function.Type.Parameters)
         {
             AddSymbol(parameter.Name, new Symbol.Parameter());
-            parameter.Type?.AcceptVisitor(this);
         }
 
         VisitBlock(function.Body);
@@ -324,6 +325,22 @@ public class Binder : Tree.IVisitor
         VisitBlock(forLoop.Body);
 
         PopScope();
+    }
+
+    public void Visit(Tree.FunctionType functionType)
+    {
+        foreach (var parameter in functionType.Parameters)
+        {
+            parameter.Type?.AcceptVisitor(this);
+        }
+
+        if (functionType.ReturnTypes != null)
+        {
+            foreach (var returnType in functionType.ReturnTypes)
+            {
+                returnType.AcceptVisitor(this);
+            }
+        }
     }
 
     /// <summary>

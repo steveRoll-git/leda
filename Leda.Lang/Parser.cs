@@ -447,13 +447,19 @@ public class Parser
 
     private Tree ParseType()
     {
-        if (token is Token.Function)
+        StartTree();
+        if (Accept<Token.Function>())
         {
-            return ConsumeTree(new Tree.Name("function")); // TODO parse rest of function type
+            if (token is Token.LParen)
+            {
+                return EndTree(ParseFunctionType());
+            }
+
+            return EndTree(new Tree.Name("function"));
         }
 
         // TODO incomplete
-        return StartEndTree(new Tree.Name(Expect(Name).Value));
+        return EndTree(new Tree.Name(Expect(Name).Value));
     }
 
     private List<Tree> ParseTypeList()
@@ -535,16 +541,14 @@ public class Parser
     }
 
     /// <summary>
-    /// Parses a function body - used in function declarations and in anonymous functions.
+    /// Parses the parameters and return type of a function.
     /// </summary>
-    private Tree.Function ParseFunctionBody(bool isMethod)
+    private Tree.FunctionType ParseFunctionType(bool isMethod = false)
     {
-        StartTree();
-
-        // '(' declarations ')' block 'end'
         var lParenRange = token.Range;
-        Expect(LParen);
 
+        // '(' declarations ')' [':' typelist]
+        Expect(LParen);
         List<Tree.Declaration> parameters = [];
         if (isMethod)
         {
@@ -563,10 +567,23 @@ public class Parser
             returnTypes = ParseTypeList();
         }
 
+        return new Tree.FunctionType(parameters, returnTypes);
+    }
+
+    /// <summary>
+    /// Parses a function body - used in function declarations and in anonymous functions.
+    /// </summary>
+    private Tree.Function ParseFunctionBody(bool isMethod)
+    {
+        StartTree();
+
+        // functiontype block 'end'
+        var functionType = ParseFunctionType(isMethod);
+
         var body = ParseBlock();
         Expect(End);
 
-        return EndTree(new Tree.Function(parameters, returnTypes, body, isMethod));
+        return EndTree(new Tree.Function(functionType, body, isMethod));
     }
 
     /// <summary>

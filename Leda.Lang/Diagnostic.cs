@@ -235,10 +235,11 @@ public class Diagnostic
 
     public class TypeNotAssignableToType : Diagnostic
     {
-        public TypeNotAssignableToType(Source source, Range range, Type expected, Type got) : base(source, range)
+        public TypeNotAssignableToType(Source source, Range range, TypeMismatch mismatch) :
+            base(source, range)
         {
             Severity = DiagnosticSeverity.Error;
-            Message = $"Type '{got}' is not assignable to type '{expected}'.";
+            Message = mismatch.ToString();
         }
     }
 
