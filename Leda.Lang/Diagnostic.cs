@@ -161,7 +161,7 @@ public abstract record Diagnostic(Source Source, Range Range)
         public override string Message => $"Step value of `for` loop must be 'number', but is '{Got}'.";
     }
 
-    public record TypeNotAssignableToType(Source Source, Range Range, TypeMismatch Mismatch) : Diagnostic(Source, Range)
+    public record TypeMismatch(Source Source, Range Range, Lang.TypeMismatch Mismatch) : Diagnostic(Source, Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => Mismatch.ToString();

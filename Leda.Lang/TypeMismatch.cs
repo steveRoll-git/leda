@@ -38,12 +38,7 @@ public abstract record TypeMismatch
 
     public record ValueInListIncompatible(int Index, TypeList.TypeListKind Kind) : TypeMismatch
     {
-        public override string Message => $"Type of {TypeListItemNoun(Kind)} #{Index} is incompatible:";
-    }
-
-    public record ParameterIncompatible(string TargetName, string SourceName) : TypeMismatch
-    {
-        public override string Message => $"Types of parameters '{SourceName}' and '{TargetName}' are incompatible.";
+        public override string Message => $"Type of {TypeListItemNoun(Kind)} #{Index + 1} is incompatible:";
     }
 
     private string ToString(int indent)

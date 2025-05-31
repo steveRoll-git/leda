@@ -111,7 +111,7 @@ public class TypeList
         reasons = [];
 
         using var sourceEnumerator = other.Types().GetEnumerator();
-        var sourceIndex = 1;
+        var sourceIndex = 0;
 
         // TODO handle Continued and Rest
         foreach (var target in List)

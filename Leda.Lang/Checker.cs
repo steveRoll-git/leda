@@ -40,6 +40,23 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
         if (target is Type.Function function)
         {
+            // TODO support overloads
+            if (!function.Parameters.IsAssignableFrom(parameters, out var reasons, TypeList.TypeListKind.Parameter))
+            {
+                foreach (var reason in reasons)
+                {
+                    if (reason is TypeMismatch.ValueInListIncompatible incompatible)
+                    {
+                        var faultyParam = call.Parameters[Math.Min(call.Parameters.Count - 1, incompatible.Index)];
+                        reporter.Report(new Diagnostic.TypeMismatch(source, faultyParam.Range, reason));
+                    }
+                    else if (reason is TypeMismatch.NotEnoughValues)
+                    {
+                        reporter.Report(new Diagnostic.TypeMismatch(source, call.Target.Range, reason));
+                    }
+                }
+            }
+
             return function.Return;
         }
 
@@ -174,7 +191,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             if (!targetType.IsAssignableFrom(valueType, out var reason))
             {
                 reporter.Report(
-                    new Diagnostic.TypeNotAssignableToType(source, target.Range, reason));
+                    new Diagnostic.TypeMismatch(source, target.Range, reason));
             }
         }
     }
@@ -253,7 +270,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 var declarationType = declaration.Type.AcceptTypeVisitor(this);
                 if (!declarationType.IsAssignableFrom(valueType, out var reason))
                 {
-                    reporter.Report(new Diagnostic.TypeNotAssignableToType(source, declaration.Name.Range, reason));
+                    reporter.Report(new Diagnostic.TypeMismatch(source, declaration.Name.Range, reason));
                 }
 
                 variableType = declarationType;
