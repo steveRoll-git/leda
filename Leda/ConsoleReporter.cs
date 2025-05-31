@@ -5,7 +5,7 @@ namespace Leda;
 /// <summary>
 /// Pretty-prints diagnostics to the console.
 /// </summary>
-public class ConsoleReporter : IDiagnosticReporter
+public class ConsoleReporter(Source source) : IDiagnosticReporter
 {
     private static readonly Dictionary<DiagnosticSeverity, ConsoleColor> SeverityColors = new()
     {
@@ -23,12 +23,12 @@ public class ConsoleReporter : IDiagnosticReporter
         var numberColumnWidth = 4;
         var numberColumnSeparator = " | ";
         var start = diagnostic.Range.Start;
-        var sourceLine = diagnostic.Source.GetLine(diagnostic.Range.Start.Line);
+        var sourceLine = source.GetLine(diagnostic.Range.Start.Line);
         Console.ForegroundColor = severityColor;
         Console.Write($"{diagnostic.Severity}: ");
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine(diagnostic.Message);
-        Console.WriteLine($"{diagnostic.Source.Path}:{start}");
+        Console.WriteLine($"{source.Path}:{start}");
         Console.WriteLine("{0}{1}{2}",
             (start.Line + 1).ToString().PadLeft(numberColumnWidth),
             numberColumnSeparator,

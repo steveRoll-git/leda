@@ -10,9 +10,9 @@ class Program
                                         local g = function(a: number) end
                                         g("a")
                                         """);
-        source.Parse(new ConsoleReporter());
+        source.Parse(new ConsoleReporter(source));
         Console.WriteLine(Emitter.Emit(source.Tree));
-        source.Bind(new ConsoleReporter());
-        source.Check(new ConsoleReporter());
+        source.Bind(new ConsoleReporter(source));
+        source.Check(new ConsoleReporter(source));
     }
 }

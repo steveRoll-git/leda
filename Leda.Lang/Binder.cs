@@ -95,11 +95,11 @@ public class Binder : Tree.IVisitor
         {
             if (symbol is Symbol.TypeSymbol && existingBinding.TypeSymbol != null)
             {
-                reporter.Report(new Diagnostic.TypeAlreadyDeclared(source, name.Range, name.Value));
+                reporter.Report(new Diagnostic.TypeAlreadyDeclared(name.Range, name.Value));
             }
             else if (symbol is not Symbol.TypeSymbol && existingBinding.ValueSymbol != null)
             {
-                reporter.Report(new Diagnostic.ValueAlreadyDeclared(source, name.Range, name.Value,
+                reporter.Report(new Diagnostic.ValueAlreadyDeclared(name.Range, name.Value,
                     existingBinding.ValueSymbol));
             }
         }
@@ -261,7 +261,7 @@ public class Binder : Tree.IVisitor
         else
         {
             // TODO defer to check for global
-            reporter.Report(new Diagnostic.NameNotFound(source, name.Range, name));
+            reporter.Report(new Diagnostic.NameNotFound(name.Range, name));
         }
     }
 

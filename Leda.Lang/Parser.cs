@@ -121,7 +121,7 @@ public class Parser
             return gotT;
         }
 
-        reporter.Report(new Diagnostic.ExpectedTokenButGotToken(source, got.Range, expected, got));
+        reporter.Report(new Diagnostic.ExpectedTokenButGotToken(got.Range, expected, got));
         return expected;
     }
 
@@ -288,7 +288,7 @@ public class Parser
                 var target = ParsePrefixExpression();
                 if (!IsAssignableTo(target))
                 {
-                    reporter.Report(new Diagnostic.CannotAssignToThis(source, target.Range));
+                    reporter.Report(new Diagnostic.CannotAssignToThis(target.Range));
                     targets.Add(new Tree.Error());
                 }
                 else
@@ -305,7 +305,7 @@ public class Parser
         }
 
         var got = Consume();
-        reporter.Report(new Diagnostic.DidNotExpectTokenHere(source, got.Range, got));
+        reporter.Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got));
 
         return new Tree.Error();
     }
@@ -369,7 +369,7 @@ public class Parser
         Expect(For);
         if (token is not Token.Name)
         {
-            reporter.Report(new Diagnostic.ExpectedTokenButGotToken(source, Name.Range, Name, token));
+            reporter.Report(new Diagnostic.ExpectedTokenButGotToken(Name.Range, Name, token));
         }
 
         // 'for' name '=' exp ',' exp [',' exp] 'do' block 'end'
@@ -610,7 +610,7 @@ public class Parser
         }
 
         var got = Consume();
-        reporter.Report(new Diagnostic.DidNotExpectTokenHere(source, got.Range, got));
+        reporter.Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got));
 
         return EndTree(new Tree.Error());
     }
@@ -656,7 +656,7 @@ public class Parser
             // If the '(' is on a new line, it could be a new statement that starts with it - report ambiguous syntax.
             if (previous.Range.End.Line < token.Range.Start.Line)
             {
-                reporter.Report(new Diagnostic.AmbiguousSyntax(source, token.Range));
+                reporter.Report(new Diagnostic.AmbiguousSyntax(token.Range));
             }
 
             NextToken(); // skip '('
