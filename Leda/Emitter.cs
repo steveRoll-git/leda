@@ -294,7 +294,7 @@ public class Emitter
         else if (statement is Tree.LocalFunctionDeclaration functionDeclaration)
         {
             Emit("local function ");
-            Emit(functionDeclaration.Name);
+            Emit(functionDeclaration.Name.Value);
             EmitFunctionBody(functionDeclaration.Function, indent);
         }
         else if (statement is Tree.GlobalDeclaration globalDeclaration)

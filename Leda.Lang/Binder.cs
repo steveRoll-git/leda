@@ -272,7 +272,10 @@ public class Binder : Tree.IVisitor
 
     public void Visit(Tree.LocalFunctionDeclaration declaration)
     {
-        throw new NotImplementedException();
+        AddSymbol(declaration.Name, new Symbol.LocalVariable());
+        PushScope();
+        VisitFunction(declaration.Function);
+        PopScope();
     }
 
     public void Visit(Tree.GlobalDeclaration declaration)

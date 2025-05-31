@@ -496,9 +496,9 @@ public class Parser
         if (Accept<Token.Function>())
         {
             // 'local' name funcbody
-            var name = Expect(Name);
+            var name = StartEndTree(new Tree.Name(Expect(Name).Value));
             var function = ParseFunctionBody(false);
-            return EndTree(new Tree.LocalFunctionDeclaration(name.Value, function));
+            return EndTree(new Tree.LocalFunctionDeclaration(name, function));
         }
 
         // 'local' declaration {',' declaration} ['=' explist]

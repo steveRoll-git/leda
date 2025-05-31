@@ -269,11 +269,11 @@ public abstract class Tree
     /// <summary>
     /// A local function declaration.<br/>
     /// (This is different from a `LocalDeclaration`, because here, the function's name is made available in the body,
-    /// allowing for recursion.)
+    /// allowing it to reference itself.)
     /// </summary>
-    public class LocalFunctionDeclaration(string name, Function function) : Tree
+    public class LocalFunctionDeclaration(Name name, Function function) : Tree
     {
-        public string Name => name;
+        public Name Name => name;
         public Function Function => function;
 
         public override void AcceptVisitor(IVisitor visitor)

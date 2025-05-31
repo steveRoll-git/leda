@@ -99,6 +99,38 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return new TypeList(list, continued);
     }
 
+    private Type VisitFunctionType(Tree.FunctionType functionType)
+    {
+        List<Type> parameters = [];
+        foreach (var parameter in functionType.Parameters)
+        {
+            if (parameter.Type != null)
+            {
+                var type = parameter.Type.AcceptTypeVisitor(this);
+                parameters.Add(type);
+
+                if (!source.TryGetValueSymbol(parameter.Name, out var symbol))
+                {
+                    throw new Exception("Parameter doesn't have symbol");
+                }
+
+                typeMap[symbol] = type;
+            }
+            else
+            {
+                // TODO infer parameter types from target
+            }
+        }
+
+        var parameterTypeList = new TypeList(parameters);
+        // TODO handle rest parameter
+
+        var returnTypeList = GetFunctionReturnType(functionType);
+        returnTypeList ??= TypeList.None; // TODO infer return type
+
+        return new Type.Function { Parameters = parameterTypeList, Return = returnTypeList };
+    }
+
     private TypeList? GetFunctionReturnType(Tree.FunctionType functionType)
     {
         if (functionType.ReturnTypes != null)
@@ -238,7 +270,14 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.LocalFunctionDeclaration declaration)
     {
-        throw new NotImplementedException();
+        var functionType = VisitFunctionType(declaration.Function.Type);
+        if (!source.TryGetValueSymbol(declaration.Name, out var symbol))
+        {
+            throw new Exception();
+        }
+
+        typeMap[symbol] = functionType;
+        VisitBlock(declaration.Function.Body);
     }
 
     public void Visit(Tree.GlobalDeclaration declaration)
@@ -312,34 +351,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.Function function)
     {
-        List<Type> parameters = [];
-        foreach (var parameter in function.Type.Parameters)
-        {
-            if (parameter.Type != null)
-            {
-                var type = parameter.Type.AcceptTypeVisitor(this);
-                parameters.Add(type);
-
-                if (!source.TryGetValueSymbol(parameter.Name, out var symbol))
-                {
-                    throw new Exception("Parameter doesn't have symbol");
-                }
-
-                typeMap[symbol] = type;
-            }
-            else
-            {
-                // TODO infer parameter types from target
-            }
-        }
-
-        var parameterTypeList = new TypeList(parameters);
-        // TODO handle rest parameter
-
-        var returnTypeList = GetFunctionReturnType(function.Type);
-        returnTypeList ??= TypeList.None; // TODO infer return type
-
-        var functionType = new Type.Function { Parameters = parameterTypeList, Return = returnTypeList };
+        var functionType = VisitFunctionType(function.Type);
         VisitBlock(function.Body);
         return functionType;
     }
