@@ -1,264 +1,182 @@
 namespace Leda.Lang;
 
-public class Diagnostic
+public abstract record Diagnostic(Source Source, Range Range)
 {
-    /// <summary>
-    /// The source where the diagnostic applies.
-    /// </summary>
-    public Source Source { get; init; }
-
-    /// <summary>
-    /// The range where the diagnostic applies.
-    /// </summary>
-    public Range Range { get; }
-
     /// <summary>
     /// The severity of this diagnostic.
     /// </summary>
-    public DiagnosticSeverity Severity { get; init; }
+    public abstract DiagnosticSeverity Severity { get; }
 
     /// <summary>
     /// A human-readable message describing the problem.
     /// </summary>
-    public string Message { get; init; } = "";
+    public abstract string Message { get; }
 
-    public Diagnostic(Source source, Range range)
+    public record MalformedNumber(Source Source, Range Range) : Diagnostic(Source, Range)
     {
-        Source = source;
-        Range = range;
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "Malformed number.";
     }
 
-    public class MalformedNumber : Diagnostic
+    public record HexNumbersNotSupported(Source Source, Range Range) : Diagnostic(Source, Range)
     {
-        public MalformedNumber(Source source, Range range) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = "Malformed number.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Warning;
+
+        public override string Message =>
+            "Hex number literals with decimal points/exponents are not yet fully supported.";
     }
 
-    public class HexNumbersNotSupported : Diagnostic
+    public record InvalidEscapeSequence(Source Source, Range Range) : Diagnostic(Source, Range)
     {
-        public HexNumbersNotSupported(Source source, Range range) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Warning;
-            Message = "Hex number literals with decimal points/exponents are not yet fully supported.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "Invalid escape sequence.";
     }
 
-    public class InvalidEscapeSequence : Diagnostic
+    public record UnfinishedString(Source Source, Range Range) : Diagnostic(Source, Range)
     {
-        public InvalidEscapeSequence(Source source, Range range) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = "Invalid escape sequence.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "Unfinished string.";
     }
 
-    public class UnfinishedString : Diagnostic
+    public record InvalidCharacter(Source Source, Range Range, char Character) : Diagnostic(Source, Range)
     {
-        public UnfinishedString(Source source, Range range) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = "Unfinished string.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Invalid character. (Hex: {(int)Character:X})";
     }
 
-    public class InvalidCharacter : Diagnostic
+    public record InvalidLongStringDelimiter(Source Source, Range Range) : Diagnostic(Source, Range)
     {
-        public InvalidCharacter(Source source, Range range, char character) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"Invalid character. (Hex: {(int)character:X})";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "Invalid long string delimiter.";
     }
 
-    public class InvalidLongStringDelimiter : Diagnostic
+    public record UnfinishedLongString(Source Source, Range Range) : Diagnostic(Source, Range)
     {
-        public InvalidLongStringDelimiter(Source source, Range range) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = "Invalid long string delimiter.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "Unfinished long string.";
     }
 
-    public class UnfinishedLongString : Diagnostic
+    public record UnfinishedLongComment(Source Source, Range Range) : Diagnostic(Source, Range)
     {
-        public UnfinishedLongString(Source source, Range range) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = "Unfinished long string.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "Unfinished long comment.";
     }
 
-    public class UnfinishedLongComment : Diagnostic
+    public record ExpectedTokenButGotToken(Source Source, Range Range, Token Expected, Token Got)
+        : Diagnostic(Source, Range)
     {
-        public UnfinishedLongComment(Source source, Range range) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = "Unfinished long comment.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Expected \"{Expected.KindName}\", but got \"{Got.Value}\".";
     }
 
-    public class ExpectedTokenButGotToken : Diagnostic
+    public record ExpectedExpressionButGotToken(Source Source, Range Range, Token Got) : Diagnostic(Source, Range)
     {
-        public ExpectedTokenButGotToken(Source source, Token expected, Token got) : base(source, got.Range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"Expected \"{expected.KindName}\", but got \"{got.Value}\".";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Expected an expression, but got \"{Got.Value}\".";
     }
 
-    public class ExpectedExpressionButGotToken : Diagnostic
+    public record DidNotExpectTokenHere(Source Source, Range Range, Token Got) : Diagnostic(Source, Range)
     {
-        public ExpectedExpressionButGotToken(Source source, Token got) : base(source, got.Range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"Expected an expression, but got \"{got.Value}\".";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Did not expect \"{Got.Value}\" here.";
     }
 
-    public class DidNotExpectTokenHere : Diagnostic
+    public record AmbiguousSyntax(Source Source, Range Range) : Diagnostic(Source, Range)
     {
-        public DidNotExpectTokenHere(Source source, Token got) : base(source, got.Range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"Did not expect \"{got.Value}\" here.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "Ambiguous syntax. Prepend ';' or move characters to same line.";
     }
 
-    public class AmbiguousSyntax : Diagnostic
+    public record CannotAssignToThis(Source Source, Range Range) : Diagnostic(Source, Range)
     {
-        public AmbiguousSyntax(Source source, Range range) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = "Ambiguous syntax. Prepend ';' or move characters to same line.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "This expression cannot be assigned to.";
     }
 
-    public class CannotAssignToThis : Diagnostic
+    public record NoImplicitGlobalFunction(Source Source, Range Range) : Diagnostic(Source, Range)
     {
-        public CannotAssignToThis(Source source, Range range) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = "This expression cannot be assigned to.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "Function is implicitly global. Prefix 'global' if this is intentional.";
     }
 
-    public class NoImplicitGlobalFunction : Diagnostic
+    public record NameNotFound(Source Source, Range Range, Tree.Name Name) : Diagnostic(Source, Range)
     {
-        public NoImplicitGlobalFunction(Source source, Range range) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = "Function is implicitly global. Prefix 'global' if this is intentional.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Cannot find name '{Name.Value}'.";
     }
 
-    public class NameNotFound : Diagnostic
+    public record ValueAlreadyDeclared(Source Source, Range Range, string Name, Symbol ExistingSymbol)
+        : Diagnostic(Source, Range)
     {
-        public NameNotFound(Source source, Tree.Name name) : base(source, name.Range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"Cannot find name '{name.Value}'.";
-        }
-    }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
 
-    public class ValueAlreadyDeclared : Diagnostic
-    {
-        public ValueAlreadyDeclared(Source source, Range range, string name, Symbol existingSymbol) : base(source,
-            range)
-        {
-            Severity = DiagnosticSeverity.Error;
 
-            var noun = existingSymbol switch
+        public override string Message
+        {
+            get
             {
-                Symbol.LocalVariable => "local variable",
-                _ => "value"
-            };
-            Message = $"A {noun} named '{name}' has already been declared.";
+                var noun = ExistingSymbol switch
+                {
+                    Symbol.LocalVariable => "local variable",
+                    _ => "value"
+                };
+                return $"A {noun} named '{Name}' has already been declared.";
+            }
         }
     }
 
-    public class TypeAlreadyDeclared : Diagnostic
+    public record TypeAlreadyDeclared(Source Source, Range Range, string Name) : Diagnostic(Source, Range)
     {
-        public TypeAlreadyDeclared(Source source, Range range, string name) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"A type named '{name}' has already been declared.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"A type named '{Name}' has already been declared.";
     }
 
-    public class CantGetLength : Diagnostic
+    public record CantGetLength(Source Source, Range Range, Type Got) : Diagnostic(Source, Range)
     {
-        public CantGetLength(Source source, Range range, Type got) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"Cannot get the length of a '{got}' value.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Cannot get the length of a '{Got}' value.";
     }
 
-    public class CantNegate : Diagnostic
+    public record CantNegate(Source Source, Range Range, Type Got) : Diagnostic(Source, Range)
     {
-        public CantNegate(Source source, Range range, Type got) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"Cannot negate a '{got}' value.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Cannot negate a '{Got}' value.";
     }
 
-    public class ForLoopStartNotNumber : Diagnostic
+    public record ForLoopStartNotNumber(Source Source, Range Range, Type Got) : Diagnostic(Source, Range)
     {
-        public ForLoopStartNotNumber(Source source, Range range, Type got) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"Starting value of `for` loop must be 'number', but is '{got}'.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Starting value of `for` loop must be 'number', but is '{Got}'.";
     }
 
-    public class ForLoopLimitNotNumber : Diagnostic
+    public record ForLoopLimitNotNumber(Source Source, Range Range, Type Got) : Diagnostic(Source, Range)
     {
-        public ForLoopLimitNotNumber(Source source, Range range, Type got) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"Limit value of `for` loop must be 'number', but is '{got}'.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Limit value of `for` loop must be 'number', but is '{Got}'.";
     }
 
-    public class ForLoopStepNotNumber : Diagnostic
+    public record ForLoopStepNotNumber(Source Source, Range Range, Type Got) : Diagnostic(Source, Range)
     {
-        public ForLoopStepNotNumber(Source source, Range range, Type got) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"Step value of `for` loop must be 'number', but is '{got}'.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Step value of `for` loop must be 'number', but is '{Got}'.";
     }
 
-    public class TypeNotAssignableToType : Diagnostic
+    public record TypeNotAssignableToType(Source Source, Range Range, TypeMismatch Mismatch) : Diagnostic(Source, Range)
     {
-        public TypeNotAssignableToType(Source source, Range range, TypeMismatch mismatch) :
-            base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = mismatch.ToString();
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => Mismatch.ToString();
     }
 
-    public class TypeNotCallable : Diagnostic
+    public record TypeNotCallable(Source Source, Range Range) : Diagnostic(Source, Range)
     {
-        public TypeNotCallable(Source source, Range range) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = "This expression is not callable.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "This expression is not callable.";
     }
 
-    public class NotEnoughArguments : Diagnostic
+    public record NotEnoughArguments(Source Source, Range Range, int Expected, int Got) : Diagnostic(Source, Range)
     {
-        public NotEnoughArguments(Source source, Range range, int expected, int got) : base(source, range)
-        {
-            Severity = DiagnosticSeverity.Error;
-            Message = $"Expected {expected} arguments, but got {got}.";
-        }
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Expected {Expected} arguments, but got {Got}.";
     }
 }
 

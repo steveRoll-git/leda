@@ -121,7 +121,7 @@ public class Parser
             return gotT;
         }
 
-        reporter.Report(new Diagnostic.ExpectedTokenButGotToken(source, expected, got));
+        reporter.Report(new Diagnostic.ExpectedTokenButGotToken(source, got.Range, expected, got));
         return expected;
     }
 
@@ -304,7 +304,9 @@ public class Parser
             return EndTree(new Tree.Assignment(targets, expressions));
         }
 
-        reporter.Report(new Diagnostic.DidNotExpectTokenHere(source, Consume()));
+        var got = Consume();
+        reporter.Report(new Diagnostic.DidNotExpectTokenHere(source, got.Range, got));
+
         return new Tree.Error();
     }
 
@@ -367,7 +369,7 @@ public class Parser
         Expect(For);
         if (token is not Token.Name)
         {
-            reporter.Report(new Diagnostic.ExpectedTokenButGotToken(source, Name, token));
+            reporter.Report(new Diagnostic.ExpectedTokenButGotToken(source, Name.Range, Name, token));
         }
 
         // 'for' name '=' exp ',' exp [',' exp] 'do' block 'end'
@@ -607,7 +609,8 @@ public class Parser
             return ParsePrefixExpression(EndTree(new Tree.Name(name.Value)));
         }
 
-        reporter.Report(new Diagnostic.DidNotExpectTokenHere(source, Consume()));
+        var got = Consume();
+        reporter.Report(new Diagnostic.DidNotExpectTokenHere(source, got.Range, got));
 
         return EndTree(new Tree.Error());
     }

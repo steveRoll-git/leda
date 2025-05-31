@@ -3,7 +3,7 @@ namespace Leda.Lang;
 /// <summary>
 /// Represents the reason a type is incompatible with another type.
 /// </summary>
-public abstract class TypeMismatch
+public abstract record TypeMismatch
 {
     private static string TypeListItemNoun(TypeList.TypeListKind kind) => kind switch
     {
@@ -20,35 +20,35 @@ public abstract class TypeMismatch
     /// </summary>
     public List<TypeMismatch> Children = [];
 
-    public class Primitive(Type target, Type source) : TypeMismatch
+    public record Primitive(Type Target, Type Source) : TypeMismatch
     {
-        public override string Message => $"Type '{source}' is not assignable to type '{target}'.";
+        public override string Message => $"Type '{Source}' is not assignable to type '{Target}'.";
     }
 
-    public class NotEnoughValues(int expected, int got, TypeList.TypeListKind kind) : TypeMismatch
+    public record NotEnoughValues(int Expected, int Got, TypeList.TypeListKind Kind) : TypeMismatch
     {
         public override string Message =>
-            kind switch
+            Kind switch
             {
                 TypeList.TypeListKind.FunctionTypeParameter =>
-                    $"Target type doesn't provide enough parameters. Expected at least {expected}, got {got}.",
-                _ => $"Not enough {TypeListItemNoun(kind)}(s) are given. Expected at least {expected} but got {got}."
+                    $"Target type doesn't provide enough parameters. Expected at least {Expected}, got {Got}.",
+                _ => $"Not enough {TypeListItemNoun(Kind)}(s) are given. Expected at least {Expected} but got {Got}."
             };
     }
 
-    public class ValueInListIncompatible(int index, TypeList.TypeListKind kind) : TypeMismatch
+    public record ValueInListIncompatible(int Index, TypeList.TypeListKind Kind) : TypeMismatch
     {
-        public override string Message => $"Type of {TypeListItemNoun(kind)} #{index} is incompatible:";
+        public override string Message => $"Type of {TypeListItemNoun(Kind)} #{Index} is incompatible:";
     }
 
-    public class ParameterIncompatible(string targetName, string sourceName) : TypeMismatch
+    public record ParameterIncompatible(string TargetName, string SourceName) : TypeMismatch
     {
-        public override string Message => $"Types of parameters '{sourceName}' and '{targetName}' are incompatible.";
+        public override string Message => $"Types of parameters '{SourceName}' and '{TargetName}' are incompatible.";
     }
 
     private string ToString(int indent)
     {
-        var result = (indent > 0 ? new string(' ', indent * 2 - 1) + "└" : "") + Message;
+        var result = new string(' ', indent * 2) + Message;
         foreach (var child in Children)
         {
             result += "\n" + child.ToString(indent + 1);
@@ -57,7 +57,7 @@ public abstract class TypeMismatch
         return result;
     }
 
-    public override string ToString()
+    public sealed override string ToString()
     {
         return ToString(0);
     }

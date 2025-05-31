@@ -261,7 +261,7 @@ public class Binder : Tree.IVisitor
         else
         {
             // TODO defer to check for global
-            reporter.Report(new Diagnostic.NameNotFound(source, name));
+            reporter.Report(new Diagnostic.NameNotFound(source, name.Range, name));
         }
     }
 
