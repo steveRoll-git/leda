@@ -6,11 +6,6 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     private readonly IDiagnosticReporter reporter;
 
     /// <summary>
-    /// Maps Symbols to their types.
-    /// </summary>
-    private readonly Dictionary<Symbol, Type> typeMap = [];
-
-    /// <summary>
     /// Visits all of a block's statements.
     /// </summary>
     private void VisitBlock(Tree.Block block)
@@ -114,7 +109,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                     throw new Exception("Parameter doesn't have symbol");
                 }
 
-                typeMap[symbol] = type;
+                source.SetSymbolType(symbol, type);
             }
             else
             {
@@ -181,7 +176,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             throw new Exception("No symbol for `for` loop counter");
         }
 
-        typeMap.Add(counterSymbol, Type.Number);
+        source.SetSymbolType(counterSymbol, Type.Number);
 
         VisitBlock(numericalFor.Body);
     }
@@ -276,7 +271,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             throw new Exception();
         }
 
-        typeMap[symbol] = functionType;
+        source.SetSymbolType(symbol, functionType);
         VisitBlock(declaration.Function.Body);
     }
 
@@ -325,7 +320,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 throw new Exception("Variable doesn't have a symbol");
             }
 
-            typeMap.Add(symbol, variableType);
+            source.SetSymbolType(symbol, variableType);
         }
     }
 
@@ -419,7 +414,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             return Type.Unknown;
         }
 
-        if (!typeMap.TryGetValue(symbol, out var type))
+        if (!source.TryGetSymbolType(symbol, out var type))
         {
             // TODO detection of types should be deferred if needed.
             throw new Exception();

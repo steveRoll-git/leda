@@ -8,7 +8,8 @@ class Program
     {
         var source = new Source("test", """
                                         local g = function(a: number) end
-                                        g("a")
+                                        local n = 123
+                                        g(n)
                                         """);
         source.Parse(new ConsoleReporter(source));
         Console.WriteLine(Emitter.Emit(source.Tree));

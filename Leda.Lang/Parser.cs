@@ -547,6 +547,8 @@ public class Parser
     /// </summary>
     private Tree.FunctionType ParseFunctionType(bool isMethod = false)
     {
+        StartTree();
+
         var lParenRange = token.Range;
 
         // '(' declarations ')' [':' typelist]
@@ -569,7 +571,7 @@ public class Parser
             returnTypes = ParseTypeList();
         }
 
-        return new Tree.FunctionType(parameters, returnTypes);
+        return EndTree(new Tree.FunctionType(parameters, returnTypes));
     }
 
     /// <summary>
@@ -629,7 +631,7 @@ public class Parser
         // Method call: ':' Name  '(' [explist] ')'
         if (Accept<Token.Colon>())
         {
-            var funcName = Expect(Name).Value;
+            var funcName = StartEndTree(new Tree.Name(Expect(Name).Value));
             Expect(LParen);
 
             if (Accept<Token.RParen>())

@@ -42,6 +42,7 @@ class Program
         });
 
         server.AddHandler(new TextDocumentHandler(server));
+        server.AddHandler(new HoverHandler());
 
         await server.Run();
     }

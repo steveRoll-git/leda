@@ -7,6 +7,8 @@ namespace Leda.LSP;
 public static class Extensions
 {
     public static Position ToLs(this Lang.Position p) => new(p.Line, p.Character);
+    public static Lang.Position ToLeda(this Position p) => new(p.Line, p.Character);
+
     public static DocumentRange ToLs(this Range r) => new(r.Start.ToLs(), r.End.ToLs());
 
     public static DiagnosticSeverity ToLs(this Lang.DiagnosticSeverity s) => s switch

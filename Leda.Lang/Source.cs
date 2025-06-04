@@ -33,9 +33,14 @@ public class Source
     private Dictionary<Tree, Symbol> valueSymbolMap = [];
 
     /// <summary>
+    /// Maps Symbols to their types.
+    /// </summary>
+    private readonly Dictionary<Symbol, Type> symbolTypeMap = [];
+
+    /// <summary>
     /// Maps Tree nodes to the type symbol they refer to.
     /// </summary>
-    private Dictionary<Tree, Symbol.TypeSymbol> typeSymbolMap = [];
+    private Dictionary<Tree, Symbol.TypeSymbol> treeTypeSymbolMap = [];
 
     /// <summary>
     /// A list of any symbols referenced in this Source that are defined in other Sources.
@@ -123,7 +128,7 @@ public class Source
     /// </summary>
     internal void AttachTypeSymbol(Tree tree, Symbol.TypeSymbol symbol)
     {
-        typeSymbolMap.Add(tree, symbol);
+        treeTypeSymbolMap.Add(tree, symbol);
     }
 
     /// <summary>
@@ -141,6 +146,22 @@ public class Source
     /// <returns>True if this tree has a corresponding type symbol, false otherwise.</returns>
     internal bool TryGetTypeSymbol(Tree tree, [NotNullWhen(true)] out Symbol.TypeSymbol? symbol)
     {
-        return typeSymbolMap.TryGetValue(tree, out symbol);
+        return treeTypeSymbolMap.TryGetValue(tree, out symbol);
+    }
+
+    /// <summary>
+    /// Sets this value symbol's type.
+    /// </summary>
+    internal void SetSymbolType(Symbol symbol, Type type)
+    {
+        symbolTypeMap[symbol] = type;
+    }
+
+    /// <summary>
+    /// Tries getting the type of this value symbol, if it exists.
+    /// </summary>
+    public bool TryGetSymbolType(Symbol symbol, [NotNullWhen(true)] out Type? type)
+    {
+        return symbolTypeMap.TryGetValue(symbol, out type);
     }
 }
