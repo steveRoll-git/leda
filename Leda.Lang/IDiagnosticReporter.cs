@@ -5,5 +5,5 @@ namespace Leda.Lang;
 /// </summary>
 public interface IDiagnosticReporter
 {
-    public void Report(Diagnostic diagnostic);
+    public void Report(Source source, Diagnostic diagnostic);
 }

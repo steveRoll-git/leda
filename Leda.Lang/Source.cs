@@ -50,7 +50,10 @@ public class Source
     /// <summary>
     /// Creates a new source with the given path, and reads the file at that path into Code.
     /// </summary>
-    public Source(string path) : this(path, File.ReadAllText(path)) { }
+    public static Source ReadFromFile(string path)
+    {
+        return new Source(path, File.ReadAllText(path));
+    }
 
     /// <summary>
     /// Creates a new source with the given path and code.

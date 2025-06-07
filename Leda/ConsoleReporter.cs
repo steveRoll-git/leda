@@ -5,7 +5,7 @@ namespace Leda;
 /// <summary>
 /// Pretty-prints diagnostics to the console.
 /// </summary>
-public class ConsoleReporter(Source source) : IDiagnosticReporter
+public static class ConsoleReporter
 {
     private static readonly Dictionary<DiagnosticSeverity, ConsoleColor> SeverityColors = new()
     {
@@ -15,7 +15,7 @@ public class ConsoleReporter(Source source) : IDiagnosticReporter
         { DiagnosticSeverity.Hint, ConsoleColor.Cyan }
     };
 
-    public void Report(Diagnostic diagnostic)
+    public static void Report(Source source, Diagnostic diagnostic)
     {
         var prevColor = Console.ForegroundColor;
 

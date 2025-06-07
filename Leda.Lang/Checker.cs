@@ -5,6 +5,11 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     private readonly Source source;
     private readonly IDiagnosticReporter reporter;
 
+    private void Report(Diagnostic diagnostic)
+    {
+        reporter.Report(source, diagnostic);
+    }
+
     /// <summary>
     /// Visits all of a block's statements.
     /// </summary>
@@ -24,7 +29,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
         if (!Type.FunctionPrimitive.IsAssignableFrom(target)) // TODO handle __call metamethod
         {
-            reporter.Report(new Diagnostic.TypeNotCallable(call.Target.Range));
+            Report(new Diagnostic.TypeNotCallable(call.Target.Range));
             return TypeList.None;
         }
 
@@ -43,11 +48,11 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                     if (reason is TypeMismatch.ValueInListIncompatible incompatible)
                     {
                         var faultyParam = call.Parameters[Math.Min(call.Parameters.Count - 1, incompatible.Index)];
-                        reporter.Report(new Diagnostic.TypeMismatch(faultyParam.Range, reason));
+                        Report(new Diagnostic.TypeMismatch(faultyParam.Range, reason));
                     }
                     else if (reason is TypeMismatch.NotEnoughValues)
                     {
-                        reporter.Report(new Diagnostic.TypeMismatch(call.Target.Range, reason));
+                        Report(new Diagnostic.TypeMismatch(call.Target.Range, reason));
                     }
                 }
             }
@@ -153,13 +158,13 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         var startType = numericalFor.Start.AcceptExpressionVisitor(this);
         if (!Type.Number.IsAssignableFrom(startType))
         {
-            reporter.Report(new Diagnostic.ForLoopStartNotNumber(numericalFor.Start.Range, startType));
+            Report(new Diagnostic.ForLoopStartNotNumber(numericalFor.Start.Range, startType));
         }
 
         var limitType = numericalFor.Limit.AcceptExpressionVisitor(this);
         if (!Type.Number.IsAssignableFrom(limitType))
         {
-            reporter.Report(new Diagnostic.ForLoopLimitNotNumber(numericalFor.Limit.Range, limitType));
+            Report(new Diagnostic.ForLoopLimitNotNumber(numericalFor.Limit.Range, limitType));
         }
 
         if (numericalFor.Step != null)
@@ -167,7 +172,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             var stepType = numericalFor.Step.AcceptExpressionVisitor(this);
             if (!Type.Number.IsAssignableFrom(stepType))
             {
-                reporter.Report(new Diagnostic.ForLoopStepNotNumber(numericalFor.Step.Range, stepType));
+                Report(new Diagnostic.ForLoopStepNotNumber(numericalFor.Step.Range, stepType));
             }
         }
 
@@ -217,7 +222,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
             if (!targetType.IsAssignableFrom(valueType, out var reason))
             {
-                reporter.Report(
+                Report(
                     new Diagnostic.TypeMismatch(target.Range, reason));
             }
         }
@@ -304,7 +309,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 var declarationType = declaration.Type.AcceptTypeVisitor(this);
                 if (!declarationType.IsAssignableFrom(valueType, out var reason))
                 {
-                    reporter.Report(new Diagnostic.TypeMismatch(declaration.Name.Range, reason));
+                    Report(new Diagnostic.TypeMismatch(declaration.Name.Range, reason));
                 }
 
                 variableType = declarationType;
@@ -386,7 +391,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             // TODO use __len metamethod
             if (!Type.Table.IsAssignableFrom(exprType) && !Type.String.IsAssignableFrom(exprType))
             {
-                reporter.Report(new Diagnostic.CantGetLength(unary.Range, exprType));
+                Report(new Diagnostic.CantGetLength(unary.Range, exprType));
             }
 
             return Type.Number;
@@ -397,7 +402,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             // TODO use __unm metamethod
             if (!Type.Number.IsAssignableFrom(exprType))
             {
-                reporter.Report(new Diagnostic.CantNegate(unary.Range, exprType));
+                Report(new Diagnostic.CantNegate(unary.Range, exprType));
             }
 
             return Type.Number;

@@ -98,6 +98,16 @@ public class Emitter
         {
             Emit("...");
         }
+        else if (expression is Tree.LongString longString)
+        {
+            Emit('[');
+            Emit('=', longString.Level);
+            Emit('[');
+            Emit(longString.Value);
+            Emit(']');
+            Emit('=', longString.Level);
+            Emit(']');
+        }
         else if (expression is Tree.String str)
         {
             Emit('"');
@@ -114,16 +124,6 @@ public class Emitter
             }
 
             Emit('"');
-        }
-        else if (expression is Tree.LongString longString)
-        {
-            Emit('[');
-            Emit('=', longString.Level);
-            Emit('[');
-            Emit(longString.Value);
-            Emit(']');
-            Emit('=', longString.Level);
-            Emit(']');
         }
         else if (expression is Tree.Table table)
         {
