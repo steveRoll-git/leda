@@ -11,7 +11,7 @@ using Scope = Dictionary<string, Binder.Binding>;
 public class Binder : Tree.IVisitor
 {
     private readonly Source source;
-    private readonly IDiagnosticReporter reporter;
+    public List<Diagnostic> Diagnostics { get; } = [];
 
     /// <summary>
     /// A list of lexical scopes, where each scope is a dictionary of names with their symbols.
@@ -29,10 +29,9 @@ public class Binder : Tree.IVisitor
 
     private Scope CurrentScope => scopes[^1];
 
-    private Binder(Source source, IDiagnosticReporter reporter)
+    private Binder(Source source)
     {
         this.source = source;
-        this.reporter = reporter;
 
         // Add the standard types.
         // TODO maybe these should originate from a declaration file instead
@@ -47,7 +46,7 @@ public class Binder : Tree.IVisitor
 
     private void Report(Diagnostic diagnostic)
     {
-        reporter.Report(source, diagnostic);
+        Diagnostics.Add(diagnostic);
     }
 
     private void PushScope()
@@ -354,9 +353,10 @@ public class Binder : Tree.IVisitor
     /// <summary>
     /// Visits all nodes in the given tree and updates the infoStore with the relevant information.
     /// </summary>
-    public static void Bind(Source source, Tree.Block block, IDiagnosticReporter reporter)
+    public static List<Diagnostic> Bind(Source source, Tree.Block block)
     {
-        var binder = new Binder(source, reporter);
+        var binder = new Binder(source);
         binder.VisitBlock(block);
+        return binder.Diagnostics;
     }
 }

@@ -3,47 +3,27 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using EmmyLua.LanguageServer.Framework.Protocol.Message.Configuration;
+using EmmyLua.LanguageServer.Framework.Protocol.Model;
 using EmmyLua.LanguageServer.Framework.Server;
+using Leda.Lang;
 
 namespace Leda.LSP;
 
-class Program
+internal static class Program
 {
-    static async Task Main(string[] args)
+    private static async Task Main(string[] args)
     {
-        Debugger.Launch();
-        while (!Debugger.IsAttached)
+#if DEBUG
+        if (args.Contains("--waitForDebugger"))
         {
-            await Task.Delay(100);
-        }
-
-        // TODO support TCP
-        var input = Console.OpenStandardInput();
-        var output = Console.OpenStandardOutput();
-
-        var server = LanguageServer.From(input, output);
-        server.OnInitialize((_, info) =>
-        {
-            info.Name = "Leda";
-            info.Version = Assembly.GetEntryAssembly()!.GetName().Version?.ToString();
-            Console.Error.WriteLine("initialize");
-            return Task.CompletedTask;
-        });
-
-        server.OnInitialized(async (_) =>
-        {
-            Console.Error.WriteLine("initialized");
-            var r = await server.Client.GetConfiguration(new ConfigurationParams()
+            Debugger.Launch();
+            while (!Debugger.IsAttached)
             {
-                Items = []
-            }, CancellationToken.None);
+                await Task.Delay(100);
+            }
+        }
+#endif
 
-            Console.Error.WriteLine(r);
-        });
-
-        server.AddHandler(new TextDocumentHandler(server));
-        server.AddHandler(new HoverHandler());
-
-        await server.Run();
+        await new LedaServer().Run();
     }
 }

@@ -10,7 +10,7 @@ public class Lexer
 {
     private readonly Source source;
 
-    private IDiagnosticReporter reporter;
+    public List<Diagnostic> Diagnostics { get; internal init; } = [];
 
     private string Code => source.Code;
 
@@ -36,16 +36,15 @@ public class Lexer
 
     private char CurChar => CharAt(index);
 
-    public Lexer(Source source, IDiagnosticReporter reporter)
+    public Lexer(Source source)
     {
         this.source = source;
-        this.reporter = reporter;
         ReachedEnd = source.Code.Length == 0;
     }
 
     private void Report(Diagnostic diagnostic)
     {
-        reporter.Report(source, diagnostic);
+        Diagnostics.Add(diagnostic);
     }
 
     /// <summary>

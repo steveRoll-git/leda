@@ -3,11 +3,11 @@ namespace Leda.Lang;
 public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeVisitor<Type>
 {
     private readonly Source source;
-    private readonly IDiagnosticReporter reporter;
+    public List<Diagnostic> Diagnostics { get; } = [];
 
     private void Report(Diagnostic diagnostic)
     {
-        reporter.Report(source, diagnostic);
+        Diagnostics.Add(diagnostic);
     }
 
     /// <summary>
@@ -464,15 +464,9 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return Type.Unknown;
     }
 
-    private Checker(Source source, IDiagnosticReporter reporter)
+    private Checker(Source source)
     {
         this.source = source;
-        this.reporter = reporter;
-    }
-
-    public static void Check(Source source, IDiagnosticReporter reporter)
-    {
-        new Checker(source, reporter).VisitBlock(source.Tree);
     }
 
     public Type VisitType(Tree.Name name)
@@ -506,5 +500,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         var returnType = GetFunctionReturnType(functionType);
 
         return new Type.Function { Parameters = parameterTypeList, Return = returnType ?? TypeList.None };
+    }
+
+    public static List<Diagnostic> Check(Source source)
+    {
+        var checker = new Checker(source);
+        checker.VisitBlock(source.Tree);
+        return checker.Diagnostics;
     }
 }

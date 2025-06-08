@@ -10,6 +10,8 @@ public class Project
     public readonly List<Source> Sources = [];
     private readonly Dictionary<string, Source> sourcesByPath = [];
 
+    public delegate void SourceCheckedHandler(Source source, List<Diagnostic> diagnostics);
+
     /// <summary>
     /// Adds a source file to this project.
     /// </summary>
@@ -44,15 +46,28 @@ public class Project
     }
 
     /// <summary>
+    /// Parses, binds and checks this source, and returns the diagnostics from all the stages.
+    /// </summary>
+    /// <param name="source"></param>
+    /// <returns></returns>
+    public List<Diagnostic> Check(Source source)
+    {
+        List<Diagnostic> diagnostics = [];
+        diagnostics.AddRange(source.Parse());
+        diagnostics.AddRange(source.Bind());
+        diagnostics.AddRange(source.Check());
+        return diagnostics;
+    }
+
+    /// <summary>
     /// Parses, binds and checks all currently added sources.
     /// </summary>
-    public void CheckAll(IDiagnosticReporter reporter)
+    /// <param name="sourceCheckedHandler">Handler to run after a source has been checked, with all the diagnostics that were reported.</param>
+    public void CheckAll(SourceCheckedHandler sourceCheckedHandler)
     {
         foreach (var source in Sources)
         {
-            source.Parse(reporter);
-            source.Bind(reporter);
-            source.Check(reporter);
+            sourceCheckedHandler(source, Check(source));
         }
     }
 

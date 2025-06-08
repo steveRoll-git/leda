@@ -15,7 +15,7 @@ public class Source
     /// <summary>
     /// The code in this source file as a string.
     /// </summary>
-    public string Code { get; }
+    public string Code { get; set; }
 
     /// <summary>
     /// A dictionary where the key is a 0-based line number, and the value is the index in `Code` where that line begins.
@@ -96,26 +96,28 @@ public class Source
     /// <summary>
     /// Parse the source's contents and store the syntax tree.
     /// </summary>
-    public void Parse(IDiagnosticReporter reporter)
+    public List<Diagnostic> Parse()
     {
-        Tree = Parser.ParseFile(this, reporter);
+        var (tree, diagnostics) = Parser.ParseFile(this);
+        Tree = tree;
+        return diagnostics;
     }
 
     /// <summary>
     /// Associates all top level `Name` nodes with symbols.
     /// </summary>
-    public void Bind(IDiagnosticReporter reporter)
+    public List<Diagnostic> Bind()
     {
         valueSymbolMap = [];
-        Binder.Bind(this, Tree, reporter);
+        return Binder.Bind(this, Tree);
     }
 
     /// <summary>
     /// Checks the types of all nodes.
     /// </summary>
-    public void Check(IDiagnosticReporter reporter)
+    public List<Diagnostic> Check()
     {
-        Checker.Check(this, reporter);
+        return Checker.Check(this);
     }
 
     /// <summary>

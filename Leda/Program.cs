@@ -53,7 +53,18 @@ internal class Program
         }
 
         var project = Project.FromFilesInDirectory(path);
-        project.CheckAll(new ProgramReporter());
+        project.CheckAll((source, diagnostics) =>
+        {
+            foreach (var diagnostic in diagnostics)
+            {
+                ConsoleReporter.Report(source, diagnostic);
+                if (diagnostic.Severity == DiagnosticSeverity.Error)
+                {
+                    _errorCount += 1;
+                    ErrorSources.Add(source);
+                }
+            }
+        });
 
         if (_errorCount > 0)
         {
@@ -72,19 +83,6 @@ internal class Program
         }
 
         Console.WriteLine($"{project.Sources.Count} files emitted.");
-    }
-
-    private class ProgramReporter : IDiagnosticReporter
-    {
-        public void Report(Source source, Diagnostic diagnostic)
-        {
-            ConsoleReporter.Report(source, diagnostic);
-            if (diagnostic.Severity == DiagnosticSeverity.Error)
-            {
-                _errorCount += 1;
-                ErrorSources.Add(source);
-            }
-        }
     }
 
     private enum CliVerb

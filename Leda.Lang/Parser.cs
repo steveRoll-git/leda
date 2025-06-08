@@ -33,7 +33,7 @@ public class Parser
 
     private readonly Source source;
 
-    private readonly IDiagnosticReporter reporter;
+    public List<Diagnostic> Diagnostics { get; } = [];
 
     private readonly Lexer lexer;
 
@@ -59,17 +59,16 @@ public class Parser
 
     private static bool IsAssignableTo(Tree tree) => tree is Tree.Name or Tree.Access;
 
-    public Parser(Source source, IDiagnosticReporter reporter)
+    public Parser(Source source)
     {
         this.source = source;
-        this.reporter = reporter;
-        lexer = new Lexer(source, reporter);
+        lexer = new Lexer(source) { Diagnostics = Diagnostics };
         token = lexer.ReadToken();
     }
 
     private void Report(Diagnostic diagnostic)
     {
-        reporter.Report(source, diagnostic);
+        Diagnostics.Add(diagnostic);
     }
 
     /// <summary>
@@ -868,8 +867,10 @@ public class Parser
     /// <summary>
     /// Parse this source's contents and return the file's syntax tree.
     /// </summary>
-    public static Tree.Block ParseFile(Source source, IDiagnosticReporter reporter)
+    public static (Tree.Block block, List<Diagnostic> diagnostics) ParseFile(Source source)
     {
-        return new Parser(source, reporter).ParseBlock();
+        var parser = new Parser(source);
+        var block = parser.ParseBlock();
+        return (block, parser.Diagnostics);
     }
 }
