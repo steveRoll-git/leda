@@ -66,6 +66,7 @@ public class LedaServer
 
         server.AddHandler(new TextDocumentHandler(this));
         server.AddHandler(new HoverHandler(this));
+        server.AddHandler(new DefinitionHandler(this));
     }
 
     public Task Run()

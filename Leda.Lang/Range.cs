@@ -20,7 +20,7 @@ public struct Range(Position start, Position end)
     /// </summary>
     public bool Contains(Position position)
     {
-        return position >= Start && position < End;
+        return position >= Start && position <= End;
     }
 
     public override string ToString()
