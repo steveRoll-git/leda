@@ -71,6 +71,7 @@ public class LedaServer
         server.AddHandler(new HoverHandler(this));
         server.AddHandler(new DefinitionHandler(this));
         server.AddHandler(new ReferenceHandler(this));
+        server.AddHandler(new DocumentHighlightHandler(this));
     }
 
     public Task Run()
@@ -83,7 +84,7 @@ public class LedaServer
     /// </summary>
     public Location ToLsLocation(Leda.Lang.Location location)
     {
-        return new(SourceUris[location.Source], location.Range.ToLs());
+        return new(SourceUris[location.Source!], location.Range.ToLs());
     }
 
     private void AddSource(Source source, DocumentUri uri)
