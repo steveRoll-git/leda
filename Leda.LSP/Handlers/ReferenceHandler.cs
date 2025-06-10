@@ -2,6 +2,7 @@ using EmmyLua.LanguageServer.Framework.Protocol.Capabilities.Client.ClientCapabi
 using EmmyLua.LanguageServer.Framework.Protocol.Capabilities.Server;
 using EmmyLua.LanguageServer.Framework.Protocol.Message.Reference;
 using EmmyLua.LanguageServer.Framework.Server.Handler;
+using Leda.Lang;
 
 namespace Leda.LSP;
 
@@ -9,11 +10,7 @@ public class ReferenceHandler(LedaServer server) : ReferenceHandlerBase
 {
     protected override Task<ReferenceResponse?> Handle(ReferenceParams request, CancellationToken cancellationToken)
     {
-        var source = server.UriSources[request.TextDocument.Uri];
-
-        var name = NameFinder.GetNameAtPosition(source.Tree, request.Position.ToLeda());
-
-        if (name != null && source.TryGetTreeSymbol(name, out var symbol))
+        if (server.TryGetRequestSymbol(request, out var symbol))
         {
             var references = server.GetSymbolReferences(symbol, request.Context?.IncludeDeclaration ?? false);
             return Task.FromResult(new ReferenceResponse(references))!;

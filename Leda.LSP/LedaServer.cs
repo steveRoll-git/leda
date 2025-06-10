@@ -1,7 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using EmmyLua.LanguageServer.Framework.Protocol.Message.Client.PublishDiagnostics;
 using EmmyLua.LanguageServer.Framework.Protocol.Message.Configuration;
 using EmmyLua.LanguageServer.Framework.Protocol.Model;
+using EmmyLua.LanguageServer.Framework.Protocol.Model.TextDocument;
 using EmmyLua.LanguageServer.Framework.Server;
 using Leda.Lang;
 using Location = EmmyLua.LanguageServer.Framework.Protocol.Model.Location;
@@ -106,6 +108,23 @@ public class LedaServer
             Uri = SourceUris[source],
             Diagnostics = diagnostics.Select(d => d.ToLs()).ToList()
         });
+    }
+
+
+    /// <summary>
+    /// Tries to find the symbol that the `TextDocumentPosition` request is pointing to.
+    /// </summary>
+    public bool TryGetRequestSymbol(TextDocumentPositionParams request, [NotNullWhen(true)] out Symbol? symbol)
+    {
+        var source = UriSources[request.TextDocument.Uri];
+        var name = NameFinder.GetNameAtPosition(source.Tree, request.Position.ToLeda());
+        if (name != null)
+        {
+            return source.TryGetTreeSymbol(name, out symbol);
+        }
+
+        symbol = null;
+        return false;
     }
 
     public List<Location> GetSymbolReferences(Symbol symbol, bool includeDefinition)

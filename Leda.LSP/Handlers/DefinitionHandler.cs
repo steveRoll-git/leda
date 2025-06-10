@@ -9,11 +9,7 @@ public class DefinitionHandler(LedaServer server) : DefinitionHandlerBase
 {
     protected override Task<DefinitionResponse?> Handle(DefinitionParams request, CancellationToken cancellationToken)
     {
-        var source = server.UriSources[request.TextDocument.Uri];
-
-        var name = NameFinder.GetNameAtPosition(source.Tree, request.Position.ToLeda());
-
-        if (name != null && source.TryGetTreeSymbol(name, out var symbol) && symbol.Definition.Source != null)
+        if (server.TryGetRequestSymbol(request, out var symbol) && symbol.Definition.Source != null)
         {
             return Task.FromResult(new DefinitionResponse(server.ToLsLocation(symbol.Definition)))!;
         }

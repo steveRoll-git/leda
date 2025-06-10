@@ -11,7 +11,6 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
 {
     protected override Task<HoverResponse?> Handle(HoverParams request, CancellationToken token)
     {
-        // TODO TEMPORARY
         var source = server.UriSources[request.TextDocument.Uri];
 
         var name = NameFinder.GetNameAtPosition(source.Tree, request.Position.ToLeda());
