@@ -16,9 +16,7 @@ public class DefinitionHandler(LedaServer server) : DefinitionHandlerBase
 
         if (name != null && source.TryGetTreeSymbol(name, out var symbol) && symbol.Definition.Source != null)
         {
-            return Task.FromResult(new DefinitionResponse(new Location(
-                server.SourceUris[symbol.Definition.Source],
-                symbol.Definition.Range.ToLs())))!;
+            return Task.FromResult(new DefinitionResponse(server.ToLsLocation(symbol.Definition)))!;
         }
 
         return Task.FromResult<DefinitionResponse?>(null);

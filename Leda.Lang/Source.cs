@@ -38,6 +38,11 @@ public class Source
     private readonly Dictionary<Symbol, Type> symbolTypeMap = [];
 
     /// <summary>
+    /// A dictionary of where symbols are references in this source. (Symbols from other sources may be referenced too?)
+    /// </summary>
+    public Dictionary<Symbol, List<Location>> SymbolReferences { get; private set; } = [];
+
+    /// <summary>
     /// A list of any symbols referenced in this Source that are defined in other Sources.
     /// </summary>
     private List<string> externalSymbols = [];
@@ -104,6 +109,7 @@ public class Source
     public List<Diagnostic> Bind()
     {
         treeSymbolMap = [];
+        SymbolReferences = [];
         return Binder.Bind(this, Tree);
     }
 
@@ -116,22 +122,32 @@ public class Source
     }
 
     /// <summary>
-    /// Associates this tree node with the given value symbol.
+    /// Associates this tree node with the given symbol.
     /// </summary>
-    internal void AttachSymbol(Tree tree, Symbol symbol)
+    internal void AttachSymbol(Tree tree, Symbol symbol, bool isDefinition = false)
     {
         treeSymbolMap.Add(tree, symbol);
+
+        if (!isDefinition)
+        {
+            if (!SymbolReferences.TryGetValue(symbol, out var references))
+            {
+                references = [];
+                SymbolReferences.Add(symbol, references);
+            }
+
+            references.Add(new Location(this, tree.Range));
+        }
     }
 
     /// <summary>
-    /// Finds the value symbol that this tree refers to.
+    /// Finds the symbol that this tree refers to.
     /// </summary>
     /// <returns>True if this tree has a corresponding value symbol, false otherwise.</returns>
     public bool TryGetTreeSymbol(Tree tree, [NotNullWhen(true)] out Symbol? symbol)
     {
         return treeSymbolMap.TryGetValue(tree, out symbol);
     }
-
 
     /// <summary>
     /// Sets this value symbol's type.

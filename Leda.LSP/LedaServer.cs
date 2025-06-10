@@ -4,6 +4,7 @@ using EmmyLua.LanguageServer.Framework.Protocol.Message.Configuration;
 using EmmyLua.LanguageServer.Framework.Protocol.Model;
 using EmmyLua.LanguageServer.Framework.Server;
 using Leda.Lang;
+using Location = EmmyLua.LanguageServer.Framework.Protocol.Model.Location;
 
 namespace Leda.LSP;
 
@@ -67,11 +68,20 @@ public class LedaServer
         server.AddHandler(new TextDocumentHandler(this));
         server.AddHandler(new HoverHandler(this));
         server.AddHandler(new DefinitionHandler(this));
+        server.AddHandler(new ReferenceHandler(this));
     }
 
     public Task Run()
     {
         return server.Run();
+    }
+
+    /// <summary>
+    /// Converts a Leda location to a language server location. Assumes that `location.Source` is not null.
+    /// </summary>
+    public Location ToLsLocation(Leda.Lang.Location location)
+    {
+        return new(SourceUris[location.Source], location.Range.ToLs());
     }
 
     private void AddSource(Source source, DocumentUri uri)
@@ -96,5 +106,25 @@ public class LedaServer
             Uri = SourceUris[source],
             Diagnostics = diagnostics.Select(d => d.ToLs()).ToList()
         });
+    }
+
+    public List<Location> GetSymbolReferences(Symbol symbol, bool includeDefinition)
+    {
+        List<Location> list = [];
+
+        if (includeDefinition && symbol.Definition.Source != null)
+        {
+            list.Add(ToLsLocation(symbol.Definition));
+        }
+
+        foreach (var projectSource in project.Sources)
+        {
+            if (projectSource.SymbolReferences.TryGetValue(symbol, out var references))
+            {
+                list.AddRange(references.Select(ToLsLocation));
+            }
+        }
+
+        return list;
     }
 }

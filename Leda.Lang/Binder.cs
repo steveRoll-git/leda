@@ -127,7 +127,7 @@ public class Binder : Tree.IVisitor
         }
 
         symbol.Definition = new(source, name.Range);
-        source.AttachSymbol(name, symbol);
+        source.AttachSymbol(name, symbol, true);
     }
 
     /// <summary>
