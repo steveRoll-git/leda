@@ -99,9 +99,10 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return new TypeList(list, continued);
     }
 
-    private Type VisitFunctionType(Tree.FunctionType functionType)
+    private Type VisitFunctionType(Tree.FunctionType functionType, bool addSymbols = false)
     {
         List<Type> parameters = [];
+        List<string> paramNames = [];
         foreach (var parameter in functionType.Parameters)
         {
             if (parameter.Type != null)
@@ -109,20 +110,26 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 var type = parameter.Type.AcceptTypeVisitor(this);
                 parameters.Add(type);
 
-                if (!source.TryGetTreeSymbol(parameter.Name, out var symbol))
+                if (addSymbols)
                 {
-                    throw new Exception("Parameter doesn't have symbol");
-                }
+                    if (!source.TryGetTreeSymbol(parameter.Name, out var symbol))
+                    {
+                        throw new Exception("Parameter doesn't have symbol");
+                    }
 
-                source.SetSymbolType(symbol, type);
+                    source.SetSymbolType(symbol, type);
+                }
             }
             else
             {
                 // TODO infer parameter types from target
+                parameters.Add(Type.Any);
             }
+
+            paramNames.Add(parameter.Name.Value);
         }
 
-        var parameterTypeList = new TypeList(parameters);
+        var parameterTypeList = new TypeList(parameters) { NameList = paramNames };
         // TODO handle rest parameter
 
         var returnTypeList = GetFunctionReturnType(functionType);
@@ -270,7 +277,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.LocalFunctionDeclaration declaration)
     {
-        var functionType = VisitFunctionType(declaration.Function.Type);
+        var functionType = VisitFunctionType(declaration.Function.Type, true);
         if (!source.TryGetTreeSymbol(declaration.Name, out var symbol))
         {
             throw new Exception();
@@ -351,7 +358,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.Function function)
     {
-        var functionType = VisitFunctionType(function.Type);
+        var functionType = VisitFunctionType(function.Type, true);
         VisitBlock(function.Body);
         return functionType;
     }
@@ -482,24 +489,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitType(Tree.FunctionType functionType)
     {
-        List<Type> parameters = [];
-        foreach (var parameter in functionType.Parameters)
-        {
-            if (parameter.Type != null)
-            {
-                parameters.Add(parameter.Type.AcceptTypeVisitor(this));
-            }
-            else
-            {
-                // TODO warn about implicit any?
-                parameters.Add(Type.Any);
-            }
-        }
-
-        var parameterTypeList = new TypeList(parameters);
-        var returnType = GetFunctionReturnType(functionType);
-
-        return new Type.Function { Parameters = parameterTypeList, Return = returnType ?? TypeList.None };
+        return VisitFunctionType(functionType);
     }
 
     public static List<Diagnostic> Check(Source source)

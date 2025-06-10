@@ -22,7 +22,11 @@ public class TypeList
     /// </summary>
     public List<Type> List { get; }
 
-    // TODO optional names for list items
+    /// <summary>
+    /// An optional list of the names of each item in `List`. If this is present, it must have the same number of
+    /// elements as `List`.
+    /// </summary>
+    public List<string>? NameList { get; init; }
 
     /// <summary>
     /// A TypeList that continues this one. If this is not null, `Rest` must be null.
@@ -147,7 +151,15 @@ public class TypeList
 
     public override string ToString()
     {
-        var result = string.Join(", ", List);
+        string result;
+        if (NameList != null)
+        {
+            result = string.Join(", ", List.Select((type, i) => NameList[i] + ": " + type));
+        }
+        else
+        {
+            result = string.Join(", ", List);
+        }
 
         if (Continued != null)
         {
