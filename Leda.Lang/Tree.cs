@@ -301,11 +301,29 @@ public abstract class Tree
     public class Break : Tree;
 
     /// <summary>
+    /// The contexts in which a Name can appear.
+    /// </summary>
+    public enum NameContext
+    {
+        /// <summary>
+        /// The name references a value.
+        /// </summary>
+        Value,
+
+        /// <summary>
+        /// The name references a type.
+        /// </summary>
+        Type
+    }
+
+    /// <summary>
     /// A named reference to a variable or type.
     /// </summary>
-    public class Name(string value) : Tree
+    public class Name(string value, NameContext context) : Tree
     {
         public string Value => value;
+
+        public NameContext Context => context;
 
         public override string ToString() => Value;
 

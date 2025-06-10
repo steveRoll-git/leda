@@ -109,7 +109,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 var type = parameter.Type.AcceptTypeVisitor(this);
                 parameters.Add(type);
 
-                if (!source.TryGetValueSymbol(parameter.Name, out var symbol))
+                if (!source.TryGetTreeSymbol(parameter.Name, out var symbol))
                 {
                     throw new Exception("Parameter doesn't have symbol");
                 }
@@ -176,7 +176,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             }
         }
 
-        if (!source.TryGetValueSymbol(numericalFor.Counter, out var counterSymbol))
+        if (!source.TryGetTreeSymbol(numericalFor.Counter, out var counterSymbol))
         {
             throw new Exception("No symbol for `for` loop counter");
         }
@@ -271,7 +271,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     public void Visit(Tree.LocalFunctionDeclaration declaration)
     {
         var functionType = VisitFunctionType(declaration.Function.Type);
-        if (!source.TryGetValueSymbol(declaration.Name, out var symbol))
+        if (!source.TryGetTreeSymbol(declaration.Name, out var symbol))
         {
             throw new Exception();
         }
@@ -320,7 +320,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 variableType = valueType;
             }
 
-            if (!source.TryGetValueSymbol(declaration.Name, out var symbol))
+            if (!source.TryGetTreeSymbol(declaration.Name, out var symbol))
             {
                 throw new Exception("Variable doesn't have a symbol");
             }
@@ -413,7 +413,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.Name name)
     {
-        if (!source.TryGetValueSymbol(name, out var symbol))
+        if (!source.TryGetTreeSymbol(name, out var symbol))
         {
             // Unresolved names should be reported by the Binder.
             return Type.Unknown;
@@ -471,9 +471,9 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitType(Tree.Name name)
     {
-        if (source.TryGetTypeSymbol(name, out var symbol))
+        if (source.TryGetTreeSymbol(name, out var symbol) && symbol is Symbol.TypeSymbol typeSymbol)
         {
-            return symbol.Type;
+            return typeSymbol.Type;
         }
 
         // TODO report error?

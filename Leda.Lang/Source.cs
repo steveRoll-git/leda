@@ -28,19 +28,14 @@ public class Source
     public Tree.Block Tree { get; private set; }
 
     /// <summary>
-    /// Maps Tree nodes to the value symbol they refer to.
+    /// Maps Tree nodes to the symbol they refer to.
     /// </summary>
-    private Dictionary<Tree, Symbol> valueSymbolMap = [];
+    private Dictionary<Tree, Symbol> treeSymbolMap = [];
 
     /// <summary>
     /// Maps Symbols to their types.
     /// </summary>
     private readonly Dictionary<Symbol, Type> symbolTypeMap = [];
-
-    /// <summary>
-    /// Maps Tree nodes to the type symbol they refer to.
-    /// </summary>
-    private Dictionary<Tree, Symbol.TypeSymbol> treeTypeSymbolMap = [];
 
     /// <summary>
     /// A list of any symbols referenced in this Source that are defined in other Sources.
@@ -108,7 +103,7 @@ public class Source
     /// </summary>
     public List<Diagnostic> Bind()
     {
-        valueSymbolMap = [];
+        treeSymbolMap = [];
         return Binder.Bind(this, Tree);
     }
 
@@ -123,36 +118,20 @@ public class Source
     /// <summary>
     /// Associates this tree node with the given value symbol.
     /// </summary>
-    internal void AttachValueSymbol(Tree tree, Symbol symbol)
+    internal void AttachSymbol(Tree tree, Symbol symbol)
     {
-        valueSymbolMap.Add(tree, symbol);
-    }
-
-    /// <summary>
-    /// Associates this tree node with the given type symbol.
-    /// </summary>
-    internal void AttachTypeSymbol(Tree tree, Symbol.TypeSymbol symbol)
-    {
-        treeTypeSymbolMap.Add(tree, symbol);
+        treeSymbolMap.Add(tree, symbol);
     }
 
     /// <summary>
     /// Finds the value symbol that this tree refers to.
     /// </summary>
     /// <returns>True if this tree has a corresponding value symbol, false otherwise.</returns>
-    internal bool TryGetValueSymbol(Tree tree, [NotNullWhen(true)] out Symbol? symbol)
+    public bool TryGetTreeSymbol(Tree tree, [NotNullWhen(true)] out Symbol? symbol)
     {
-        return valueSymbolMap.TryGetValue(tree, out symbol);
+        return treeSymbolMap.TryGetValue(tree, out symbol);
     }
 
-    /// <summary>
-    /// Finds the type symbol that this tree refers to.
-    /// </summary>
-    /// <returns>True if this tree has a corresponding type symbol, false otherwise.</returns>
-    internal bool TryGetTypeSymbol(Tree tree, [NotNullWhen(true)] out Symbol.TypeSymbol? symbol)
-    {
-        return treeTypeSymbolMap.TryGetValue(tree, out symbol);
-    }
 
     /// <summary>
     /// Sets this value symbol's type.

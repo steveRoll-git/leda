@@ -60,21 +60,25 @@ public class Binder : Tree.IVisitor
     }
 
     /// <summary>
-    /// Attempts to find a binding by its name.
+    /// Attempts to find a symbol by its name.
     /// </summary>
     /// <param name="name">The name of the symbol to look for.</param>
     /// <param name="symbol">Out variable to store the symbol at.</param>
     /// <param name="scope">Out variable to store the scope where the symbol was found.</param>
     /// <returns>True if a symbol with this name was found, false otherwise.</returns>
-    private bool TryGetBinding(string name, [NotNullWhen(true)] out Binding? symbol,
+    private bool TryGetBinding(Tree.Name name, [NotNullWhen(true)] out Symbol? symbol,
         [NotNullWhen(true)] out Scope? scope)
     {
         for (var i = scopes.Count - 1; i >= 0; i--)
         {
-            if (scopes[i].TryGetValue(name, out symbol))
+            if (scopes[i].TryGetValue(name.Value, out var binding))
             {
-                scope = scopes[i];
-                return true;
+                symbol = name.Context == Tree.NameContext.Value ? binding.ValueSymbol : binding.TypeSymbol;
+                if (symbol != null)
+                {
+                    scope = scopes[i];
+                    return true;
+                }
             }
         }
 
@@ -83,7 +87,7 @@ public class Binder : Tree.IVisitor
         return false;
     }
 
-    private bool TryGetBinding(string name, [NotNullWhen(true)] out Binding? symbol)
+    private bool TryGetBinding(Tree.Name name, [NotNullWhen(true)] out Symbol? symbol)
     {
         return TryGetBinding(name, out symbol, out _);
     }
@@ -95,16 +99,15 @@ public class Binder : Tree.IVisitor
     private void AddSymbol(Tree.Name name, Symbol symbol)
     {
         // TODO report warning if a name is shadowed
-        if (TryGetBinding(name.Value, out var existingBinding, out var existingScope) && existingScope == CurrentScope)
+        if (TryGetBinding(name, out var existingSymbol, out var existingScope) && existingScope == CurrentScope)
         {
-            if (symbol is Symbol.TypeSymbol && existingBinding.TypeSymbol != null)
+            if (name.Context == Tree.NameContext.Value)
+            {
+                Report(new Diagnostic.ValueAlreadyDeclared(name.Range, name.Value, existingSymbol));
+            }
+            else if (name.Context == Tree.NameContext.Type)
             {
                 Report(new Diagnostic.TypeAlreadyDeclared(name.Range, name.Value));
-            }
-            else if (symbol is not Symbol.TypeSymbol && existingBinding.ValueSymbol != null)
-            {
-                Report(new Diagnostic.ValueAlreadyDeclared(name.Range, name.Value,
-                    existingBinding.ValueSymbol));
             }
         }
 
@@ -124,7 +127,7 @@ public class Binder : Tree.IVisitor
         }
 
         symbol.Definition = new(source, name.Range);
-        source.AttachValueSymbol(name, symbol);
+        source.AttachSymbol(name, symbol);
     }
 
     /// <summary>
@@ -250,17 +253,9 @@ public class Binder : Tree.IVisitor
 
     public void Visit(Tree.Name name)
     {
-        if (TryGetBinding(name.Value, out var binding))
+        if (TryGetBinding(name, out var symbol))
         {
-            if (binding.ValueSymbol != null)
-            {
-                source.AttachValueSymbol(name, binding.ValueSymbol);
-            }
-
-            if (binding.TypeSymbol != null)
-            {
-                source.AttachTypeSymbol(name, binding.TypeSymbol);
-            }
+            source.AttachSymbol(name, symbol);
         }
         else
         {

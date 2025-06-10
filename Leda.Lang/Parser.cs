@@ -195,6 +195,16 @@ public class Parser
         return lookaheadTokens[index - 1];
     }
 
+    private Tree.Name ParseValueName()
+    {
+        return StartEndTree(new Tree.Name(Expect(Name).Value, Tree.NameContext.Value));
+    }
+
+    private Tree.Name ParseTypeName()
+    {
+        return StartEndTree(new Tree.Name(Expect(Name).Value, Tree.NameContext.Type));
+    }
+
     /// <summary>
     /// Parse a block of statements.
     /// </summary>
@@ -379,7 +389,7 @@ public class Parser
         // 'for' name '=' exp ',' exp [',' exp] 'do' block 'end'
         if (Lookahead(1) is Token.Assign)
         {
-            var counter = new Tree.Name(Expect(Name).Value);
+            var counter = ParseValueName();
             Expect(Assign);
             var start = ParseExpression();
             Expect(Comma);
@@ -440,7 +450,7 @@ public class Parser
         StartTree();
 
         // name [':' type]
-        var name = StartEndTree(new Tree.Name(Expect(Name).Value));
+        var name = ParseValueName();
 
         Tree? type = null;
         if (Accept<Token.Colon>())
@@ -461,11 +471,11 @@ public class Parser
                 return EndTree(ParseFunctionType());
             }
 
-            return EndTree(new Tree.Name("function"));
+            return EndTree(new Tree.Name("function", Tree.NameContext.Type));
         }
 
         // TODO incomplete
-        return EndTree(new Tree.Name(Expect(Name).Value));
+        return EndTree(new Tree.Name(Expect(Name).Value, Tree.NameContext.Type));
     }
 
     private List<Tree> ParseTypeList()
@@ -500,7 +510,7 @@ public class Parser
         if (Accept<Token.Function>())
         {
             // 'local' name funcbody
-            var name = StartEndTree(new Tree.Name(Expect(Name).Value));
+            var name = ParseValueName();
             var function = ParseFunctionBody(false);
             return EndTree(new Tree.LocalFunctionDeclaration(name, function));
         }
@@ -523,7 +533,7 @@ public class Parser
 
         // 'function' name {'.' name} [':' name]
         Expect(Function);
-        Tree path = StartEndTree(new Tree.Name(Expect(Name).Value));
+        Tree path = ParseValueName();
         var isMethod = false;
         while (token is Token.Dot or Token.Colon)
         {
@@ -560,7 +570,7 @@ public class Parser
         List<Tree.Declaration> parameters = [];
         if (isMethod)
         {
-            parameters.Add(new(new Tree.Name("self") { Range = lParenRange }, null));
+            parameters.Add(new(new Tree.Name("self", Tree.NameContext.Value) { Range = lParenRange }, null));
         }
 
         if (!Accept<Token.RParen>())
@@ -612,7 +622,7 @@ public class Parser
         if (token is Token.Name)
         {
             var name = Consume();
-            return ParsePrefixExpression(EndTree(new Tree.Name(name.Value)));
+            return ParsePrefixExpression(EndTree(new Tree.Name(name.Value, Tree.NameContext.Value)));
         }
 
         var got = Consume();
@@ -635,7 +645,7 @@ public class Parser
         // Method call: ':' Name  '(' [explist] ')'
         if (Accept<Token.Colon>())
         {
-            var funcName = StartEndTree(new Tree.Name(Expect(Name).Value));
+            var funcName = ParseValueName();
             Expect(LParen);
 
             if (Accept<Token.RParen>())
