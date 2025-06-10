@@ -2,7 +2,6 @@ using EmmyLua.LanguageServer.Framework.Protocol.Capabilities.Client.ClientCapabi
 using EmmyLua.LanguageServer.Framework.Protocol.Capabilities.Server;
 using EmmyLua.LanguageServer.Framework.Protocol.Message.Definition;
 using EmmyLua.LanguageServer.Framework.Server.Handler;
-using Location = EmmyLua.LanguageServer.Framework.Protocol.Model.Location;
 
 namespace Leda.LSP;
 
