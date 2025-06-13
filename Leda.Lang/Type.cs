@@ -67,7 +67,8 @@ public class Type
     /// <summary>
     /// Supertype of all table types.
     /// </summary>
-    public static readonly Type Table = new("table", other => other == Table); // TODO include other table types
+    public static readonly Type
+        TablePrimitive = new("table", other => other == TablePrimitive); // TODO include other table types
 
     /// <summary>
     /// Supertype of all function types.
@@ -75,17 +76,17 @@ public class Type
     public static readonly Type FunctionPrimitive =
         new("function", other => other == FunctionPrimitive || other is Function);
 
-    public class Function : Type
+    public class Function(TypeList parameters, TypeList returns) : Type
     {
         /// <summary>
         /// The types of this function's parameters.
         /// </summary>
-        public TypeList Parameters { get; init; }
+        public TypeList Parameters { get; } = parameters;
 
         /// <summary>
         /// This function's return types.
         /// </summary>
-        public TypeList Return { get; init; }
+        public TypeList Return { get; } = returns;
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
@@ -124,6 +125,17 @@ public class Type
         {
             return $"function({Parameters}){(Return.Empty ? "" : ": " + Return)}";
         }
+    }
+
+    public class Table(List<Table.Pair> pairs) : Type
+    {
+        public struct Pair
+        {
+            public Type Key;
+            public Type Value;
+        }
+
+        public List<Pair> Pairs = pairs;
     }
 
     /// <summary>

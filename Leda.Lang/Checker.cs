@@ -135,7 +135,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         var returnTypeList = GetFunctionReturnType(functionType);
         returnTypeList ??= TypeList.None; // TODO infer return type
 
-        return new Type.Function { Parameters = parameterTypeList, Return = returnTypeList };
+        return new Type.Function(parameterTypeList, returnTypeList);
     }
 
     private TypeList? GetFunctionReturnType(Tree.FunctionType functionType)
@@ -396,7 +396,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         if (unary is Tree.Length)
         {
             // TODO use __len metamethod
-            if (!Type.Table.IsAssignableFrom(exprType) && !Type.String.IsAssignableFrom(exprType))
+            if (!Type.TablePrimitive.IsAssignableFrom(exprType) && !Type.String.IsAssignableFrom(exprType))
             {
                 Report(new Diagnostic.CantGetLength(unary.Range, exprType));
             }
@@ -438,7 +438,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     public Type VisitExpression(Tree.Table table)
     {
         // TODO iterate over fields
-        return Type.Table;
+        return Type.TablePrimitive;
     }
 
     public Type VisitExpression(Tree.Number number)
