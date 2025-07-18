@@ -62,7 +62,8 @@ public class Type
     /// <summary>
     /// The primitive string type.
     /// </summary>
-    public static readonly Type String = new("string", other => other == String);
+    public static readonly Type StringPrimitive =
+        new("string", other => other == StringPrimitive || other is StringConstant);
 
     /// <summary>
     /// Supertype of all table types.
@@ -74,6 +75,14 @@ public class Type
     /// </summary>
     public static readonly Type FunctionPrimitive =
         new("function", other => other == FunctionPrimitive || other is Function);
+
+    /// <summary>
+    /// A string constant.
+    /// </summary>
+    public class StringConstant(string constant) : Type
+    {
+        public string Constant => constant;
+    }
 
     public class Function : Type
     {
