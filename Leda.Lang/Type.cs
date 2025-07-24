@@ -68,7 +68,8 @@ public class Type
     /// <summary>
     /// Supertype of all table types.
     /// </summary>
-    public static readonly Type Table = new("table", other => other == Table); // TODO include other table types
+    public static readonly Type
+        TablePrimitive = new("table", other => other == TablePrimitive || other is Table);
 
     /// <summary>
     /// Supertype of all function types.
@@ -82,19 +83,24 @@ public class Type
     public class StringConstant(string constant) : Type
     {
         public string Constant => constant;
+
+        public override string ToString()
+        {
+            return '"' + Constant + '"';
+        }
     }
 
-    public class Function : Type
+    public class Function(TypeList parameters, TypeList returns) : Type
     {
         /// <summary>
         /// The types of this function's parameters.
         /// </summary>
-        public TypeList Parameters { get; init; }
+        public TypeList Parameters { get; } = parameters;
 
         /// <summary>
         /// This function's return types.
         /// </summary>
-        public TypeList Return { get; init; }
+        public TypeList Return { get; } = returns;
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
@@ -132,6 +138,47 @@ public class Type
         public override string ToString()
         {
             return $"function({Parameters}){(Return.Empty ? "" : ": " + Return)}";
+        }
+    }
+
+    public class Table(List<Table.Pair> pairs) : Type
+    {
+        // TODO use a more efficient lookup structure for this
+
+        public struct Pair(Type key, Type value)
+        {
+            public Type Key => key;
+            public Type Value => value;
+        }
+
+        public List<Pair> Pairs => pairs;
+
+        public override string ToString()
+        {
+            var s = "{";
+
+            if (Pairs.Count > 0)
+            {
+                s += "\n";
+            }
+
+            foreach (var pair in Pairs)
+            {
+                string keyString;
+                // TODO show key without quotes only if it's also a valid identifier
+                if (pair.Key is StringConstant c)
+                {
+                    keyString = c.Constant;
+                }
+                else
+                {
+                    keyString = $"[{pair.Key}]";
+                }
+
+                s += $"  {keyString}: {pair.Value},\n";
+            }
+
+            return s + "}";
         }
     }
 

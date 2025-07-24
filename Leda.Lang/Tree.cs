@@ -21,6 +21,7 @@ public abstract class Tree
         void Visit(Unary unary);
         void Visit(Function function);
         void Visit(Name name);
+        void Visit(Table table);
         void Visit(Return returnStatement);
         void Visit(LocalFunctionDeclaration declaration);
         void Visit(GlobalDeclaration declaration);
@@ -445,6 +446,11 @@ public abstract class Tree
     public class Table(List<TableField> fields) : Tree
     {
         public List<TableField> Fields => fields;
+
+        public override void AcceptVisitor(IVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
 
         public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
         {

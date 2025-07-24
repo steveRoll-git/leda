@@ -135,7 +135,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         var returnTypeList = GetFunctionReturnType(functionType);
         returnTypeList ??= TypeList.None; // TODO infer return type
 
-        return new Type.Function { Parameters = parameterTypeList, Return = returnTypeList };
+        return new Type.Function(parameterTypeList, returnTypeList);
     }
 
     private TypeList? GetFunctionReturnType(Tree.FunctionType functionType)
@@ -270,6 +270,11 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new NotImplementedException();
     }
 
+    public void Visit(Tree.Table table)
+    {
+        throw new NotImplementedException();
+    }
+
     public void Visit(Tree.Return returnStatement)
     {
         throw new NotImplementedException();
@@ -396,7 +401,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         if (unary is Tree.Length)
         {
             // TODO use __len metamethod
-            if (!Type.Table.IsAssignableFrom(exprType) && !Type.StringPrimitive.IsAssignableFrom(exprType))
+            if (!Type.TablePrimitive.IsAssignableFrom(exprType) && !Type.StringPrimitive.IsAssignableFrom(exprType))
             {
                 Report(new Diagnostic.CantGetLength(unary.Range, exprType));
             }
@@ -437,18 +442,28 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.Table table, bool isConstant)
     {
-        // TODO iterate over fields
-        return Type.Table;
+        List<Type.Table.Pair> pairs = [];
+
+        foreach (var field in table.Fields)
+        {
+            pairs.Add(new Type.Table.Pair(
+                field.Key.AcceptExpressionVisitor(this, true),
+                // The value is visited as a non-constant — until we'll have const assertions like TypeScript's.
+                field.Value.AcceptExpressionVisitor(this, false)));
+        }
+
+        return new Type.Table(pairs);
     }
 
     public Type VisitExpression(Tree.Number number, bool isConstant)
     {
+        // TODO return number literal type if `isConstant`
         return Type.Number;
     }
 
     public Type VisitExpression(Tree.String stringValue, bool isConstant)
     {
-        return isConstant ? Type.StringPrimitive : new Type.StringConstant(stringValue.Value);
+        return isConstant ? new Type.StringConstant(stringValue.Value) : Type.StringPrimitive;
     }
 
     public Type VisitExpression(Tree.True trueValue, bool isConstant)

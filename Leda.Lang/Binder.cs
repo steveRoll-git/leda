@@ -265,6 +265,15 @@ public class Binder : Tree.IVisitor
         }
     }
 
+    public void Visit(Tree.Table table)
+    {
+        foreach (var field in table.Fields)
+        {
+            field.Key.AcceptVisitor(this);
+            field.Value.AcceptVisitor(this);
+        }
+    }
+
     public void Visit(Tree.Return returnStatement)
     {
         returnStatement.Expression?.AcceptVisitor(this);
