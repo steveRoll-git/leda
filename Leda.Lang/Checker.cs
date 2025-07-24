@@ -453,12 +453,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.True trueValue, bool isConstant)
     {
-        return Type.True;
+        return isConstant ? Type.True : Type.Boolean;
     }
 
     public Type VisitExpression(Tree.False falseValue, bool isConstant)
     {
-        return Type.False;
+        return isConstant ? Type.False : Type.Boolean;
     }
 
     public Type VisitExpression(Tree.Nil nil, bool isConstant)
