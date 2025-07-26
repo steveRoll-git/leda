@@ -37,6 +37,7 @@ public class Binder : Tree.IVisitor
         // TODO maybe these should originate from a declaration file instead
         scopes.Add(new()
         {
+            [Type.Any.Name] = new(null, new Symbol.TypeSymbol(Type.Any)),
             [Type.Boolean.Name] = new(null, new Symbol.TypeSymbol(Type.Boolean)),
             [Type.Number.Name] = new(null, new Symbol.TypeSymbol(Type.Number)),
             [Type.StringPrimitive.Name] =
