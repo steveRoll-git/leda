@@ -25,7 +25,7 @@ public class DocumentHighlightHandler(LedaServer server) : DocumentHighlightHand
                     .ToList()));
         }
 
-        return Task.FromResult<DocumentHighlightResponse?>(null)!;
+        return Task.FromResult(new DocumentHighlightResponse([]));
     }
 
     public override void RegisterCapability(ServerCapabilities serverCapabilities,
