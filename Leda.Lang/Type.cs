@@ -84,6 +84,18 @@ public class Type
     {
         public string Constant => constant;
 
+        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+        {
+            if (other is StringConstant c && c.Constant == Constant)
+            {
+                reason = null;
+                return true;
+            }
+
+            reason = new TypeMismatch.Primitive(this, other);
+            return false;
+        }
+
         public override string ToString()
         {
             return '"' + Constant + '"';
