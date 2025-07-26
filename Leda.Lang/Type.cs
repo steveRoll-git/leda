@@ -165,6 +165,42 @@ public class Type
 
         public List<Pair> Pairs => pairs;
 
+        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+        {
+            if (other is not Table otherTable)
+            {
+                reason = new TypeMismatch.Primitive(this, other);
+                return false;
+            }
+
+            List<TypeMismatch> reasons = [];
+
+            foreach (var pair in Pairs)
+            {
+                // TODO use lookup
+                var otherPair = otherTable.Pairs.FirstOrDefault(p => pair.Key.IsAssignableFrom(p.Key));
+                if (otherPair.Key == null)
+                {
+                    reasons.Add(new TypeMismatch.SourceMissingKey(this, other, pair.Key));
+                    continue;
+                }
+
+                if (!pair.Value.IsAssignableFrom(otherPair.Value, out var valueReason))
+                {
+                    reasons.Add(new TypeMismatch.TableKeyIncompatible(pair.Key) { Children = [valueReason] });
+                }
+            }
+
+            if (reasons.Count > 0)
+            {
+                reason = new TypeMismatch.Primitive(this, other) { Children = reasons };
+                return false;
+            }
+
+            reason = null;
+            return true;
+        }
+
         public override string ToString()
         {
             var s = "{";

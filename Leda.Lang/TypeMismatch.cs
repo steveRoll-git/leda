@@ -41,6 +41,17 @@ public abstract record TypeMismatch
         public override string Message => $"Type of {TypeListItemNoun(Kind)} #{Index + 1} is incompatible:";
     }
 
+    public record SourceMissingKey(Type Target, Type Source, Type Key) : TypeMismatch
+    {
+        public override string Message =>
+            $"Type '{Source}' does not have a key of type '{Key}' required by type '{Target}'.";
+    }
+
+    public record TableKeyIncompatible(Type Key) : TypeMismatch
+    {
+        public override string Message => $"Values at key '{Key}' are incompatible.";
+    }
+
     private string ToString(int indent)
     {
         var result = new string(' ', indent * 2) + Message;
