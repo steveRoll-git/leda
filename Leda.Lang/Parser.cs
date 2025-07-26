@@ -206,6 +206,14 @@ public class Parser
     }
 
     /// <summary>
+    /// Parses a single identifier that represents a string.
+    /// </summary>
+    private Tree.String ParseStringIdentifier()
+    {
+        return StartEndTree(new Tree.String(Expect(Name).Value));
+    }
+
+    /// <summary>
     /// Parse a block of statements.
     /// </summary>
     private Tree.Block ParseBlock()
@@ -540,7 +548,7 @@ public class Parser
             StartTree(path.Range.Start);
 
             var separator = Consume();
-            var nextName = StartEndTree(new Tree.String(Expect(Name).Value));
+            var nextName = ParseStringIdentifier();
 
             path = EndTree(new Tree.Access(path, nextName));
 
@@ -638,14 +646,14 @@ public class Parser
         // Access with a dot: '.' Name
         if (Accept<Token.Dot>())
         {
-            var name = StartEndTree(new Tree.String(Expect(Name).Value));
+            var name = ParseStringIdentifier();
             return ParsePrefixExpression(EndTree(new Tree.Access(previous, name)));
         }
 
         // Method call: ':' Name  '(' [explist] ')'
         if (Accept<Token.Colon>())
         {
-            var funcName = ParseValueName();
+            var funcName = ParseStringIdentifier();
             Expect(LParen);
 
             if (Accept<Token.RParen>())

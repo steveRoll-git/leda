@@ -178,6 +178,18 @@ public abstract record Diagnostic(Range Range)
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Expected {Expected} arguments, but got {Got}.";
     }
+
+    public record TypeNotIndexable(Range Range, Type Type) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Type '{Type}' cannot be indexed.";
+    }
+
+    public record TypeDoesntHaveKey(Range Range, Type Target, Type Key) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Type '{Target}' doesn't have key of type '{Key}'.";
+    }
 }
 
 public enum DiagnosticSeverity

@@ -724,10 +724,10 @@ public abstract class Tree
     /// <summary>
     /// A method call using `:` syntax.
     /// </summary>
-    public class MethodCall(Tree target, Name funcName, List<Tree> parameters) : Tree
+    public class MethodCall(Tree target, String funcName, List<Tree> parameters) : Tree
     {
         public Tree Target => target;
-        public Name FuncName => funcName;
+        public String FuncName => funcName;
         public List<Tree> Parameters => parameters;
 
         public override void AcceptVisitor(IVisitor visitor)

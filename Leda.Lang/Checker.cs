@@ -155,6 +155,33 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return null;
     }
 
+    private Type GetAccessType(Tree target, Tree key, bool isConstant)
+    {
+        var targetType = target.AcceptExpressionVisitor(this, isConstant);
+        // TODO handle __index
+        if (targetType is not Type.Table table)
+        {
+            Report(new Diagnostic.TypeNotIndexable(target.Range, targetType));
+            return Type.Unknown;
+        }
+
+        // TODO decide whether the key is constant if it's other literals too
+        var keyType = key.AcceptExpressionVisitor(this, key is Tree.String);
+
+        // TODO use lookup
+        foreach (var pair in table.Pairs)
+        {
+            if (pair.Key.IsAssignableFrom(keyType))
+            {
+                return pair.Value;
+            }
+        }
+
+        Report(new Diagnostic.TypeDoesntHaveKey(key.Range, targetType, keyType));
+
+        return Type.Unknown;
+    }
+
     public void Visit(Tree.Do block)
     {
         VisitBlock(block.Body);
@@ -381,7 +408,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.Access access, bool isConstant)
     {
-        throw new NotImplementedException();
+        return GetAccessType(access.Target, access.Key, isConstant);
     }
 
     public Type VisitExpression(Tree.Binary binary, bool isConstant)
