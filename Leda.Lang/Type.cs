@@ -2,80 +2,92 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Leda.Lang;
 
-public class Type
+public abstract class Type
 {
-    public string Name { get; } = "<unnamed type>";
+    public virtual string Name => "<unnamed type>";
 
     /// <summary>
-    /// Function that will be called with another type to check if it's assignable to this one.
+    /// Base class for all primitive types, that don't require much checking logic other than checking that the target
+    /// type is equal to one or more existing types.
     /// </summary>
-    private readonly Func<Type, bool> assignableFunc = _ => true;
-
-    public Type(string name, Func<Type, bool> assignableFunc)
+    private class PrimitiveType(string name, Func<Type, bool> assignableFunc) : Type
     {
-        Name = name;
-        this.assignableFunc = assignableFunc;
-    }
+        public override string Name => name;
+        private Func<Type, bool> AssignableFunc => assignableFunc;
 
-    public Type(string name)
-    {
-        Name = name;
-    }
+        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+        {
+            // 'unknown' is assignable to all types.
+            if (other == Unknown)
+            {
+                reason = null;
+                return true;
+            }
 
-    public Type() { }
+            if (!AssignableFunc(other))
+            {
+                reason = new TypeMismatch.Primitive(this, other);
+                return false;
+            }
+
+            reason = null;
+            return true;
+        }
+    }
 
     /// <summary>
     /// The top type - can hold any value.
     /// </summary>
-    public static readonly Type Any = new("any");
+    public static readonly Type Any = new PrimitiveType("any", _ => true);
 
     /// <summary>
     /// The "unknown" type, used as a placeholder before named references are resolved, or left there in case of errors.
     /// </summary>
-    public static readonly Type Unknown = new("unknown");
+    public static readonly Type Unknown = new PrimitiveType("unknown", _ => true);
 
     /// <summary>
     /// The `nil` unit type.
     /// </summary>
-    public static readonly Type Nil = new("nil", other => other == Nil);
+    public static readonly Type Nil = new PrimitiveType("nil", other => other == Nil);
 
     /// <summary>
     /// The primitive number type.
     /// </summary>
-    public static readonly Type Number = new("number", other => other == Number);
+    public static readonly Type Number = new PrimitiveType("number", other => other == Number);
 
     /// <summary>
     /// The `true` boolean literal.
     /// </summary>
-    public static readonly Type True = new("true", other => other == True);
+    public static readonly Type True = new PrimitiveType("true", other => other == True);
 
     /// <summary>
     /// The `false` boolean literal.
     /// </summary>
-    public static readonly Type False = new("false", other => other == False);
+    public static readonly Type False = new PrimitiveType("false", other => other == False);
 
     /// <summary>
     /// The primitive boolean type.
     /// </summary>
-    public static readonly Type Boolean = new("boolean", other => other == Boolean || other == True || other == False);
+    public static readonly Type Boolean =
+        new PrimitiveType("boolean", other => other == Boolean || other == True || other == False);
 
     /// <summary>
     /// The primitive string type.
     /// </summary>
     public static readonly Type StringPrimitive =
-        new("string", other => other == StringPrimitive || other is StringConstant);
+        new PrimitiveType("string", other => other == StringPrimitive || other is StringConstant);
 
     /// <summary>
     /// Supertype of all table types.
     /// </summary>
     public static readonly Type
-        TablePrimitive = new("table", other => other == TablePrimitive || other is Table);
+        TablePrimitive = new PrimitiveType("table", other => other == TablePrimitive || other is Table);
 
     /// <summary>
     /// Supertype of all function types.
     /// </summary>
     public static readonly Type FunctionPrimitive =
-        new("function", other => other == FunctionPrimitive || other is Function);
+        new PrimitiveType("function", other => other == FunctionPrimitive || other is Function);
 
     /// <summary>
     /// A string constant.
@@ -86,6 +98,13 @@ public class Type
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
+            // 'unknown' is assignable to all types.
+            if (other == Unknown)
+            {
+                reason = null;
+                return true;
+            }
+
             if (other is StringConstant c && c.Constant == Constant)
             {
                 reason = null;
@@ -116,35 +135,41 @@ public class Type
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
-            reason = null;
-
-            // TODO accept other types that may be callable like tables with __call
-            if (other is Function function)
+            // 'unknown' is assignable to all types.
+            if (other == Unknown)
             {
-                List<TypeMismatch> reasons = [];
-                if (!function.Parameters.IsAssignableFrom(Parameters, out var parameterReasons,
-                        TypeList.TypeListKind.FunctionTypeParameter))
-                {
-                    reasons.AddRange(parameterReasons);
-                }
-
-                if (!Return.IsAssignableFrom(function.Return, out var returnReasons,
-                        TypeList.TypeListKind.FunctionTypeReturn))
-                {
-                    reasons.AddRange(returnReasons);
-                }
-
-                if (reasons.Count > 0)
-                {
-                    reason = new TypeMismatch.Primitive(this, other) { Children = reasons };
-                    return false;
-                }
-
+                reason = null;
                 return true;
             }
 
-            reason = new TypeMismatch.Primitive(this, other);
-            return false;
+            // TODO accept other types that may be callable like tables with __call
+            if (other is not Function function)
+            {
+                reason = new TypeMismatch.Primitive(this, other);
+                return false;
+            }
+
+            List<TypeMismatch> reasons = [];
+            if (!function.Parameters.IsAssignableFrom(Parameters, out var parameterReasons,
+                    TypeList.TypeListKind.FunctionTypeParameter))
+            {
+                reasons.AddRange(parameterReasons);
+            }
+
+            if (!Return.IsAssignableFrom(function.Return, out var returnReasons,
+                    TypeList.TypeListKind.FunctionTypeReturn))
+            {
+                reasons.AddRange(returnReasons);
+            }
+
+            if (reasons.Count > 0)
+            {
+                reason = new TypeMismatch.Primitive(this, other) { Children = reasons };
+                return false;
+            }
+
+            reason = null;
+            return true;
         }
 
         public override string ToString()
@@ -167,6 +192,13 @@ public class Type
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
+            // 'unknown' is assignable to all types.
+            if (other == Unknown)
+            {
+                reason = null;
+                return true;
+            }
+
             if (other is not Table otherTable)
             {
                 reason = new TypeMismatch.Primitive(this, other);
@@ -231,40 +263,9 @@ public class Type
     }
 
     /// <summary>
-    /// A union of two or more types.
-    /// </summary>
-    public class Union(string name, List<Type> types) : Type(name)
-    {
-        public List<Type> Types => types;
-
-        // public override bool IsAssignableFrom(Type other)
-        // {
-        //     foreach (var type in types)
-        //     {
-        //         if (type.IsAssignableFrom(other))
-        //         {
-        //             return true;
-        //         }
-        //     }
-        //
-        //     return false;
-        // }
-    }
-
-    /// <summary>
     /// Returns whether a value of type `other` can be assigned to a variable of this type.
     /// </summary>
-    public virtual bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
-    {
-        if (!assignableFunc(other))
-        {
-            reason = new TypeMismatch.Primitive(this, other);
-            return false;
-        }
-
-        reason = null;
-        return true;
-    }
+    public abstract bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason);
 
     public bool IsAssignableFrom(Type other)
     {
