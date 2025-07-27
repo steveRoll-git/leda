@@ -75,7 +75,7 @@ public abstract class Type
     /// The primitive string type.
     /// </summary>
     public static readonly Type StringPrimitive =
-        new PrimitiveType("string", other => other == StringPrimitive || other is StringConstant);
+        new PrimitiveType("string", other => other == StringPrimitive || other is StringLiteral);
 
     /// <summary>
     /// Supertype of all table types.
@@ -90,11 +90,11 @@ public abstract class Type
         new PrimitiveType("function", other => other == FunctionPrimitive || other is Function);
 
     /// <summary>
-    /// A string constant.
+    /// A string literal.
     /// </summary>
-    public class StringConstant(string constant) : Type
+    public class StringLiteral(string literal) : Type
     {
-        public string Constant => constant;
+        public string Literal => literal;
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
@@ -105,7 +105,7 @@ public abstract class Type
                 return true;
             }
 
-            if (other is StringConstant c && c.Constant == Constant)
+            if (other is StringLiteral c && c.Literal == Literal)
             {
                 reason = null;
                 return true;
@@ -117,7 +117,7 @@ public abstract class Type
 
         public override string ToString()
         {
-            return '"' + Constant + '"';
+            return '"' + Literal + '"';
         }
     }
 
@@ -246,9 +246,9 @@ public abstract class Type
             {
                 string keyString;
                 // TODO show key without quotes only if it's also a valid identifier
-                if (pair.Key is StringConstant c)
+                if (pair.Key is StringLiteral c)
                 {
-                    keyString = c.Constant;
+                    keyString = c.Literal;
                 }
                 else
                 {

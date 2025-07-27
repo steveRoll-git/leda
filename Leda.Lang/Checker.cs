@@ -490,7 +490,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.String stringValue, bool isConstant)
     {
-        return isConstant ? new Type.StringConstant(stringValue.Value) : Type.StringPrimitive;
+        return isConstant ? new Type.StringLiteral(stringValue.Value) : Type.StringPrimitive;
     }
 
     public Type VisitExpression(Tree.True trueValue, bool isConstant)
