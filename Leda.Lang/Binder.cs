@@ -39,7 +39,7 @@ public class Binder : Tree.IVisitor
         {
             [Type.Any.Name] = new(null, new Symbol.TypeSymbol(Type.Any)),
             [Type.Boolean.Name] = new(null, new Symbol.TypeSymbol(Type.Boolean)),
-            [Type.Number.Name] = new(null, new Symbol.TypeSymbol(Type.Number)),
+            [Type.NumberPrimitive.Name] = new(null, new Symbol.TypeSymbol(Type.NumberPrimitive)),
             [Type.StringPrimitive.Name] =
                 new(null, new Symbol.TypeSymbol(Type.StringPrimitive)), // TODO stringlib should be a value here
             [Type.FunctionPrimitive.Name] = new(null, new Symbol.TypeSymbol(Type.FunctionPrimitive))

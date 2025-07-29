@@ -170,8 +170,13 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             return Type.Unknown;
         }
 
-        // TODO decide whether the key is constant if it's other literals too
-        var keyType = key.AcceptExpressionVisitor(this, key is Tree.String);
+        var isLiteral = key is Tree.String or Tree.Number or Tree.True or Tree.False;
+        var keyType = key.AcceptExpressionVisitor(this, isLiteral);
+
+        if (keyType == Type.Unknown)
+        {
+            return Type.Unknown;
+        }
 
         // TODO use lookup
         foreach (var pair in table.Pairs)
@@ -195,13 +200,13 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     public void Visit(Tree.NumericalFor numericalFor)
     {
         var startType = numericalFor.Start.AcceptExpressionVisitor(this, false);
-        if (!Type.Number.IsAssignableFrom(startType))
+        if (!Type.NumberPrimitive.IsAssignableFrom(startType))
         {
             Report(new Diagnostic.ForLoopStartNotNumber(numericalFor.Start.Range, startType));
         }
 
         var limitType = numericalFor.Limit.AcceptExpressionVisitor(this, false);
-        if (!Type.Number.IsAssignableFrom(limitType))
+        if (!Type.NumberPrimitive.IsAssignableFrom(limitType))
         {
             Report(new Diagnostic.ForLoopLimitNotNumber(numericalFor.Limit.Range, limitType));
         }
@@ -209,7 +214,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         if (numericalFor.Step != null)
         {
             var stepType = numericalFor.Step.AcceptExpressionVisitor(this, false);
-            if (!Type.Number.IsAssignableFrom(stepType))
+            if (!Type.NumberPrimitive.IsAssignableFrom(stepType))
             {
                 Report(new Diagnostic.ForLoopStepNotNumber(numericalFor.Step.Range, stepType));
             }
@@ -220,7 +225,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             throw new Exception("No symbol for `for` loop counter");
         }
 
-        source.SetSymbolType(counterSymbol, Type.Number);
+        source.SetSymbolType(counterSymbol, Type.NumberPrimitive);
 
         VisitBlock(numericalFor.Body);
     }
@@ -438,18 +443,18 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 Report(new Diagnostic.CantGetLength(unary.Range, exprType));
             }
 
-            return Type.Number;
+            return Type.NumberPrimitive;
         }
 
         if (unary is Tree.Negate)
         {
             // TODO use __unm metamethod
-            if (!Type.Number.IsAssignableFrom(exprType))
+            if (!Type.NumberPrimitive.IsAssignableFrom(exprType))
             {
                 Report(new Diagnostic.CantNegate(unary.Range, exprType));
             }
 
-            return Type.Number;
+            return Type.NumberPrimitive;
         }
 
         throw new Exception(); // Unreachable.
@@ -489,8 +494,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.Number number, bool isConstant)
     {
-        // TODO return number literal type if `isConstant`
-        return Type.Number;
+        return isConstant ? new Type.NumberLiteral(number.NumberValue) : Type.NumberPrimitive;
     }
 
     public Type VisitExpression(Tree.String stringValue, bool isConstant)

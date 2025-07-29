@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 
 namespace Leda.Lang;
 
@@ -50,11 +51,6 @@ public abstract class Type
     public static readonly Type Nil = new PrimitiveType("nil", other => other == Nil);
 
     /// <summary>
-    /// The primitive number type.
-    /// </summary>
-    public static readonly Type Number = new PrimitiveType("number", other => other == Number);
-
-    /// <summary>
     /// The `true` boolean literal.
     /// </summary>
     public static readonly Type True = new PrimitiveType("true", other => other == True);
@@ -71,22 +67,39 @@ public abstract class Type
         new PrimitiveType("boolean", other => other == Boolean || other == True || other == False);
 
     /// <summary>
+    /// The primitive number type.
+    /// </summary>
+    public static readonly Type NumberPrimitive =
+        new PrimitiveType("number", other => other == NumberPrimitive || other is NumberLiteral);
+
+    public class NumberLiteral(double literal) : Type
+    {
+        public double Literal => literal;
+
+        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+        {
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if (DefinitelyAssignable(other) || other is NumberLiteral l && l.Literal == Literal)
+            {
+                reason = null;
+                return true;
+            }
+
+            reason = new TypeMismatch.Primitive(this, other);
+            return false;
+        }
+
+        public override string ToString()
+        {
+            return Literal.ToString(CultureInfo.InvariantCulture);
+        }
+    }
+
+    /// <summary>
     /// The primitive string type.
     /// </summary>
     public static readonly Type StringPrimitive =
         new PrimitiveType("string", other => other == StringPrimitive || other is StringLiteral);
-
-    /// <summary>
-    /// Supertype of all table types.
-    /// </summary>
-    public static readonly Type
-        TablePrimitive = new PrimitiveType("table", other => other == TablePrimitive || other is Table);
-
-    /// <summary>
-    /// Supertype of all function types.
-    /// </summary>
-    public static readonly Type FunctionPrimitive =
-        new PrimitiveType("function", other => other == FunctionPrimitive || other is Function);
 
     /// <summary>
     /// A string literal.
@@ -97,7 +110,7 @@ public abstract class Type
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
-            if (DefinitelyAssignable(other) || other is StringLiteral c && c.Literal == Literal)
+            if (DefinitelyAssignable(other) || other is StringLiteral l && l.Literal == Literal)
             {
                 reason = null;
                 return true;
@@ -112,6 +125,12 @@ public abstract class Type
             return '"' + Literal + '"';
         }
     }
+
+    /// <summary>
+    /// Supertype of all function types.
+    /// </summary>
+    public static readonly Type FunctionPrimitive =
+        new PrimitiveType("function", other => other == FunctionPrimitive || other is Function);
 
     public class Function(TypeList parameters, TypeList returns) : Type
     {
@@ -168,6 +187,12 @@ public abstract class Type
             return $"function({Parameters}){(Return.Empty ? "" : ": " + Return)}";
         }
     }
+
+    /// <summary>
+    /// Supertype of all table types.
+    /// </summary>
+    public static readonly Type
+        TablePrimitive = new PrimitiveType("table", other => other == TablePrimitive || other is Table);
 
     public class Table(List<Table.Pair> pairs) : Type
     {
