@@ -396,14 +396,9 @@ public abstract class Tree
     /// <summary>
     /// A string literal.
     /// </summary>
-    public class String : Tree
+    public class String(string value) : Tree
     {
-        public string Value { get; init; }
-
-        public String(string value)
-        {
-            Value = value;
-        }
+        public string Value { get; } = value;
 
         public override string ToString() => Value;
 
@@ -416,14 +411,9 @@ public abstract class Tree
     /// <summary>
     /// A multi-line string literal.
     /// </summary>
-    public class LongString : String
+    public class LongString(string value, int level) : String(value)
     {
-        public int Level { get; init; }
-
-        public LongString(string value, int level) : base(value)
-        {
-            Level = level;
-        }
+        public int Level { get; } = level;
 
         public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
         {
