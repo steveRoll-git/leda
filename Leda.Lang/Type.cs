@@ -17,8 +17,7 @@ public abstract class Type
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
-            // 'unknown' is assignable to all types.
-            if (other == Unknown)
+            if (DefinitelyAssignable(other))
             {
                 reason = null;
                 return true;
@@ -98,14 +97,7 @@ public abstract class Type
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
-            // 'unknown' is assignable to all types.
-            if (other == Unknown)
-            {
-                reason = null;
-                return true;
-            }
-
-            if (other is StringLiteral c && c.Literal == Literal)
+            if (DefinitelyAssignable(other) || other is StringLiteral c && c.Literal == Literal)
             {
                 reason = null;
                 return true;
@@ -135,8 +127,7 @@ public abstract class Type
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
-            // 'unknown' is assignable to all types.
-            if (other == Unknown)
+            if (DefinitelyAssignable(other))
             {
                 reason = null;
                 return true;
@@ -192,8 +183,7 @@ public abstract class Type
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
-            // 'unknown' is assignable to all types.
-            if (other == Unknown)
+            if (DefinitelyAssignable(other))
             {
                 reason = null;
                 return true;
@@ -270,6 +260,15 @@ public abstract class Type
     public bool IsAssignableFrom(Type other)
     {
         return IsAssignableFrom(other, out _);
+    }
+
+    /// <summary>
+    /// Returns whether the type `other` is definitely assignable to this type, without doing any specific checks.
+    /// Returns `true` if `other` is the `unknown` type, or the target type itself.
+    /// </summary>
+    public bool DefinitelyAssignable(Type other)
+    {
+        return other == Unknown || other == this;
     }
 
     public override string ToString() => Name;
