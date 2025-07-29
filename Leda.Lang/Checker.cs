@@ -27,10 +27,15 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         var parameters = VisitExpressionList(call.Parameters);
         var target = call.Target.AcceptExpressionVisitor(this, false);
 
+        if (target == Type.Unknown)
+        {
+            return TypeList.Unknown;
+        }
+
         if (!Type.FunctionPrimitive.IsAssignableFrom(target)) // TODO handle __call metamethod
         {
             Report(new Diagnostic.TypeNotCallable(call.Target.Range));
-            return TypeList.None;
+            return TypeList.Unknown;
         }
 
         if (target == Type.FunctionPrimitive)

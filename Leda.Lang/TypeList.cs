@@ -18,6 +18,11 @@ public class TypeList
     public static readonly TypeList Any = new() { Rest = Type.Any };
 
     /// <summary>
+    /// A TypeList with a repeating Unknown value.
+    /// </summary>
+    public static readonly TypeList Unknown = new() { Rest = Type.Unknown };
+
+    /// <summary>
     /// The known list of types.
     /// </summary>
     public List<Type> List { get; }
