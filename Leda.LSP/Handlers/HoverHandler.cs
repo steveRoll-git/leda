@@ -15,32 +15,32 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
 
         var name = NameFinder.GetNameAtPosition(source.Tree, request.Position.ToLeda());
 
-        if (name != null && source.TryGetTreeSymbol(name, out var symbol))
+        if (name is not null && source.TryGetTreeSymbol(name, out var symbol))
         {
             string? content = null;
-            if (name.Context == Tree.NameContext.Value)
+            if (name is Tree.Name valueName)
             {
                 source.TryGetSymbolType(symbol, out var type);
                 content = $"""
                            ```leda
-                           local {name.Value}: {type?.ToString() ?? "unknown"}
+                           local {valueName.Value}: {type?.ToString() ?? "unknown"}
                            ```
                            """;
             }
-            else if (name.Context == Tree.NameContext.Type)
+            else if (name is Tree.TypeDeclaration.Name typeName)
             {
                 content = $"""
                            ```leda
-                           type {name.Value}
+                           type {typeName.Value}
                            ```
                            """;
             }
 
             if (content != null)
             {
-                return Task.FromResult(new HoverResponse()
+                return Task.FromResult(new HoverResponse
                 {
-                    Contents = new MarkupContent()
+                    Contents = new MarkupContent
                     {
                         Kind = MarkupKind.Markdown,
                         Value = content

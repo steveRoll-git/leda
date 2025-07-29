@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Leda.Lang;
 
 namespace Leda.LSP;
 
 public static class NameFinder
 {
-    private static Tree.Name? GetNameAtPosition<T>(List<T> trees, Position position) where T : Tree
+    private static Tree? GetNameAtPosition<T>(List<T> trees, Position position) where T : Tree
     {
         foreach (var tree in trees)
         {
@@ -18,13 +19,13 @@ public static class NameFinder
         return null;
     }
 
-    private static Tree.Name? GetNameAtPosition(Tree.IfBranch branch, Position position)
+    private static Tree? GetNameAtPosition(Tree.IfBranch branch, Position position)
     {
         return GetNameAtPosition(branch.Condition, position) ??
                GetNameAtPosition(branch.Body.Statements, position);
     }
 
-    private static Tree.Name? GetNameAtPosition(List<Tree.IfBranch> branches, Position position)
+    private static Tree? GetNameAtPosition(List<Tree.IfBranch> branches, Position position)
     {
         foreach (var ifBranch in branches)
         {
@@ -38,7 +39,7 @@ public static class NameFinder
         return null;
     }
 
-    public static Tree.Name? GetNameAtPosition(Tree.Block block, Position position)
+    public static Tree? GetNameAtPosition(Tree.Block block, Position position)
     {
         return GetNameAtPosition(block.Statements, position);
     }
@@ -47,16 +48,16 @@ public static class NameFinder
     /// Finds the name that lies on the given position by recursively descending the tree.
     /// </summary>
     /// <returns>The Tree.Name under the given position, or null if it wasn't found.</returns>
-    public static Tree.Name? GetNameAtPosition(Tree tree, Position position)
+    public static Tree? GetNameAtPosition(Tree tree, Position position)
     {
         if (!tree.Range.Contains(position))
         {
             return null;
         }
 
-        if (tree is Tree.Name name)
+        if (tree is Tree.Name or Tree.TypeDeclaration.Name)
         {
-            return name;
+            return tree;
         }
 
         return tree switch

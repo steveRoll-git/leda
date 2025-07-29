@@ -307,6 +307,11 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new NotImplementedException();
     }
 
+    public void Visit(Tree.TypeDeclaration.Name name)
+    {
+        throw new NotImplementedException();
+    }
+
     public void Visit(Tree.Table table)
     {
         throw new NotImplementedException();
@@ -527,7 +532,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         this.source = source;
     }
 
-    public Type VisitType(Tree.Name name)
+    public Type VisitType(Tree.TypeDeclaration.Name name)
     {
         if (source.TryGetTreeSymbol(name, out var symbol) && symbol is Symbol.TypeSymbol typeSymbol)
         {

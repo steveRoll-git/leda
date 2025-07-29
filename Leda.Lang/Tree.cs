@@ -21,6 +21,7 @@ public abstract class Tree
         void Visit(Unary unary);
         void Visit(Function function);
         void Visit(Name name);
+        void Visit(TypeDeclaration.Name name);
         void Visit(Table table);
         void Visit(Return returnStatement);
         void Visit(LocalFunctionDeclaration declaration);
@@ -52,7 +53,7 @@ public abstract class Tree
 
     public interface ITypeVisitor<T>
     {
-        T VisitType(Name name);
+        T VisitType(TypeDeclaration.Name name);
         T VisitType(FunctionType function);
     }
 
@@ -95,6 +96,26 @@ public abstract class Tree
     /// </summary>
     public class TypeDeclaration : Tree
     {
+        /// <summary>
+        /// A named reference to a type.
+        /// </summary>
+        public new class Name(string value) : Tree
+        {
+            public string Value => value;
+
+            public override string ToString() => Value;
+
+            public override void AcceptVisitor(IVisitor visitor)
+            {
+                visitor.Visit(this);
+            }
+
+            public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
+            {
+                return visitor.VisitType(this);
+            }
+        }
+
         public class Union(List<TypeDeclaration> types) : TypeDeclaration
         {
             public List<TypeDeclaration> Types => types;
@@ -318,13 +339,11 @@ public abstract class Tree
     }
 
     /// <summary>
-    /// A named reference to a variable or type.
+    /// A named reference to a variable.
     /// </summary>
-    public class Name(string value, NameContext context) : Tree
+    public class Name(string value) : Tree
     {
         public string Value => value;
-
-        public NameContext Context => context;
 
         public override string ToString() => Value;
 
@@ -336,11 +355,6 @@ public abstract class Tree
         public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
         {
             return visitor.VisitExpression(this, isConstant);
-        }
-
-        public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
-        {
-            return visitor.VisitType(this);
         }
     }
 

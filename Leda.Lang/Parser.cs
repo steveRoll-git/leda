@@ -197,12 +197,12 @@ public class Parser
 
     private Tree.Name ParseValueName()
     {
-        return StartEndTree(new Tree.Name(Expect(Name).Value, Tree.NameContext.Value));
+        return StartEndTree(new Tree.Name(Expect(Name).Value));
     }
 
-    private Tree.Name ParseTypeName()
+    private Tree.TypeDeclaration.Name ParseTypeName()
     {
-        return StartEndTree(new Tree.Name(Expect(Name).Value, Tree.NameContext.Type));
+        return StartEndTree(new Tree.TypeDeclaration.Name(Expect(Name).Value));
     }
 
     /// <summary>
@@ -479,11 +479,11 @@ public class Parser
                 return EndTree(ParseFunctionType());
             }
 
-            return EndTree(new Tree.Name("function", Tree.NameContext.Type));
+            return EndTree(new Tree.Name("function"));
         }
 
         // TODO incomplete
-        return EndTree(new Tree.Name(Expect(Name).Value, Tree.NameContext.Type));
+        return EndTree(ParseTypeName());
     }
 
     private List<Tree> ParseTypeList()
@@ -578,7 +578,7 @@ public class Parser
         List<Tree.Declaration> parameters = [];
         if (isMethod)
         {
-            parameters.Add(new(new Tree.Name("self", Tree.NameContext.Value) { Range = lParenRange }, null));
+            parameters.Add(new(new Tree.Name("self") { Range = lParenRange }, null));
         }
 
         if (!Accept<Token.RParen>())
@@ -630,7 +630,7 @@ public class Parser
         if (token is Token.Name)
         {
             var name = Consume();
-            return ParsePrefixExpression(EndTree(new Tree.Name(name.Value, Tree.NameContext.Value)));
+            return ParsePrefixExpression(EndTree(new Tree.Name(name.Value)));
         }
 
         var got = Consume();

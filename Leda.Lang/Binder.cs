@@ -65,17 +65,18 @@ public class Binder : Tree.IVisitor
     /// Attempts to find a symbol by its name.
     /// </summary>
     /// <param name="name">The name of the symbol to look for.</param>
+    /// <param name="context">The context in which the name appears.</param>
     /// <param name="symbol">Out variable to store the symbol at.</param>
     /// <param name="scope">Out variable to store the scope where the symbol was found.</param>
     /// <returns>True if a symbol with this name was found, false otherwise.</returns>
-    private bool TryGetBinding(Tree.Name name, [NotNullWhen(true)] out Symbol? symbol,
+    private bool TryGetBinding(string name, Tree.NameContext context, [NotNullWhen(true)] out Symbol? symbol,
         [NotNullWhen(true)] out Scope? scope)
     {
         for (var i = scopes.Count - 1; i >= 0; i--)
         {
-            if (scopes[i].TryGetValue(name.Value, out var binding))
+            if (scopes[i].TryGetValue(name, out var binding))
             {
-                symbol = name.Context == Tree.NameContext.Value ? binding.ValueSymbol : binding.TypeSymbol;
+                symbol = context == Tree.NameContext.Value ? binding.ValueSymbol : binding.TypeSymbol;
                 if (symbol != null)
                 {
                     scope = scopes[i];
@@ -89,34 +90,46 @@ public class Binder : Tree.IVisitor
         return false;
     }
 
+    /// <summary>
+    /// Finds the value symbol that a name refers to.
+    /// </summary>
     private bool TryGetBinding(Tree.Name name, [NotNullWhen(true)] out Symbol? symbol)
     {
-        return TryGetBinding(name, out symbol, out _);
+        return TryGetBinding(name.Value, Tree.NameContext.Value, out symbol, out _);
+    }
+
+    /// <summary>
+    /// Finds the type symbol that a type name refers to.
+    /// </summary>
+    private bool TryGetBinding(Tree.TypeDeclaration.Name name, [NotNullWhen(true)] out Symbol? symbol)
+    {
+        return TryGetBinding(name.Value, Tree.NameContext.Type, out symbol, out _);
     }
 
     /// <summary>
     /// Adds a named symbol to the current scope. Reports a diagnostic if a symbol with this name has already been
     /// declared in the same scope.
     /// </summary>
-    private void AddSymbol(Tree.Name name, Symbol symbol)
+    private void AddSymbol(Tree node, string name, Tree.NameContext context, Symbol symbol)
     {
         // TODO report warning if a name is shadowed
-        if (TryGetBinding(name, out var existingSymbol, out var existingScope) && existingScope == CurrentScope)
+        if (TryGetBinding(name, context, out var existingSymbol, out var existingScope) &&
+            existingScope == CurrentScope)
         {
-            if (name.Context == Tree.NameContext.Value)
+            if (context == Tree.NameContext.Value)
             {
-                Report(new Diagnostic.ValueAlreadyDeclared(name.Range, name.Value, existingSymbol));
+                Report(new Diagnostic.ValueAlreadyDeclared(node.Range, name, existingSymbol));
             }
-            else if (name.Context == Tree.NameContext.Type)
+            else if (context == Tree.NameContext.Type)
             {
-                Report(new Diagnostic.TypeAlreadyDeclared(name.Range, name.Value));
+                Report(new Diagnostic.TypeAlreadyDeclared(node.Range, name));
             }
         }
 
-        if (!CurrentScope.TryGetValue(name.Value, out var currentBinding))
+        if (!CurrentScope.TryGetValue(name, out var currentBinding))
         {
             currentBinding = new Binding(null, null);
-            CurrentScope[name.Value] = currentBinding;
+            CurrentScope[name] = currentBinding;
         }
 
         if (symbol is Symbol.TypeSymbol typeSymbol)
@@ -128,8 +141,16 @@ public class Binder : Tree.IVisitor
             currentBinding.ValueSymbol = symbol;
         }
 
-        symbol.Definition = new(source, name.Range);
-        source.AttachSymbol(name, symbol, true);
+        symbol.Definition = new(source, node.Range);
+        source.AttachSymbol(node, symbol, true);
+    }
+
+    /// <summary>
+    /// Adds a value name's symbol to the current scope.
+    /// </summary>
+    private void AddSymbol(Tree.Name name, Symbol symbol)
+    {
+        AddSymbol(name, name.Value, Tree.NameContext.Value, symbol);
     }
 
     /// <summary>
@@ -262,7 +283,20 @@ public class Binder : Tree.IVisitor
         else
         {
             // TODO defer to check for global
-            Report(new Diagnostic.NameNotFound(name.Range, name));
+            Report(new Diagnostic.NameNotFound(name.Range, name.Value));
+        }
+    }
+
+    public void Visit(Tree.TypeDeclaration.Name name)
+    {
+        if (TryGetBinding(name, out var symbol))
+        {
+            source.AttachSymbol(name, symbol);
+        }
+        else
+        {
+            // TODO defer to check for global
+            Report(new Diagnostic.NameNotFound(name.Range, name.Value));
         }
     }
 
