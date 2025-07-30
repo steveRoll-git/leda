@@ -104,7 +104,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return new TypeList(list, continued);
     }
 
-    private Type VisitFunctionType(Tree.FunctionType functionType, bool addSymbols = false)
+    private Type VisitFunctionType(Tree.TypeDeclaration.Function functionType, bool addSymbols = false)
     {
         List<Type> parameters = [];
         List<string> paramNames = [];
@@ -143,7 +143,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return new Type.Function(parameterTypeList, returnTypeList);
     }
 
-    private TypeList? GetFunctionReturnType(Tree.FunctionType functionType)
+    private TypeList? GetFunctionReturnType(Tree.TypeDeclaration.Function functionType)
     {
         if (functionType.ReturnTypes != null)
         {
@@ -398,7 +398,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.FunctionType functionType)
+    public void Visit(Tree.TypeDeclaration.Function functionType)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Visit(Tree.TypeDeclaration.Table table)
     {
         throw new NotImplementedException();
     }
@@ -543,9 +548,31 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return Type.Unknown;
     }
 
-    public Type VisitType(Tree.FunctionType functionType)
+    public Type VisitType(Tree.TypeDeclaration.Function functionType)
     {
         return VisitFunctionType(functionType);
+    }
+
+    public Type VisitType(Tree.TypeDeclaration.Table table)
+    {
+        List<Type.Table.Pair> pairs = [];
+
+        foreach (var (key, value) in table.Pairs)
+        {
+            pairs.Add(new(key.AcceptTypeVisitor(this), value.AcceptTypeVisitor(this)));
+        }
+
+        return new Type.Table(pairs);
+    }
+
+    public Type VisitType(Tree.TypeDeclaration.StringLiteral stringLiteral)
+    {
+        return new Type.StringLiteral(stringLiteral.Value);
+    }
+
+    public Type VisitType(Tree.TypeDeclaration.NumberLiteral numberLiteral)
+    {
+        return new Type.NumberLiteral(numberLiteral.Value);
     }
 
     public static List<Diagnostic> Check(Source source)

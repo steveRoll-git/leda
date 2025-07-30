@@ -30,7 +30,8 @@ public abstract class Tree
         void Visit(RepeatUntil repeatUntil);
         void Visit(While whileLoop);
         void Visit(IteratorFor forLoop);
-        void Visit(FunctionType functionType);
+        void Visit(TypeDeclaration.Function functionType);
+        void Visit(TypeDeclaration.Table table);
     }
 
     public interface IExpressionVisitor<T>
@@ -54,7 +55,10 @@ public abstract class Tree
     public interface ITypeVisitor<T>
     {
         T VisitType(TypeDeclaration.Name name);
-        T VisitType(FunctionType function);
+        T VisitType(TypeDeclaration.Function function);
+        T VisitType(TypeDeclaration.Table table);
+        T VisitType(TypeDeclaration.StringLiteral stringLiteral);
+        T VisitType(TypeDeclaration.NumberLiteral numberLiteral);
     }
 
     /// <summary>
@@ -99,7 +103,7 @@ public abstract class Tree
         /// <summary>
         /// A named reference to a type.
         /// </summary>
-        public new class Name(string value) : Tree
+        public new class Name(string value) : TypeDeclaration
         {
             public string Value => value;
 
@@ -116,28 +120,71 @@ public abstract class Tree
             }
         }
 
+        public class StringLiteral(string value) : TypeDeclaration
+        {
+            public string Value => value;
+
+            public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
+            {
+                return visitor.VisitType(this);
+            }
+        }
+
+        public class NumberLiteral(double value) : TypeDeclaration
+        {
+            public double Value => value;
+
+            public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
+            {
+                return visitor.VisitType(this);
+            }
+        }
+
+        /// <summary>
+        /// A pair of key and value types.
+        /// </summary>
+        public record struct Pair(TypeDeclaration Key, TypeDeclaration Value);
+
+        /// <summary>
+        /// A list of key-value pairs of types.
+        /// </summary>
+        public new class Table(List<Pair> pairs) : TypeDeclaration
+        {
+            public List<Pair> Pairs => pairs;
+
+            public override void AcceptVisitor(IVisitor visitor)
+            {
+                visitor.Visit(this);
+            }
+
+            public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
+            {
+                return visitor.VisitType(this);
+            }
+        }
+
+        /// <summary>
+        /// The type of a function.
+        /// </summary>
+        public class Function(List<Declaration> parameters, List<Tree>? returnTypes) : TypeDeclaration
+        {
+            public List<Declaration> Parameters => parameters;
+            public List<Tree>? ReturnTypes => returnTypes;
+
+            public override void AcceptVisitor(IVisitor visitor)
+            {
+                visitor.Visit(this);
+            }
+
+            public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
+            {
+                return visitor.VisitType(this);
+            }
+        }
+
         public class Union(List<TypeDeclaration> types) : TypeDeclaration
         {
             public List<TypeDeclaration> Types => types;
-        }
-    }
-
-    /// <summary>
-    /// The type of a function.
-    /// </summary>
-    public class FunctionType(List<Declaration> parameters, List<Tree>? returnTypes) : Tree
-    {
-        public List<Declaration> Parameters => parameters;
-        public List<Tree>? ReturnTypes => returnTypes;
-
-        public override void AcceptVisitor(IVisitor visitor)
-        {
-            visitor.Visit(this);
-        }
-
-        public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
-        {
-            return visitor.VisitType(this);
         }
     }
 
@@ -254,10 +301,10 @@ public abstract class Tree
     /// <summary>
     /// A declaration of a named value, with an optional type.
     /// </summary>
-    public class Declaration(Name name, Tree? type) : Tree
+    public class Declaration(Name name, TypeDeclaration? type) : Tree
     {
         public Name Name => name;
-        public Tree? Type => type;
+        public TypeDeclaration? Type => type;
     }
 
     /// <summary>
@@ -465,9 +512,9 @@ public abstract class Tree
     /// <summary>
     /// A function value.
     /// </summary>
-    public class Function(FunctionType type, Block body, bool isMethod) : Tree
+    public class Function(Tree.TypeDeclaration.Function type, Block body, bool isMethod) : Tree
     {
-        public FunctionType Type => type;
+        public Tree.TypeDeclaration.Function Type => type;
         public Block Body => body;
 
         /// <summary>

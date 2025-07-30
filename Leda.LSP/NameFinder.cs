@@ -9,8 +9,7 @@ public static class NameFinder
     {
         foreach (var tree in trees)
         {
-            var found = GetNameAtPosition(tree, position);
-            if (found != null)
+            if (GetNameAtPosition(tree, position) is { } found)
             {
                 return found;
             }
@@ -29,10 +28,27 @@ public static class NameFinder
     {
         foreach (var ifBranch in branches)
         {
-            var found = GetNameAtPosition(ifBranch, position);
-            if (found != null)
+            if (GetNameAtPosition(ifBranch, position) is { } found)
             {
                 return found;
+            }
+        }
+
+        return null;
+    }
+
+    private static Tree? GetNameAtPosition(List<Tree.TypeDeclaration.Pair> fields, Position position)
+    {
+        foreach (var field in fields)
+        {
+            if (GetNameAtPosition(field.Key, position) is { } foundKey)
+            {
+                return foundKey;
+            }
+
+            if (GetNameAtPosition(field.Value, position) is { } foundValue)
+            {
+                return foundValue;
             }
         }
 
@@ -84,10 +100,10 @@ public static class NameFinder
             Tree.Function function => GetNameAtPosition(function.Type, position) ??
                                       GetNameAtPosition(function.Body, position),
 
-            Tree.FunctionType functionType => GetNameAtPosition(functionType.Parameters, position) ??
-                                              (functionType.ReturnTypes != null
-                                                  ? GetNameAtPosition(functionType.ReturnTypes, position)
-                                                  : null),
+            Tree.TypeDeclaration.Function functionType => GetNameAtPosition(functionType.Parameters, position) ??
+                                                          (functionType.ReturnTypes != null
+                                                              ? GetNameAtPosition(functionType.ReturnTypes, position)
+                                                              : null),
 
             Tree.GlobalDeclaration globalDeclaration => throw new NotImplementedException(),
 
@@ -134,12 +150,12 @@ public static class NameFinder
             Tree.TableField tableField => GetNameAtPosition(tableField.Key, position) ??
                                           GetNameAtPosition(tableField.Value, position),
 
+            Tree.TypeDeclaration.Table table => GetNameAtPosition(table.Pairs, position),
+
             Tree.TypeDeclaration.Union union => throw new NotImplementedException(),
 
             Tree.While whileStatement => GetNameAtPosition(whileStatement.Condition, position) ??
                                          GetNameAtPosition(whileStatement.Body, position),
-
-            Tree.TypeDeclaration typeDeclaration => throw new NotImplementedException(),
 
             _ => null
         };

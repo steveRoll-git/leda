@@ -374,7 +374,7 @@ public class Binder : Tree.IVisitor
         PopScope();
     }
 
-    public void Visit(Tree.FunctionType functionType)
+    public void Visit(Tree.TypeDeclaration.Function functionType)
     {
         foreach (var parameter in functionType.Parameters)
         {
@@ -387,6 +387,15 @@ public class Binder : Tree.IVisitor
             {
                 returnType.AcceptVisitor(this);
             }
+        }
+    }
+
+    public void Visit(Tree.TypeDeclaration.Table table)
+    {
+        foreach (var pair in table.Pairs)
+        {
+            pair.Key.AcceptVisitor(this);
+            pair.Value.AcceptVisitor(this);
         }
     }
 

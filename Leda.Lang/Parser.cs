@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Leda.Lang;
 
 /// <summary>
@@ -13,6 +15,7 @@ public class Parser
     private static readonly Token.RCurly RCurly = new();
     private static readonly Token.Assign Assign = new();
     private static readonly Token.Comma Comma = new();
+    private static readonly Token.Colon Colon = new();
     private static readonly Token.If If = new();
     private static readonly Token.Then Then = new();
     private static readonly Token.For For = new();
@@ -98,18 +101,25 @@ public class Parser
         return consumed;
     }
 
+    private bool Accept<T>([NotNullWhen(true)] out T? result) where T : Token
+    {
+        if (token is T correctToken)
+        {
+            result = correctToken;
+            NextToken();
+            return true;
+        }
+
+        result = null;
+        return false;
+    }
+
     /// <summary>
     /// If the current token is of type `T`, consumes it and returns `true`, otherwise returns `false`.
     /// </summary>
     private bool Accept<T>() where T : Token
     {
-        if (token is not T)
-        {
-            return false;
-        }
-
-        NextToken();
-        return true;
+        return Accept<T>(out _);
     }
 
     /// <summary>
@@ -460,7 +470,7 @@ public class Parser
         // name [':' type]
         var name = ParseValueName();
 
-        Tree? type = null;
+        Tree.TypeDeclaration? type = null;
         if (Accept<Token.Colon>())
         {
             type = ParseType();
@@ -469,9 +479,15 @@ public class Parser
         return EndTree(new Tree.Declaration(name, type));
     }
 
-    private Tree ParseType()
+    private Tree.TypeDeclaration ParseType()
     {
         StartTree();
+
+        if (Accept<Token.String>(out var str))
+        {
+            return EndTree(new Tree.TypeDeclaration.StringLiteral(str.Value));
+        }
+
         if (Accept<Token.Function>())
         {
             if (token is Token.LParen)
@@ -479,11 +495,60 @@ public class Parser
                 return EndTree(ParseFunctionType());
             }
 
-            return EndTree(new Tree.Name("function"));
+            return EndTree(new Tree.TypeDeclaration.Name("function"));
+        }
+
+        if (token is Token.LCurly)
+        {
+            return EndTree(ParseTableType());
         }
 
         // TODO incomplete
         return EndTree(ParseTypeName());
+    }
+
+    private Tree.TypeDeclaration.Table ParseTableType()
+    {
+        // '{' [typepair {',' typepair}] '}'
+
+        Expect(LCurly);
+
+        List<Tree.TypeDeclaration.Pair> pairs = [];
+
+        while (!Accept<Token.RCurly>())
+        {
+            Tree.TypeDeclaration? key = null;
+            if (Accept<Token.LSquare>())
+            {
+                key = ParseType();
+                Expect(RSquare);
+            }
+            else if (Accept<Token.Name>(out var name))
+            {
+                key = new Tree.TypeDeclaration.StringLiteral(name.Value);
+            }
+            else
+            {
+                Report(new Diagnostic.DidNotExpectTokenHere(token.Range, token));
+            }
+
+            Expect(Colon);
+
+            var value = ParseType();
+
+            if (key != null)
+            {
+                pairs.Add(new(key, value));
+            }
+
+            if (!Accept<Token.Comma>())
+            {
+                Expect(RCurly);
+                break;
+            }
+        }
+
+        return new Tree.TypeDeclaration.Table(pairs);
     }
 
     private List<Tree> ParseTypeList()
@@ -567,7 +632,7 @@ public class Parser
     /// <summary>
     /// Parses the parameters and return type of a function.
     /// </summary>
-    private Tree.FunctionType ParseFunctionType(bool isMethod = false)
+    private Tree.TypeDeclaration.Function ParseFunctionType(bool isMethod = false)
     {
         StartTree();
 
@@ -593,7 +658,7 @@ public class Parser
             returnTypes = ParseTypeList();
         }
 
-        return EndTree(new Tree.FunctionType(parameters, returnTypes));
+        return EndTree(new Tree.TypeDeclaration.Function(parameters, returnTypes));
     }
 
     /// <summary>
