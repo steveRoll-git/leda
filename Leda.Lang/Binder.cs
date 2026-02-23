@@ -101,7 +101,7 @@ public class Binder : Tree.IVisitor
     /// <summary>
     /// Finds the type symbol that a type name refers to.
     /// </summary>
-    private bool TryGetBinding(Tree.TypeDeclaration.Name name, [NotNullWhen(true)] out Symbol? symbol)
+    private bool TryGetBinding(Tree.Type.Name name, [NotNullWhen(true)] out Symbol? symbol)
     {
         return TryGetBinding(name.Value, Tree.NameContext.Type, out symbol, out _);
     }
@@ -287,7 +287,7 @@ public class Binder : Tree.IVisitor
         }
     }
 
-    public void Visit(Tree.TypeDeclaration.Name name)
+    public void Visit(Tree.Type.Name name)
     {
         if (TryGetBinding(name, out var symbol))
         {
@@ -374,7 +374,7 @@ public class Binder : Tree.IVisitor
         PopScope();
     }
 
-    public void Visit(Tree.TypeDeclaration.Function functionType)
+    public void Visit(Tree.Type.Function functionType)
     {
         foreach (var parameter in functionType.Parameters)
         {
@@ -390,7 +390,7 @@ public class Binder : Tree.IVisitor
         }
     }
 
-    public void Visit(Tree.TypeDeclaration.Table table)
+    public void Visit(Tree.Type.Table table)
     {
         foreach (var pair in table.Pairs)
         {

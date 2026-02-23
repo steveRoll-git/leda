@@ -27,7 +27,7 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                            ```
                            """;
             }
-            else if (name is Tree.TypeDeclaration.Name typeName)
+            else if (name is Tree.Type.Name typeName)
             {
                 content = $"""
                            ```leda

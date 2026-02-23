@@ -37,7 +37,7 @@ public static class NameFinder
         return null;
     }
 
-    private static Tree? GetNameAtPosition(List<Tree.TypeDeclaration.Pair> fields, Position position)
+    private static Tree? GetNameAtPosition(List<Tree.Type.Pair> fields, Position position)
     {
         foreach (var field in fields)
         {
@@ -71,7 +71,7 @@ public static class NameFinder
             return null;
         }
 
-        if (tree is Tree.Name or Tree.TypeDeclaration.Name)
+        if (tree is Tree.Name or Tree.Type.Name)
         {
             return tree;
         }
@@ -100,10 +100,10 @@ public static class NameFinder
             Tree.Function function => GetNameAtPosition(function.Type, position) ??
                                       GetNameAtPosition(function.Body, position),
 
-            Tree.TypeDeclaration.Function functionType => GetNameAtPosition(functionType.Parameters, position) ??
-                                                          (functionType.ReturnTypes != null
-                                                              ? GetNameAtPosition(functionType.ReturnTypes, position)
-                                                              : null),
+            Tree.Type.Function functionType => GetNameAtPosition(functionType.Parameters, position) ??
+                                               (functionType.ReturnTypes != null
+                                                   ? GetNameAtPosition(functionType.ReturnTypes, position)
+                                                   : null),
 
             Tree.GlobalDeclaration globalDeclaration => throw new NotImplementedException(),
 
@@ -150,9 +150,9 @@ public static class NameFinder
             Tree.TableField tableField => GetNameAtPosition(tableField.Key, position) ??
                                           GetNameAtPosition(tableField.Value, position),
 
-            Tree.TypeDeclaration.Table table => GetNameAtPosition(table.Pairs, position),
+            Tree.Type.Table table => GetNameAtPosition(table.Pairs, position),
 
-            Tree.TypeDeclaration.Union union => throw new NotImplementedException(),
+            Tree.Type.Union union => throw new NotImplementedException(),
 
             Tree.While whileStatement => GetNameAtPosition(whileStatement.Condition, position) ??
                                          GetNameAtPosition(whileStatement.Body, position),

@@ -104,7 +104,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return new TypeList(list, continued);
     }
 
-    private Type VisitFunctionType(Tree.TypeDeclaration.Function functionType, bool addSymbols = false)
+    private Type VisitFunctionType(Tree.Type.Function functionType, bool addSymbols = false)
     {
         List<Type> parameters = [];
         List<string> paramNames = [];
@@ -143,7 +143,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return new Type.Function(parameterTypeList, returnTypeList);
     }
 
-    private TypeList? GetFunctionReturnType(Tree.TypeDeclaration.Function functionType)
+    private TypeList? GetFunctionReturnType(Tree.Type.Function functionType)
     {
         if (functionType.ReturnTypes != null)
         {
@@ -307,7 +307,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.TypeDeclaration.Name name)
+    public void Visit(Tree.Type.Name name)
     {
         throw new NotImplementedException();
     }
@@ -398,12 +398,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.TypeDeclaration.Function functionType)
+    public void Visit(Tree.Type.Function functionType)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.TypeDeclaration.Table table)
+    public void Visit(Tree.Type.Table table)
     {
         throw new NotImplementedException();
     }
@@ -537,7 +537,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         this.source = source;
     }
 
-    public Type VisitType(Tree.TypeDeclaration.Name name)
+    public Type VisitType(Tree.Type.Name name)
     {
         if (source.TryGetTreeSymbol(name, out var symbol) && symbol is Symbol.TypeSymbol typeSymbol)
         {
@@ -548,12 +548,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return Type.Unknown;
     }
 
-    public Type VisitType(Tree.TypeDeclaration.Function functionType)
+    public Type VisitType(Tree.Type.Function functionType)
     {
         return VisitFunctionType(functionType);
     }
 
-    public Type VisitType(Tree.TypeDeclaration.Table table)
+    public Type VisitType(Tree.Type.Table table)
     {
         List<Type.Table.Pair> pairs = [];
 
@@ -565,12 +565,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return new Type.Table(pairs);
     }
 
-    public Type VisitType(Tree.TypeDeclaration.StringLiteral stringLiteral)
+    public Type VisitType(Tree.Type.StringLiteral stringLiteral)
     {
         return new Type.StringLiteral(stringLiteral.Value);
     }
 
-    public Type VisitType(Tree.TypeDeclaration.NumberLiteral numberLiteral)
+    public Type VisitType(Tree.Type.NumberLiteral numberLiteral)
     {
         return new Type.NumberLiteral(numberLiteral.Value);
     }

@@ -210,9 +210,9 @@ public class Parser
         return StartEndTree(new Tree.Name(Expect(Name).Value));
     }
 
-    private Tree.TypeDeclaration.Name ParseTypeName()
+    private Tree.Type.Name ParseTypeName()
     {
-        return StartEndTree(new Tree.TypeDeclaration.Name(Expect(Name).Value));
+        return StartEndTree(new Tree.Type.Name(Expect(Name).Value));
     }
 
     /// <summary>
@@ -470,7 +470,7 @@ public class Parser
         // name [':' type]
         var name = ParseValueName();
 
-        Tree.TypeDeclaration? type = null;
+        Tree.Type? type = null;
         if (Accept<Token.Colon>())
         {
             type = ParseType();
@@ -479,13 +479,13 @@ public class Parser
         return EndTree(new Tree.Declaration(name, type));
     }
 
-    private Tree.TypeDeclaration ParseType()
+    private Tree.Type ParseType()
     {
         StartTree();
 
         if (Accept<Token.String>(out var str))
         {
-            return EndTree(new Tree.TypeDeclaration.StringLiteral(str.Value));
+            return EndTree(new Tree.Type.StringLiteral(str.Value));
         }
 
         if (Accept<Token.Function>())
@@ -495,7 +495,7 @@ public class Parser
                 return EndTree(ParseFunctionType());
             }
 
-            return EndTree(new Tree.TypeDeclaration.Name("function"));
+            return EndTree(new Tree.Type.Name("function"));
         }
 
         if (token is Token.LCurly)
@@ -507,17 +507,17 @@ public class Parser
         return EndTree(ParseTypeName());
     }
 
-    private Tree.TypeDeclaration.Table ParseTableType()
+    private Tree.Type.Table ParseTableType()
     {
         // '{' [typepair {',' typepair}] '}'
 
         Expect(LCurly);
 
-        List<Tree.TypeDeclaration.Pair> pairs = [];
+        List<Tree.Type.Pair> pairs = [];
 
         while (!Accept<Token.RCurly>())
         {
-            Tree.TypeDeclaration? key = null;
+            Tree.Type? key = null;
             if (Accept<Token.LSquare>())
             {
                 key = ParseType();
@@ -525,7 +525,7 @@ public class Parser
             }
             else if (Accept<Token.Name>(out var name))
             {
-                key = new Tree.TypeDeclaration.StringLiteral(name.Value);
+                key = new Tree.Type.StringLiteral(name.Value);
             }
             else
             {
@@ -548,7 +548,7 @@ public class Parser
             }
         }
 
-        return new Tree.TypeDeclaration.Table(pairs);
+        return new Tree.Type.Table(pairs);
     }
 
     private List<Tree> ParseTypeList()
@@ -632,7 +632,7 @@ public class Parser
     /// <summary>
     /// Parses the parameters and return type of a function.
     /// </summary>
-    private Tree.TypeDeclaration.Function ParseFunctionType(bool isMethod = false)
+    private Tree.Type.Function ParseFunctionType(bool isMethod = false)
     {
         StartTree();
 
@@ -658,7 +658,7 @@ public class Parser
             returnTypes = ParseTypeList();
         }
 
-        return EndTree(new Tree.TypeDeclaration.Function(parameters, returnTypes));
+        return EndTree(new Tree.Type.Function(parameters, returnTypes));
     }
 
     /// <summary>
