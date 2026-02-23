@@ -5,15 +5,14 @@ namespace Leda.Lang;
 
 public abstract class Type
 {
-    public virtual string Name => "<unnamed type>";
+    public string? Name { get; set; }
 
     /// <summary>
-    /// Base class for all primitive types, that don't require much checking logic other than checking that the target
+    /// A type that doesn't require much checking logic other than checking that the source
     /// type is equal to one or more existing types.
     /// </summary>
-    private class PrimitiveType(string name, Func<Type, bool> assignableFunc) : Type
+    private class PrimitiveType(Func<Type, bool> assignableFunc) : Type
     {
-        public override string Name => name;
         private Func<Type, bool> AssignableFunc => assignableFunc;
 
         public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
@@ -33,44 +32,49 @@ public abstract class Type
             reason = null;
             return true;
         }
+
+        public override string Display()
+        {
+            return Name!;
+        }
     }
 
     /// <summary>
     /// The top type - can hold any value.
     /// </summary>
-    public static readonly Type Any = new PrimitiveType("any", _ => true);
+    public static readonly Type Any = new PrimitiveType(_ => true) { Name = "any" };
 
     /// <summary>
     /// The "unknown" type, used as a placeholder before named references are resolved, or left there in case of errors.
     /// </summary>
-    public static readonly Type Unknown = new PrimitiveType("unknown", _ => true);
+    public static readonly Type Unknown = new PrimitiveType(_ => true) { Name = "unknown" };
 
     /// <summary>
     /// The `nil` unit type.
     /// </summary>
-    public static readonly Type Nil = new PrimitiveType("nil", other => other == Nil);
+    public static readonly Type Nil = new PrimitiveType(other => other == Nil) { Name = "nil" };
 
     /// <summary>
     /// The `true` boolean literal.
     /// </summary>
-    public static readonly Type True = new PrimitiveType("true", other => other == True);
+    public static readonly Type True = new PrimitiveType(other => other == True) { Name = "true" };
 
     /// <summary>
     /// The `false` boolean literal.
     /// </summary>
-    public static readonly Type False = new PrimitiveType("false", other => other == False);
+    public static readonly Type False = new PrimitiveType(other => other == False) { Name = "false" };
 
     /// <summary>
     /// The primitive boolean type.
     /// </summary>
     public static readonly Type Boolean =
-        new PrimitiveType("boolean", other => other == Boolean || other == True || other == False);
+        new PrimitiveType(other => other == Boolean || other == True || other == False) { Name = "boolean" };
 
     /// <summary>
     /// The primitive number type.
     /// </summary>
     public static readonly Type NumberPrimitive =
-        new PrimitiveType("number", other => other == NumberPrimitive || other is NumberLiteral);
+        new PrimitiveType(other => other == NumberPrimitive || other is NumberLiteral) { Name = "number" };
 
     public class NumberLiteral(double literal) : Type
     {
@@ -89,7 +93,7 @@ public abstract class Type
             return false;
         }
 
-        public override string ToString()
+        public override string Display()
         {
             return Literal.ToString(CultureInfo.InvariantCulture);
         }
@@ -99,7 +103,7 @@ public abstract class Type
     /// The primitive string type.
     /// </summary>
     public static readonly Type StringPrimitive =
-        new PrimitiveType("string", other => other == StringPrimitive || other is StringLiteral);
+        new PrimitiveType(other => other == StringPrimitive || other is StringLiteral) { Name = "string" };
 
     /// <summary>
     /// A string literal.
@@ -120,7 +124,7 @@ public abstract class Type
             return false;
         }
 
-        public override string ToString()
+        public override string Display()
         {
             return '"' + Literal + '"';
         }
@@ -130,7 +134,7 @@ public abstract class Type
     /// Supertype of all function types.
     /// </summary>
     public static readonly Type FunctionPrimitive =
-        new PrimitiveType("function", other => other == FunctionPrimitive || other is Function);
+        new PrimitiveType(other => other == FunctionPrimitive || other is Function) { Name = "function" };
 
     public class Function(TypeList parameters, TypeList returns) : Type
     {
@@ -182,7 +186,7 @@ public abstract class Type
             return true;
         }
 
-        public override string ToString()
+        public override string Display()
         {
             return $"function({Parameters}){(Return.Empty ? "" : ": " + Return)}";
         }
@@ -192,7 +196,7 @@ public abstract class Type
     /// Supertype of all table types.
     /// </summary>
     public static readonly Type
-        TablePrimitive = new PrimitiveType("table", other => other == TablePrimitive || other is Table);
+        TablePrimitive = new PrimitiveType(other => other == TablePrimitive || other is Table) { Name = "table" };
 
     public class Table(List<Table.Pair> pairs) : Type
     {
@@ -248,7 +252,7 @@ public abstract class Type
             return true;
         }
 
-        public override string ToString()
+        public override string Display()
         {
             var s = "{";
 
@@ -296,5 +300,10 @@ public abstract class Type
         return other == Unknown || other == this;
     }
 
-    public override string ToString() => Name;
+    /// <summary>
+    /// Returns a string representation of the type's contents.
+    /// </summary>
+    public abstract string Display();
+
+    public override string ToString() => Name ?? Display();
 }
