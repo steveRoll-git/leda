@@ -229,22 +229,31 @@ public class Parser
     private Tree.Block ParseBlock()
     {
         var statements = new List<Tree>();
+        var typeDeclarations = new List<Tree.TypeAliasDeclaration>();
+
         while (!IsStatementEndingToken(token))
         {
-            var statement = ParseStatement();
-            statements.Add(statement);
-
-            // This behavior models Lua 5.1's syntax - in Lua 5.2+, semicolons may be their own statements.
-            Accept<Token.Semicolon>();
-
-            if (statement is Tree.Return or Tree.Break)
+            if (token is Token.Name { Value: "type" } && Lookahead(1) is Token.Name)
             {
-                // No more statements can come after `return` or `break`.
-                break;
+                typeDeclarations.Add(ParseTypeAlias());
+            }
+            else
+            {
+                var statement = ParseStatement();
+                statements.Add(statement);
+
+                // This behavior models Lua 5.1's syntax - in Lua 5.2+, semicolons may be their own statements.
+                Accept<Token.Semicolon>();
+
+                if (statement is Tree.Return or Tree.Break)
+                {
+                    // No more statements can come after `return` or `break`.
+                    break;
+                }
             }
         }
 
-        return new Tree.Block(statements, []);
+        return new Tree.Block(statements, typeDeclarations);
     }
 
     /// <summary>
@@ -945,6 +954,23 @@ public class Parser
         }
 
         return ParsePrefixExpression();
+    }
+
+    private Tree.TypeAliasDeclaration ParseTypeAlias()
+    {
+        // 'type' name '=' type
+
+        StartTree();
+
+        Expect(Name); // The token expected here is `type`, but this is already caught by `ParseBlock`.
+
+        var name = ParseTypeName();
+
+        Expect(Assign);
+
+        var type = ParseType();
+
+        return EndTree(new Tree.TypeAliasDeclaration(name, type));
     }
 
     /// <summary>

@@ -16,6 +16,17 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     private void VisitBlock(Tree.Block block)
     {
         // TODO iterate over block's type declarations
+        foreach (var typeDeclaration in block.TypeDeclarations)
+        {
+            if (!source.TryGetTreeSymbol(typeDeclaration.Name, out var symbol) ||
+                symbol is not Symbol.TypeSymbol typeSymbol)
+            {
+                throw new Exception();
+            }
+
+            typeSymbol.Type = typeDeclaration.Type.AcceptTypeVisitor(this);
+        }
+
         foreach (var statement in block.Statements)
         {
             statement.AcceptVisitor(this);
@@ -541,6 +552,11 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     {
         if (source.TryGetTreeSymbol(name, out var symbol) && symbol is Symbol.TypeSymbol typeSymbol)
         {
+            if (typeSymbol.Type is null)
+            {
+                throw new NotImplementedException();
+            }
+
             return typeSymbol.Type;
         }
 

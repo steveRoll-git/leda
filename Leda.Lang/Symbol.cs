@@ -14,8 +14,15 @@ public class Symbol
 
     public class Parameter : Symbol { }
 
-    public class TypeSymbol(Type type) : Symbol
+    public class TypeSymbol : Symbol
     {
-        public Type Type => type;
+        public TypeSymbol() { }
+
+        public TypeSymbol(Type type)
+        {
+            Type = type;
+        }
+
+        public Type? Type { get; set; }
     }
 }

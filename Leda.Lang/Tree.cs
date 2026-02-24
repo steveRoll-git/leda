@@ -191,14 +191,14 @@ public abstract class Tree
     /// <summary>
     /// A list of statements.
     /// </summary>
-    public class Block(List<Tree> statements, List<Type> typeDeclarations)
+    public class Block(List<Tree> statements, List<TypeAliasDeclaration> typeDeclarations)
     {
         public List<Tree> Statements => statements;
 
         /// <summary>
         /// All types that were declared in this block.
         /// </summary>
-        public List<Type> TypeDeclarations => typeDeclarations;
+        public List<TypeAliasDeclaration> TypeDeclarations => typeDeclarations;
     }
 
     /// <summary>
@@ -804,5 +804,14 @@ public abstract class Tree
         {
             visitor.Visit(this);
         }
+    }
+
+    /// <summary>
+    /// A declaration of a type alias.
+    /// </summary>
+    public class TypeAliasDeclaration(Type.Name name, Type type) : Tree
+    {
+        public Type.Name Name => name;
+        public Type Type => type;
     }
 }

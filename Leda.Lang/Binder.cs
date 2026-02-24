@@ -37,12 +37,12 @@ public class Binder : Tree.IVisitor
         // TODO maybe these should originate from a declaration file instead
         scopes.Add(new()
         {
-            [Type.Any.Name] = new(null, new Symbol.TypeSymbol(Type.Any)),
-            [Type.Boolean.Name] = new(null, new Symbol.TypeSymbol(Type.Boolean)),
-            [Type.NumberPrimitive.Name] = new(null, new Symbol.TypeSymbol(Type.NumberPrimitive)),
-            [Type.StringPrimitive.Name] =
+            [Type.Any.Name!] = new(null, new Symbol.TypeSymbol(Type.Any)),
+            [Type.Boolean.Name!] = new(null, new Symbol.TypeSymbol(Type.Boolean)),
+            [Type.NumberPrimitive.Name!] = new(null, new Symbol.TypeSymbol(Type.NumberPrimitive)),
+            [Type.StringPrimitive.Name!] =
                 new(null, new Symbol.TypeSymbol(Type.StringPrimitive)), // TODO stringlib should be a value here
-            [Type.FunctionPrimitive.Name] = new(null, new Symbol.TypeSymbol(Type.FunctionPrimitive))
+            [Type.FunctionPrimitive.Name!] = new(null, new Symbol.TypeSymbol(Type.FunctionPrimitive))
         });
     }
 
@@ -154,11 +154,24 @@ public class Binder : Tree.IVisitor
     }
 
     /// <summary>
+    /// Adds a type name's symbol to the current scope.
+    /// </summary>
+    private void AddTypeSymbol(Tree.Type.Name name, Symbol symbol)
+    {
+        AddSymbol(name, name.Value, Tree.NameContext.Type, symbol);
+    }
+
+    /// <summary>
     /// Visits all of a block's statements.
     /// </summary>
     public void VisitBlock(Tree.Block block)
     {
-        // TODO iterate over block's type declarations
+        foreach (var typeDeclaration in block.TypeDeclarations)
+        {
+            AddTypeSymbol(typeDeclaration.Name, new Symbol.TypeSymbol());
+            typeDeclaration.Type.AcceptVisitor(this);
+        }
+
         foreach (var statement in block.Statements)
         {
             statement.AcceptVisitor(this);

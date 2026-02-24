@@ -57,7 +57,7 @@ public static class NameFinder
 
     public static Tree? GetNameAtPosition(Tree.Block block, Position position)
     {
-        return GetNameAtPosition(block.Statements, position);
+        return GetNameAtPosition(block.TypeDeclarations, position) ?? GetNameAtPosition(block.Statements, position);
     }
 
     /// <summary>
@@ -156,6 +156,9 @@ public static class NameFinder
 
             Tree.While whileStatement => GetNameAtPosition(whileStatement.Condition, position) ??
                                          GetNameAtPosition(whileStatement.Body, position),
+
+            Tree.TypeAliasDeclaration typeDeclaration => GetNameAtPosition(typeDeclaration.Name, position) ??
+                                                         GetNameAtPosition(typeDeclaration.Type, position),
 
             _ => null
         };
