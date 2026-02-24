@@ -35,7 +35,7 @@ public class Source
     /// <summary>
     /// Maps Symbols to their types.
     /// </summary>
-    private readonly Dictionary<Symbol, Type> symbolTypeMap = [];
+    private Dictionary<Symbol, Type> symbolTypeMap = [];
 
     /// <summary>
     /// A dictionary of where symbols are references in this source. (Symbols from other sources may be referenced too?)
@@ -118,6 +118,7 @@ public class Source
     /// </summary>
     public List<Diagnostic> Check()
     {
+        symbolTypeMap = [];
         return Checker.Check(this);
     }
 
