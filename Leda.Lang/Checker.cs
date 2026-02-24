@@ -25,6 +25,10 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             }
 
             typeSymbol.Type = typeDeclaration.Type.AcceptTypeVisitor(this);
+            if (typeSymbol.Type.UserNameable)
+            {
+                typeSymbol.Type.Name = typeDeclaration.Name.Value;
+            }
         }
 
         foreach (var statement in block.Statements)

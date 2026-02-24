@@ -8,10 +8,15 @@ public abstract class Type
     public string? Name { get; set; }
 
     /// <summary>
+    /// Whether the user can give a custom name to this type.
+    /// </summary>
+    public virtual bool UserNameable => false;
+
+    /// <summary>
     /// A type that doesn't require much checking logic other than checking that the source
     /// type is equal to one or more existing types.
     /// </summary>
-    private class PrimitiveType(Func<Type, bool> assignableFunc) : Type
+    public class PrimitiveType(Func<Type, bool> assignableFunc) : Type
     {
         private Func<Type, bool> AssignableFunc => assignableFunc;
 
@@ -138,6 +143,8 @@ public abstract class Type
 
     public class Function(TypeList parameters, TypeList returns) : Type
     {
+        public override bool UserNameable => true;
+
         /// <summary>
         /// The types of this function's parameters.
         /// </summary>
@@ -201,6 +208,8 @@ public abstract class Type
     public class Table(List<Table.Pair> pairs) : Type
     {
         // TODO use a more efficient lookup structure for this
+
+        public override bool UserNameable => true;
 
         public struct Pair(Type key, Type value)
         {
