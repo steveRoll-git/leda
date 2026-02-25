@@ -99,10 +99,17 @@ public abstract record Diagnostic(Range Range)
         public override string Message => "Function is implicitly global. Prefix 'global' if this is intentional.";
     }
 
-    public record NameNotFound(Range Range, string Name) : Diagnostic(Range)
+    public record NameNotFound(Range Range, string Name, Tree.NameContext Context) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"Cannot find name '{Name}'.";
+
+        private string Noun => Context switch
+        {
+            Tree.NameContext.Type => "type",
+            _ => "value"
+        };
+
+        public override string Message => $"Cannot find {Noun} named '{Name}'.";
     }
 
     public record ValueAlreadyDeclared(Range Range, string Name, Symbol ExistingSymbol)

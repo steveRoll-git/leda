@@ -296,7 +296,7 @@ public class Binder : Tree.IVisitor
         else
         {
             // TODO defer to check for global
-            Report(new Diagnostic.NameNotFound(name.Range, name.Value));
+            Report(new Diagnostic.NameNotFound(name.Range, name.Value, Tree.NameContext.Value));
         }
     }
 
@@ -309,7 +309,7 @@ public class Binder : Tree.IVisitor
         else
         {
             // TODO defer to check for global
-            Report(new Diagnostic.NameNotFound(name.Range, name.Value));
+            Report(new Diagnostic.NameNotFound(name.Range, name.Value, Tree.NameContext.Type));
         }
     }
 
