@@ -21,29 +21,29 @@ public class Binder : Tree.IVisitor
     /// <summary>
     /// Any name in the source code might refer to a value, or a type, or both.
     /// </summary>
-    internal class Binding(Symbol? value, Symbol.TypeSymbol? type)
+    internal class Binding(Symbol? value, Symbol? type)
     {
         public Symbol? ValueSymbol { get; set; } = value;
-        public Symbol.TypeSymbol? TypeSymbol { get; set; } = type;
+        public Symbol? TypeSymbol { get; set; } = type;
     }
 
     private Scope CurrentScope => scopes[^1];
+
+    private static readonly Scope InitialScope = new()
+    {
+        [Type.Any.Name!] = new(null, Symbol.AnyType),
+        [Type.Boolean.Name!] = new(null, Symbol.BooleanType),
+        [Type.NumberPrimitive.Name!] = new(null, Symbol.NumberType),
+        [Type.StringPrimitive.Name!] = new(null, Symbol.StringType), // TODO stringlib should be a value here
+        [Type.FunctionPrimitive.Name!] = new(null, Symbol.FunctionType)
+    };
 
     private Binder(Source source)
     {
         this.source = source;
 
-        // Add the standard types.
-        // TODO maybe these should originate from a declaration file instead
-        scopes.Add(new()
-        {
-            [Type.Any.Name!] = new(null, new Symbol.TypeSymbol(Type.Any)),
-            [Type.Boolean.Name!] = new(null, new Symbol.TypeSymbol(Type.Boolean)),
-            [Type.NumberPrimitive.Name!] = new(null, new Symbol.TypeSymbol(Type.NumberPrimitive)),
-            [Type.StringPrimitive.Name!] =
-                new(null, new Symbol.TypeSymbol(Type.StringPrimitive)), // TODO stringlib should be a value here
-            [Type.FunctionPrimitive.Name!] = new(null, new Symbol.TypeSymbol(Type.FunctionPrimitive))
-        });
+        scopes.Add(InitialScope);
+        scopes.Add(new Scope());
     }
 
     private void Report(Diagnostic diagnostic)
@@ -166,9 +166,15 @@ public class Binder : Tree.IVisitor
     /// </summary>
     public void VisitBlock(Tree.Block block)
     {
+        // TODO type declarations need to be traversed in the order they appear in the block,
+        // for `typeof` to work correctly.
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
             AddTypeSymbol(typeDeclaration.Name, new Symbol.TypeSymbol());
+        }
+
+        foreach (var typeDeclaration in block.TypeDeclarations)
+        {
             typeDeclaration.Type.AcceptVisitor(this);
         }
 

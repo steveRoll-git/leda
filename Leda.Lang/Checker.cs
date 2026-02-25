@@ -18,16 +18,16 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         // TODO iterate over block's type declarations
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
-            if (!source.TryGetTreeSymbol(typeDeclaration.Name, out var symbol) ||
-                symbol is not Symbol.TypeSymbol typeSymbol)
+            if (!source.TryGetTreeSymbol(typeDeclaration.Name, out var symbol))
             {
                 throw new Exception();
             }
 
-            typeSymbol.Type = typeDeclaration.Type.AcceptTypeVisitor(this);
-            if (typeSymbol.Type.UserNameable)
+            var type = typeDeclaration.Type.AcceptTypeVisitor(this);
+            source.SetSymbolType(symbol, type);
+            if (type.UserNameable)
             {
-                typeSymbol.Type.Name = typeDeclaration.Name.Value;
+                type.Name = typeDeclaration.Name.Value;
             }
         }
 
@@ -554,14 +554,17 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitType(Tree.Type.Name name)
     {
-        if (source.TryGetTreeSymbol(name, out var symbol) && symbol is Symbol.TypeSymbol typeSymbol)
+        if (source.TryGetTreeSymbol(name, out var symbol))
         {
-            if (typeSymbol.Type is null)
+            if (symbol is Symbol.IntrinsicType intrinsicType)
             {
-                throw new NotImplementedException();
+                return intrinsicType.Type;
             }
 
-            return typeSymbol.Type;
+            if (source.TryGetSymbolType(symbol, out var type))
+            {
+                return type;
+            }
         }
 
         // TODO report error?
