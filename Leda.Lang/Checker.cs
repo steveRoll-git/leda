@@ -11,6 +11,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     }
 
     /// <summary>
+    /// Returns whether `tree` is a simple literal, which means that when it appears as a key, its type should be
+    /// interpreted as constant.
+    /// </summary>
+    private static bool IsSimpleLiteral(Tree tree) => tree is Tree.String or Tree.Number or Tree.True or Tree.False;
+
+    /// <summary>
     /// Visits all of a block's statements.
     /// </summary>
     private void VisitBlock(Tree.Block block)
@@ -185,8 +191,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             return Type.Unknown;
         }
 
-        var isLiteral = key is Tree.String or Tree.Number or Tree.True or Tree.False;
-        var keyType = key.AcceptExpressionVisitor(this, isLiteral);
+        var keyType = key.AcceptExpressionVisitor(this, IsSimpleLiteral(key));
 
         if (keyType == Type.Unknown)
         {
@@ -264,25 +269,60 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.Assignment assignment)
     {
-        using var valueTypes = VisitExpressionList(assignment.Values).Types().GetEnumerator();
-        foreach (var target in assignment.Targets)
+        for (var i = 0; i < assignment.Targets.Count; i++)
         {
+            var target = assignment.Targets[i];
             var targetType = target.AcceptExpressionVisitor(this, false);
-
-            var valueType = Type.Nil;
-            if (valueTypes.MoveNext())
+            if (i < assignment.Values.Count)
             {
-                valueType = valueTypes.Current.Type; // TODO handle `Rest` values
+                var value = assignment.Values[i];
+                if (i == assignment.Values.Count - 1 && value is Tree.Call or Tree.Vararg)
+                {
+                    // If the last value being assigned could be a type list, switch over to this method.
+                    CheckTypeListAssignment(assignment.Targets, value, i);
+                    return;
+                }
+
+                CheckAssignment(targetType, value, target);
             }
             else
             {
-                // TODO report error/warning
+                CheckSimpleAssign(targetType, Type.Nil, target.Range);
             }
+        }
+    }
 
-            if (!targetType.IsAssignableFrom(valueType, out var reason))
+    /// <summary>
+    /// Does an assignment check for a list of targets, with a value that evaluates to a type list.
+    /// </summary>
+    /// <param name="targets">The targets being assigned to.</param>
+    /// <param name="value">The value being assigned, that returns a type list.</param>
+    /// <param name="i">The index to start from.</param>
+    private void CheckTypeListAssignment(List<Tree> targets, Tree value, int i)
+    {
+        TypeList typeList = null!;
+        if (value is Tree.Call call)
+        {
+            typeList = VisitCall(call);
+        }
+        else if (value is Tree.Vararg)
+        {
+            throw new NotImplementedException();
+        }
+
+        using var typeListTypes = typeList.Types().GetEnumerator();
+        for (; i < targets.Count; i++)
+        {
+            var target = targets[i];
+            var targetType = target.AcceptExpressionVisitor(this, false);
+            if (typeListTypes.MoveNext())
             {
-                Report(
-                    new Diagnostic.TypeMismatch(target.Range, reason));
+                var sourceType = typeListTypes.Current.Type;
+                CheckSimpleAssign(targetType, sourceType, target.Range);
+            }
+            else
+            {
+                CheckSimpleAssign(targetType, Type.Nil, target.Range);
             }
         }
     }
@@ -596,6 +636,82 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     public Type VisitType(Tree.Type.NumberLiteral numberLiteral)
     {
         return new Type.NumberLiteral(numberLiteral.Value);
+    }
+
+    /// <summary>
+    /// Checks an assignment of some value to a target type. If applicable, errors in the source value will be shown,
+    /// and types of function parameters will be inferred.
+    /// </summary>
+    /// <param name="targetType">The type of the target being assigned to.</param>
+    /// <param name="sourceValue">The value being assigned.</param>
+    /// <param name="targetValue">The tree node for the target value, if applicable.</param>
+    private void CheckAssignment(Type targetType, Tree sourceValue, Tree? targetValue)
+    {
+        var errorRange = (targetValue ?? sourceValue).Range;
+
+        if (sourceValue is Tree.Table sourceTable)
+        {
+            if (targetType is Type.Table targetTable)
+            {
+                // TODO use lookup
+                var missingKeys = new HashSet<Type>(targetTable.Pairs.Select(p => p.Key));
+                foreach (var sourceField in sourceTable.Fields)
+                {
+                    var sourceKeyType = sourceField.Key.AcceptExpressionVisitor(this, IsSimpleLiteral(sourceField.Key));
+                    var targetKey = missingKeys.FirstOrDefault(k => k.IsAssignableFrom(sourceKeyType));
+                    if (targetKey == null)
+                    {
+                        // TODO check for duplicate fields
+                        Report(new Diagnostic.TableLiteralOnlyKnownKeys(sourceField.Key.Range, targetTable,
+                            sourceKeyType));
+                        sourceField.Value.AcceptExpressionVisitor(this, false);
+                    }
+                    else
+                    {
+                        missingKeys.Remove(targetKey);
+                        var targetPair = targetTable.Pairs.Find(p => p.Key == targetKey);
+                        CheckAssignment(targetPair.Value, sourceField.Value, sourceField.Key);
+                    }
+                }
+
+                if (missingKeys.Count > 0)
+                {
+                    Report(new Diagnostic.MissingKeys(errorRange, targetType,
+                        sourceValue.AcceptExpressionVisitor(this, false),
+                        missingKeys.ToList()));
+                }
+            }
+            else
+            {
+                // The type object for the source value wasn't needed so far,
+                // but we generate it here for displaying in the diagnostic.
+                Report(new Diagnostic.TypeMismatch(errorRange,
+                    new TypeMismatch.Primitive(targetType, sourceValue.AcceptExpressionVisitor(this, false))));
+            }
+        }
+        else if (sourceValue is Tree.Function)
+        {
+            // TODO
+        }
+        else
+        {
+            var valueType = sourceValue.AcceptExpressionVisitor(this, false);
+            CheckSimpleAssign(targetType, valueType, errorRange);
+        }
+    }
+
+    /// <summary>
+    /// Checks if `sourceType` is assignable to `targetType`, and reports a diagnostic if it isn't.
+    /// </summary>
+    /// <param name="targetType">The type being assigned to.</param>
+    /// <param name="sourceType">The type being assigned from.</param>
+    /// <param name="errorRange">The range where the diagnostic should be shown.</param>
+    private void CheckSimpleAssign(Type targetType, Type sourceType, Range errorRange)
+    {
+        if (!targetType.IsAssignableFrom(sourceType, out var reason))
+        {
+            Report(new Diagnostic.TypeMismatch(errorRange, reason));
+        }
     }
 
     public static List<Diagnostic> Check(Source source)

@@ -197,6 +197,23 @@ public abstract record Diagnostic(Range Range)
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Type '{Target}' doesn't have key of type '{Key}'.";
     }
+
+    public record TableLiteralOnlyKnownKeys(Range Range, Type Target, Type Key) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+
+        public override string Message =>
+            $"Table literal may only specify known keys, and '{Key}' does not exist in type '{Target}'.";
+    }
+
+    public record MissingKeys(Range Range, Type Target, Type Source, List<Type> Keys) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+
+        public override string Message => Keys.Count == 1
+            ? $"Key '{Keys[0]}' is missing in type '{Source}' but required in type '{Target}'."
+            : $"Type '{Source}' is missing the following keys from type '{Target}': {string.Join(", ", Keys)}";
+    }
 }
 
 public enum DiagnosticSeverity
