@@ -1,10 +1,11 @@
-using System.Diagnostics.CodeAnalysis;
 using Leda.Lang;
 
 namespace Leda.LSP;
 
 public static class NameFinder
 {
+    // TODO could the return type of all these methods be something more specific than the base Tree?
+
     private static Tree? GetNameAtPosition<T>(List<T> trees, Position position) where T : Tree
     {
         foreach (var tree in trees)
@@ -63,7 +64,7 @@ public static class NameFinder
     /// <summary>
     /// Finds the name that lies on the given position by recursively descending the tree.
     /// </summary>
-    /// <returns>The Tree.Name under the given position, or null if it wasn't found.</returns>
+    /// <returns>The expression or type name under the given position, or null if it wasn't found.</returns>
     public static Tree? GetNameAtPosition(Tree tree, Position position)
     {
         if (!tree.Range.Contains(position))
@@ -71,94 +72,96 @@ public static class NameFinder
             return null;
         }
 
-        if (tree is Tree.Name or Tree.Type.Name)
+        if (tree is Tree.Expression.Name or Tree.Type.Name)
         {
             return tree;
         }
 
         return tree switch
         {
-            Tree.Binary binary => GetNameAtPosition(binary.Left, position) ??
-                                  GetNameAtPosition(binary.Right, position),
+            Tree.Expression.Binary binary => GetNameAtPosition(binary.Left, position) ??
+                                             GetNameAtPosition(binary.Right, position),
 
-            Tree.Access access => GetNameAtPosition(access.Key, position) ??
-                                  GetNameAtPosition(access.Target, position),
+            Tree.Expression.Access access => GetNameAtPosition(access.Key, position) ??
+                                             GetNameAtPosition(access.Target, position),
 
-            Tree.Assignment assignment => GetNameAtPosition(assignment.Targets, position) ??
-                                          GetNameAtPosition(assignment.Values, position),
+            Tree.Statement.Assignment assignment => GetNameAtPosition(assignment.Targets, position) ??
+                                                    GetNameAtPosition(assignment.Values, position),
 
-            Tree.Call call => GetNameAtPosition(call.Target, position) ??
-                              GetNameAtPosition(call.Parameters, position),
+            Tree.Expression.Call call => GetNameAtPosition(call.Target, position) ??
+                                         GetNameAtPosition(call.Parameters, position),
 
             Tree.Declaration declaration => GetNameAtPosition(declaration.Name, position) ??
                                             (declaration.Type != null
                                                 ? GetNameAtPosition(declaration.Type, position)
                                                 : null),
 
-            Tree.Do doBlock => GetNameAtPosition(doBlock.Body, position),
+            Tree.Statement.Do doBlock => GetNameAtPosition(doBlock.Body, position),
 
-            Tree.Function function => GetNameAtPosition(function.Type, position) ??
-                                      GetNameAtPosition(function.Body, position),
+            Tree.Expression.Function function => GetNameAtPosition(function.Type, position) ??
+                                                 GetNameAtPosition(function.Body, position),
 
             Tree.Type.Function functionType => GetNameAtPosition(functionType.Parameters, position) ??
                                                (functionType.ReturnTypes != null
                                                    ? GetNameAtPosition(functionType.ReturnTypes, position)
                                                    : null),
 
-            Tree.GlobalDeclaration globalDeclaration => throw new NotImplementedException(),
+            Tree.Statement.GlobalDeclaration globalDeclaration => throw new NotImplementedException(),
 
-            Tree.If ifBlock => GetNameAtPosition(ifBlock.Primary, position) ??
-                               GetNameAtPosition(ifBlock.ElseIfs, position) ??
-                               (ifBlock.ElseBody != null
-                                   ? GetNameAtPosition(ifBlock.ElseBody, position)
-                                   : null),
+            Tree.Statement.If ifStmt => GetNameAtPosition(ifStmt.Primary, position) ??
+                                        GetNameAtPosition(ifStmt.ElseIfs, position) ??
+                                        (ifStmt.ElseBody != null
+                                            ? GetNameAtPosition(ifStmt.ElseBody, position)
+                                            : null),
 
-            Tree.IteratorFor iteratorFor => GetNameAtPosition(iteratorFor.Declarations, position) ??
-                                            GetNameAtPosition(iteratorFor.Iterator, position) ??
-                                            GetNameAtPosition(iteratorFor.Body, position),
+            Tree.Statement.IteratorFor iteratorFor => GetNameAtPosition(iteratorFor.Declarations, position) ??
+                                                      GetNameAtPosition(iteratorFor.Iterator, position) ??
+                                                      GetNameAtPosition(iteratorFor.Body, position),
 
-            Tree.Unary unary => GetNameAtPosition(unary.Expression, position),
+            Tree.Expression.Unary unary => GetNameAtPosition(unary.Expression, position),
 
-            Tree.LocalDeclaration localDeclaration => GetNameAtPosition(localDeclaration.Declarations, position) ??
-                                                      GetNameAtPosition(localDeclaration.Values, position),
+            Tree.Statement.LocalDeclaration localDeclaration => GetNameAtPosition(localDeclaration.Declarations,
+                                                                    position) ??
+                                                                GetNameAtPosition(localDeclaration.Values, position),
 
-            Tree.LocalFunctionDeclaration localFunctionDeclaration =>
+            Tree.Statement.LocalFunctionDeclaration localFunctionDeclaration =>
                 GetNameAtPosition(localFunctionDeclaration.Name, position) ??
                 GetNameAtPosition(localFunctionDeclaration.Function, position),
 
-            Tree.MethodCall methodCall => GetNameAtPosition(methodCall.Target, position) ??
-                                          GetNameAtPosition(methodCall.FuncName, position) ??
-                                          GetNameAtPosition(methodCall.Parameters, position),
+            Tree.Expression.MethodCall methodCall => GetNameAtPosition(methodCall.Target, position) ??
+                                                     GetNameAtPosition(methodCall.FuncName, position) ??
+                                                     GetNameAtPosition(methodCall.Parameters, position),
 
-            Tree.NumericalFor numericalFor => GetNameAtPosition(numericalFor.Counter, position) ??
-                                              GetNameAtPosition(numericalFor.Start, position) ??
-                                              GetNameAtPosition(numericalFor.Limit, position) ??
-                                              (numericalFor.Step != null
-                                                  ? GetNameAtPosition(numericalFor.Step, position)
-                                                  : null) ??
-                                              GetNameAtPosition(numericalFor.Body, position),
+            Tree.Statement.NumericalFor numericalFor => GetNameAtPosition(numericalFor.Counter, position) ??
+                                                        GetNameAtPosition(numericalFor.Start, position) ??
+                                                        GetNameAtPosition(numericalFor.Limit, position) ??
+                                                        (numericalFor.Step != null
+                                                            ? GetNameAtPosition(numericalFor.Step, position)
+                                                            : null) ??
+                                                        GetNameAtPosition(numericalFor.Body, position),
 
-            Tree.RepeatUntil repeatUntil => GetNameAtPosition(repeatUntil.Body, position) ??
-                                            GetNameAtPosition(repeatUntil.Condition, position),
+            Tree.Statement.RepeatUntil repeatUntil => GetNameAtPosition(repeatUntil.Body, position) ??
+                                                      GetNameAtPosition(repeatUntil.Condition, position),
 
-            Tree.Return returnStatement => returnStatement.Expression != null
-                ? GetNameAtPosition(returnStatement.Expression, position)
+            Tree.Statement.Return returnStatement => returnStatement.Value != null
+                ? GetNameAtPosition(returnStatement.Value, position)
                 : null,
 
-            Tree.Table table => GetNameAtPosition(table.Fields, position),
+            Tree.Expression.Table table => GetNameAtPosition(table.Fields, position),
 
-            Tree.TableField tableField => GetNameAtPosition(tableField.Key, position) ??
-                                          GetNameAtPosition(tableField.Value, position),
+            Tree.Expression.Table.Field tableField => GetNameAtPosition(tableField.Key, position) ??
+                                                      GetNameAtPosition(tableField.Value, position),
 
             Tree.Type.Table table => GetNameAtPosition(table.Pairs, position),
 
-            Tree.Type.Union union => throw new NotImplementedException(),
-
-            Tree.While whileStatement => GetNameAtPosition(whileStatement.Condition, position) ??
-                                         GetNameAtPosition(whileStatement.Body, position),
+            Tree.Statement.While whileStatement => GetNameAtPosition(whileStatement.Condition, position) ??
+                                                   GetNameAtPosition(whileStatement.Body, position),
 
             Tree.TypeAliasDeclaration typeDeclaration => GetNameAtPosition(typeDeclaration.Name, position) ??
                                                          GetNameAtPosition(typeDeclaration.Type, position),
+
+            Tree.Statement.Call call => GetNameAtPosition(call.CallExpr, position),
+            Tree.Statement.MethodCall methodCall => GetNameAtPosition(methodCall.CallExpr, position),
 
             _ => null
         };

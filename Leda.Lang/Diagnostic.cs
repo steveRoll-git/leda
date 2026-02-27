@@ -99,13 +99,13 @@ public abstract record Diagnostic(Range Range)
         public override string Message => "Function is implicitly global. Prefix 'global' if this is intentional.";
     }
 
-    public record NameNotFound(Range Range, string Name, Tree.NameContext Context) : Diagnostic(Range)
+    public record NameNotFound(Range Range, string Name, Tree.Expression.NameContext Context) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
 
         private string Noun => Context switch
         {
-            Tree.NameContext.Type => "type",
+            Tree.Expression.NameContext.Type => "type",
             _ => "value"
         };
 

@@ -60,7 +60,7 @@ public class Parser
     /// </summary>
     private readonly Stack<Position> startPositions = new();
 
-    private static bool IsAssignableTo(Tree tree) => tree is Tree.Name or Tree.Access;
+    private static bool IsAssignableTo(Tree.Expression tree) => tree is Tree.Expression.Name or Tree.Expression.Access;
 
     public Parser(Source source)
     {
@@ -205,9 +205,9 @@ public class Parser
         return lookaheadTokens[index - 1];
     }
 
-    private Tree.Name ParseValueName()
+    private Tree.Expression.Name ParseValueName()
     {
-        return StartEndTree(new Tree.Name(Expect(Name).Value));
+        return StartEndTree(new Tree.Expression.Name(Expect(Name).Value));
     }
 
     private Tree.Type.Name ParseTypeName()
@@ -218,9 +218,9 @@ public class Parser
     /// <summary>
     /// Parses a single identifier that represents a string.
     /// </summary>
-    private Tree.String ParseStringIdentifier()
+    private Tree.Expression.String ParseStringIdentifier()
     {
-        return StartEndTree(new Tree.String(Expect(Name).Value));
+        return StartEndTree(new Tree.Expression.String(Expect(Name).Value));
     }
 
     /// <summary>
@@ -228,7 +228,7 @@ public class Parser
     /// </summary>
     private Tree.Block ParseBlock()
     {
-        var statements = new List<Tree>();
+        var statements = new List<Tree.Statement>();
         var typeDeclarations = new List<Tree.TypeAliasDeclaration>();
 
         while (!IsStatementEndingToken(token))
@@ -245,7 +245,7 @@ public class Parser
                 // This behavior models Lua 5.1's syntax - in Lua 5.2+, semicolons may be their own statements.
                 Accept<Token.Semicolon>();
 
-                if (statement is Tree.Return or Tree.Break)
+                if (statement is Tree.Statement.Return or Tree.Statement.Break)
                 {
                     // No more statements can come after `return` or `break`.
                     break;
@@ -259,7 +259,7 @@ public class Parser
     /// <summary>
     /// Parse a statement.
     /// </summary>
-    private Tree ParseStatement()
+    private Tree.Statement ParseStatement()
     {
         // 'return' [explist]
         if (token is Token.Return)
@@ -267,13 +267,13 @@ public class Parser
             StartTree();
             NextToken(); // skip 'return'
             return EndTree(IsStatementEndingToken(token)
-                ? new Tree.Return(null)
-                : new Tree.Return(ParseExpression()));
+                ? new Tree.Statement.Return(null)
+                : new Tree.Statement.Return(ParseExpression()));
         }
 
         if (token is Token.Break)
         {
-            return ConsumeTree(new Tree.Break());
+            return ConsumeTree(new Tree.Statement.Break());
         }
 
         if (token is Token.Do)
@@ -316,21 +316,31 @@ public class Parser
         // Parse assignment or function call.
         var value = ParsePrefixExpression();
 
-        if (value is Tree.Call or Tree.MethodCall or Tree.Error)
+        if (value is Tree.Expression.Call call)
         {
-            return EndTree(value);
+            return EndTree(new Tree.Statement.Call(call));
+        }
+
+        if (value is Tree.Expression.MethodCall methodCall)
+        {
+            return EndTree(new Tree.Statement.MethodCall(methodCall));
+        }
+
+        if (value is Tree.Expression.Error)
+        {
+            return EndTree(new Tree.Statement.Error());
         }
 
         if (IsAssignableTo(value))
         {
-            List<Tree> targets = [value];
+            List<Tree.Expression> targets = [value];
             while (Accept<Token.Comma>())
             {
                 var target = ParsePrefixExpression();
                 if (!IsAssignableTo(target))
                 {
                     Report(new Diagnostic.CannotAssignToThis(target.Range));
-                    targets.Add(new Tree.Error());
+                    targets.Add(new Tree.Expression.Error());
                 }
                 else
                 {
@@ -342,29 +352,29 @@ public class Parser
 
             var expressions = ParseExpressionList();
 
-            return EndTree(new Tree.Assignment(targets, expressions));
+            return EndTree(new Tree.Statement.Assignment(targets, expressions));
         }
 
         var got = Consume();
         Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got));
 
-        return new Tree.Error();
+        return new Tree.Statement.Error();
     }
 
-    private Tree.Do ParseDo()
+    private Tree.Statement.Do ParseDo()
     {
         StartTree();
         // do 'block' end
         Expect(Do);
         var block = ParseBlock();
         Expect(End);
-        return EndTree(new Tree.Do(block));
+        return EndTree(new Tree.Statement.Do(block));
     }
 
     /// <summary>
     /// Parse an if statement, along with any elseifs and a final else.
     /// </summary>
-    private Tree.If ParseIfStatement()
+    private Tree.Statement.If ParseIfStatement()
     {
         Tree.IfBranch primary;
 
@@ -400,10 +410,10 @@ public class Parser
 
         Expect(End);
 
-        return EndTree(new Tree.If(primary, elseIfs, elseBody));
+        return EndTree(new Tree.Statement.If(primary, elseIfs, elseBody));
     }
 
-    private Tree ParseForLoop()
+    private Tree.Statement ParseForLoop()
     {
         StartTree();
 
@@ -422,7 +432,7 @@ public class Parser
             Expect(Comma);
             var end = ParseExpression();
 
-            Tree? step = null;
+            Tree.Expression? step = null;
             if (Accept<Token.Comma>())
             {
                 step = ParseExpression();
@@ -432,7 +442,7 @@ public class Parser
             var body = ParseBlock();
             Expect(End);
 
-            return EndTree(new Tree.NumericalFor(counter, start, end, step, body));
+            return EndTree(new Tree.Statement.NumericalFor(counter, start, end, step, body));
         }
 
         // 'for' declarations 'in' exp 'do' block 'end'
@@ -442,11 +452,11 @@ public class Parser
             var iterator = ParseExpression();
             Expect(Do);
             var body = ParseBlock();
-            return EndTree(new Tree.IteratorFor(declarations, iterator, body));
+            return EndTree(new Tree.Statement.IteratorFor(declarations, iterator, body));
         }
     }
 
-    private Tree.While ParseWhileLoop()
+    private Tree.Statement.While ParseWhileLoop()
     {
         StartTree();
         // 'while' exp 'do' block 'end'
@@ -455,10 +465,10 @@ public class Parser
         Expect(Do);
         var body = ParseBlock();
         Expect(End);
-        return EndTree(new Tree.While(condition, body));
+        return EndTree(new Tree.Statement.While(condition, body));
     }
 
-    private Tree.RepeatUntil ParseRepeatUntilLoop()
+    private Tree.Statement.RepeatUntil ParseRepeatUntilLoop()
     {
         StartTree();
         // 'repeat' block 'until' exp
@@ -466,7 +476,7 @@ public class Parser
         var body = ParseBlock();
         Expect(Until);
         var condition = ParseExpression();
-        return EndTree(new Tree.RepeatUntil(body, condition));
+        return EndTree(new Tree.Statement.RepeatUntil(body, condition));
     }
 
     /// <summary>
@@ -560,9 +570,9 @@ public class Parser
         return new Tree.Type.Table(pairs);
     }
 
-    private List<Tree> ParseTypeList()
+    private List<Tree.Type> ParseTypeList()
     {
-        List<Tree> list = [];
+        List<Tree.Type> list = [];
         do
         {
             list.Add(ParseType());
@@ -583,7 +593,7 @@ public class Parser
         return declarations;
     }
 
-    private Tree ParseLocalDeclaration()
+    private Tree.Statement ParseLocalDeclaration()
     {
         StartTree();
 
@@ -594,28 +604,28 @@ public class Parser
             // 'local' name funcbody
             var name = ParseValueName();
             var function = ParseFunctionBody(false);
-            return EndTree(new Tree.LocalFunctionDeclaration(name, function));
+            return EndTree(new Tree.Statement.LocalFunctionDeclaration(name, function));
         }
 
         // 'local' declaration {',' declaration} ['=' explist]
         var declarations = ParseDeclarationList();
 
-        List<Tree> values = [];
+        List<Tree.Expression> values = [];
         if (Accept<Token.Assign>())
         {
             values = ParseExpressionList();
         }
 
-        return EndTree(new Tree.LocalDeclaration(declarations, values));
+        return EndTree(new Tree.Statement.LocalDeclaration(declarations, values));
     }
 
-    private Tree.Assignment ParseFunctionDeclaration()
+    private Tree.Statement.Assignment ParseFunctionDeclaration()
     {
         StartTree();
 
         // 'function' name {'.' name} [':' name]
         Expect(Function);
-        Tree path = ParseValueName();
+        Tree.Expression path = ParseValueName();
         var isMethod = false;
         while (token is Token.Dot or Token.Colon)
         {
@@ -624,7 +634,7 @@ public class Parser
             var separator = Consume();
             var nextName = ParseStringIdentifier();
 
-            path = EndTree(new Tree.Access(path, nextName));
+            path = EndTree(new Tree.Expression.Access(path, nextName));
 
             if (separator is Token.Colon)
             {
@@ -635,7 +645,7 @@ public class Parser
 
         var function = ParseFunctionBody(isMethod);
 
-        return EndTree(new Tree.Assignment([path], [function]));
+        return EndTree(new Tree.Statement.Assignment([path], [function]));
     }
 
     /// <summary>
@@ -652,7 +662,7 @@ public class Parser
         List<Tree.Declaration> parameters = [];
         if (isMethod)
         {
-            parameters.Add(new(new Tree.Name("self") { Range = lParenRange }, null));
+            parameters.Add(new(new Tree.Expression.Name("self") { Range = lParenRange }, null));
         }
 
         if (!Accept<Token.RParen>())
@@ -661,7 +671,7 @@ public class Parser
             Expect(RParen);
         }
 
-        List<Tree>? returnTypes = null;
+        List<Tree.Type>? returnTypes = null;
         if (Accept<Token.Colon>())
         {
             returnTypes = ParseTypeList();
@@ -673,7 +683,7 @@ public class Parser
     /// <summary>
     /// Parses a function body - used in function declarations and in anonymous functions.
     /// </summary>
-    private Tree.Function ParseFunctionBody(bool isMethod)
+    private Tree.Expression.Function ParseFunctionBody(bool isMethod)
     {
         StartTree();
 
@@ -683,13 +693,13 @@ public class Parser
         var body = ParseBlock();
         Expect(End);
 
-        return EndTree(new Tree.Function(functionType, body, isMethod));
+        return EndTree(new Tree.Expression.Function(functionType, body, isMethod));
     }
 
     /// <summary>
     /// Parses either an access, or a function call.
     /// </summary>
-    private Tree ParsePrefixExpression()
+    private Tree.Expression ParsePrefixExpression()
     {
         StartTree();
 
@@ -704,16 +714,16 @@ public class Parser
         if (token is Token.Name)
         {
             var name = Consume();
-            return ParsePrefixExpression(EndTree(new Tree.Name(name.Value)));
+            return ParsePrefixExpression(EndTree(new Tree.Expression.Name(name.Value)));
         }
 
         var got = Consume();
         Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got));
 
-        return EndTree(new Tree.Error());
+        return EndTree(new Tree.Expression.Error());
     }
 
-    private Tree ParsePrefixExpression(Tree previous)
+    private Tree.Expression ParsePrefixExpression(Tree.Expression previous)
     {
         StartTree(previous.Range.Start);
 
@@ -721,7 +731,7 @@ public class Parser
         if (Accept<Token.Dot>())
         {
             var name = ParseStringIdentifier();
-            return ParsePrefixExpression(EndTree(new Tree.Access(previous, name)));
+            return ParsePrefixExpression(EndTree(new Tree.Expression.Access(previous, name)));
         }
 
         // Method call: ':' Name  '(' [explist] ')'
@@ -732,12 +742,12 @@ public class Parser
 
             if (Accept<Token.RParen>())
             {
-                return ParsePrefixExpression(EndTree(new Tree.MethodCall(previous, funcName, [])));
+                return ParsePrefixExpression(EndTree(new Tree.Expression.MethodCall(previous, funcName, [])));
             }
 
             var parameters = ParseExpressionList();
             Expect(RParen);
-            return ParsePrefixExpression(EndTree(new Tree.MethodCall(previous, funcName, parameters)));
+            return ParsePrefixExpression(EndTree(new Tree.Expression.MethodCall(previous, funcName, parameters)));
         }
 
         // Access with square brackets: '[' exp ']'
@@ -745,7 +755,7 @@ public class Parser
         {
             var expression = ParseExpression();
             Expect(RSquare);
-            return ParsePrefixExpression(EndTree(new Tree.Access(previous, expression)));
+            return ParsePrefixExpression(EndTree(new Tree.Expression.Access(previous, expression)));
         }
 
         // Function call: '(' [explist] ')'
@@ -761,12 +771,12 @@ public class Parser
 
             if (Accept<Token.RParen>())
             {
-                return ParsePrefixExpression(EndTree(new Tree.Call(previous, [])));
+                return ParsePrefixExpression(EndTree(new Tree.Expression.Call(previous, [])));
             }
 
             var parameters = ParseExpressionList();
             Expect(RParen);
-            return ParsePrefixExpression(EndTree(new Tree.Call(previous, parameters)));
+            return ParsePrefixExpression(EndTree(new Tree.Expression.Call(previous, parameters)));
         }
 
         return EndTree(previous);
@@ -775,10 +785,10 @@ public class Parser
     /// <summary>
     /// Parse a list of expressions separated by commas.
     /// </summary>
-    private List<Tree> ParseExpressionList()
+    private List<Tree.Expression> ParseExpressionList()
     {
         // {exp ','} exp
-        List<Tree> values = [];
+        List<Tree.Expression> values = [];
         while (true)
         {
             values.Add(ParseExpression());
@@ -794,7 +804,7 @@ public class Parser
     /// <summary>
     /// Parse an expression with binary operators.
     /// </summary>
-    private Tree ParseExpression()
+    private Tree.Expression ParseExpression()
     {
         return ParseExpression(ParsePrimary(), 0);
     }
@@ -803,7 +813,7 @@ public class Parser
     /// Parse an expression using precedence climbing.<br/>
     /// https://en.wikipedia.org/wiki/Operator-precedence_parser
     /// </summary>
-    private Tree ParseExpression(Tree left, int minPrecedence)
+    private Tree.Expression ParseExpression(Tree.Expression left, int minPrecedence)
     {
         while (token.IsBinary && token.Precedence >= minPrecedence)
         {
@@ -817,23 +827,23 @@ public class Parser
                 right = ParseExpression(right, op.Precedence + (token.Precedence > op.Precedence ? 1 : 0));
             }
 
-            left = EndTree<Tree.Binary>(op switch
+            left = EndTree<Tree.Expression.Binary>(op switch
             {
-                Token.Plus => new Tree.Add(left, right),
-                Token.Minus => new Tree.Subtract(left, right),
-                Token.Multiply => new Tree.Multiply(left, right),
-                Token.Divide => new Tree.Divide(left, right),
-                Token.Modulo => new Tree.Modulo(left, right),
-                Token.Power => new Tree.Power(left, right),
-                Token.Concat => new Tree.Concat(left, right),
-                Token.Equal => new Tree.Equal(left, right),
-                Token.NotEqual => new Tree.NotEqual(left, right),
-                Token.LessEqual => new Tree.LessEqual(left, right),
-                Token.GreaterEqual => new Tree.GreaterEqual(left, right),
-                Token.Less => new Tree.Less(left, right),
-                Token.Greater => new Tree.Greater(left, right),
-                Token.And => new Tree.And(left, right),
-                Token.Or => new Tree.Or(left, right),
+                Token.Plus => new Tree.Expression.Add(left, right),
+                Token.Minus => new Tree.Expression.Subtract(left, right),
+                Token.Multiply => new Tree.Expression.Multiply(left, right),
+                Token.Divide => new Tree.Expression.Divide(left, right),
+                Token.Modulo => new Tree.Expression.Modulo(left, right),
+                Token.Power => new Tree.Expression.Power(left, right),
+                Token.Concat => new Tree.Expression.Concat(left, right),
+                Token.Equal => new Tree.Expression.Equal(left, right),
+                Token.NotEqual => new Tree.Expression.NotEqual(left, right),
+                Token.LessEqual => new Tree.Expression.LessEqual(left, right),
+                Token.GreaterEqual => new Tree.Expression.GreaterEqual(left, right),
+                Token.Less => new Tree.Expression.Less(left, right),
+                Token.Greater => new Tree.Expression.Greater(left, right),
+                Token.And => new Tree.Expression.And(left, right),
+                Token.Or => new Tree.Expression.Or(left, right),
                 _ => throw new Exception() // Unreachable.
             });
         }
@@ -841,20 +851,20 @@ public class Parser
         return left;
     }
 
-    private Tree.Table ParseTableConstructor()
+    private Tree.Expression.Table ParseTableConstructor()
     {
         StartTree();
 
         Expect(LCurly);
 
         var lastNumberIndex = 1;
-        List<Tree.TableField> fields = [];
+        List<Tree.Expression.Table.Field> fields = [];
 
         while (!Accept<Token.RCurly>())
         {
             StartTree();
 
-            Tree key;
+            Tree.Expression key;
             // '[' exp ']' '=' exp
             if (Accept<Token.LSquare>())
             {
@@ -865,18 +875,18 @@ public class Parser
             // name '=' exp
             else if (token is Token.Name name && Lookahead(1) is Token.Assign)
             {
-                key = ConsumeTree(new Tree.String(name.Value));
+                key = ConsumeTree(new Tree.Expression.String(name.Value));
                 NextToken(); // skip '='
             }
             // Just an expression, will be added at the last number index
             else
             {
-                key = new Tree.Number(lastNumberIndex.ToString(), lastNumberIndex);
+                key = new Tree.Expression.Number(lastNumberIndex.ToString(), lastNumberIndex);
                 lastNumberIndex++;
             }
 
             var value = ParseExpression();
-            fields.Add(EndTree(new Tree.TableField(key, value)));
+            fields.Add(EndTree(new Tree.Expression.Table.Field(key, value)));
 
             if (!Accept<Token.Comma>() && !Accept<Token.Semicolon>())
             {
@@ -886,10 +896,10 @@ public class Parser
         }
 
 
-        return EndTree(new Tree.Table(fields));
+        return EndTree(new Tree.Expression.Table(fields));
     }
 
-    private Tree ParsePrimary()
+    private Tree.Expression ParsePrimary()
     {
         // unop exp
         if (token.IsUnary)
@@ -897,48 +907,48 @@ public class Parser
             StartTree();
             var op = Consume();
             var expression = ParsePrimary();
-            return EndTree<Tree>(op switch
+            return EndTree<Tree.Expression>(op switch
             {
-                Token.Not => new Tree.Not(expression),
-                Token.Length => new Tree.Length(expression),
-                Token.Minus => new Tree.Negate(expression),
+                Token.Not => new Tree.Expression.Not(expression),
+                Token.Length => new Tree.Expression.Length(expression),
+                Token.Minus => new Tree.Expression.Negate(expression),
                 _ => throw new Exception() // Unreachable.
             });
         }
 
         if (token is Token.Vararg)
         {
-            return ConsumeTree(new Tree.Vararg());
+            return ConsumeTree(new Tree.Expression.Vararg());
         }
 
         if (token is Token.Nil)
         {
-            return ConsumeTree(new Tree.Nil());
+            return ConsumeTree(new Tree.Expression.Nil());
         }
 
         if (token is Token.False)
         {
-            return ConsumeTree(new Tree.False());
+            return ConsumeTree(new Tree.Expression.False());
         }
 
         if (token is Token.True)
         {
-            return ConsumeTree(new Tree.True());
+            return ConsumeTree(new Tree.Expression.True());
         }
 
         if (token is Token.Number numberToken)
         {
-            return ConsumeTree(new Tree.Number(numberToken.Value, numberToken.NumberValue));
+            return ConsumeTree(new Tree.Expression.Number(numberToken.Value, numberToken.NumberValue));
         }
 
         if (token is Token.String stringToken)
         {
-            return ConsumeTree(new Tree.String(stringToken.Value));
+            return ConsumeTree(new Tree.Expression.String(stringToken.Value));
         }
 
         if (token is Token.LongString longString)
         {
-            return ConsumeTree(new Tree.LongString(longString.Value, longString.Level));
+            return ConsumeTree(new Tree.Expression.LongString(longString.Value, longString.Level));
         }
 
         if (token is Token.LCurly)

@@ -14,7 +14,8 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     /// Returns whether `tree` is a simple literal, which means that when it appears as a key, its type should be
     /// interpreted as constant.
     /// </summary>
-    private static bool IsSimpleLiteral(Tree tree) => tree is Tree.String or Tree.Number or Tree.True or Tree.False;
+    private static bool IsSimpleLiteral(Tree.Expression tree) =>
+        tree is Tree.Expression.String or Tree.Expression.Number or Tree.Expression.True or Tree.Expression.False;
 
     /// <summary>
     /// Visits all of a block's statements.
@@ -43,7 +44,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         }
     }
 
-    private TypeList VisitCall(Tree.Call call)
+    private TypeList VisitCall(Tree.Expression.Call call)
     {
         var parameters = VisitExpressionList(call.Parameters);
         var target = call.Target.AcceptExpressionVisitor(this, false);
@@ -89,7 +90,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new NotImplementedException("Types other than `Function` aren't callable yet");
     }
 
-    private TypeList VisitExpressionList(List<Tree> expressions)
+    private TypeList VisitExpressionList(List<Tree.Expression> expressions)
     {
         List<Type> list = new(1);
         TypeList? continued = null;
@@ -102,11 +103,11 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 list.Add(continued.Types().First().Type);
             }
 
-            if (expression is Tree.Call call)
+            if (expression is Tree.Expression.Call call)
             {
                 continued = VisitCall(call);
             }
-            else if (expression is Tree.Vararg)
+            else if (expression is Tree.Expression.Vararg)
             {
                 throw new NotImplementedException();
             }
@@ -181,7 +182,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return null;
     }
 
-    private Type GetAccessType(Tree target, Tree key, bool isConstant)
+    private Type GetAccessType(Tree.Expression target, Tree.Expression key, bool isConstant)
     {
         var targetType = target.AcceptExpressionVisitor(this, isConstant);
         // TODO handle __index
@@ -212,12 +213,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return Type.Unknown;
     }
 
-    public void Visit(Tree.Do block)
+    public void Visit(Tree.Statement.Do block)
     {
         VisitBlock(block.Body);
     }
 
-    public void Visit(Tree.NumericalFor numericalFor)
+    public void Visit(Tree.Statement.NumericalFor numericalFor)
     {
         var startType = numericalFor.Start.AcceptExpressionVisitor(this, false);
         if (!Type.NumberPrimitive.IsAssignableFrom(startType))
@@ -250,7 +251,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         VisitBlock(numericalFor.Body);
     }
 
-    public void Visit(Tree.If ifStatement)
+    public void Visit(Tree.Statement.If ifStatement)
     {
         ifStatement.Primary.Condition.AcceptExpressionVisitor(this, false);
         VisitBlock(ifStatement.Primary.Body);
@@ -267,7 +268,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         }
     }
 
-    public void Visit(Tree.Assignment assignment)
+    public void Visit(Tree.Statement.Assignment assignment)
     {
         for (var i = 0; i < assignment.Targets.Count; i++)
         {
@@ -276,7 +277,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             if (i < assignment.Values.Count)
             {
                 var value = assignment.Values[i];
-                if (i == assignment.Values.Count - 1 && value is Tree.Call or Tree.Vararg)
+                if (i == assignment.Values.Count - 1 && value is Tree.Expression.Call or Tree.Expression.Vararg)
                 {
                     // If the last value being assigned could be a type list, switch over to this method.
                     CheckTypeListAssignment(assignment.Targets, value, i);
@@ -298,14 +299,14 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     /// <param name="targets">The targets being assigned to.</param>
     /// <param name="value">The value being assigned, that returns a type list.</param>
     /// <param name="i">The index to start from.</param>
-    private void CheckTypeListAssignment(List<Tree> targets, Tree value, int i)
+    private void CheckTypeListAssignment(List<Tree.Expression> targets, Tree.Expression value, int i)
     {
         TypeList typeList = null!;
-        if (value is Tree.Call call)
+        if (value is Tree.Expression.Call call)
         {
             typeList = VisitCall(call);
         }
-        else if (value is Tree.Vararg)
+        else if (value is Tree.Expression.Vararg)
         {
             throw new NotImplementedException();
         }
@@ -327,37 +328,37 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         }
     }
 
-    public void Visit(Tree.MethodCall methodCall)
+    public void Visit(Tree.Expression.MethodCall methodCall)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Call call)
+    public void Visit(Tree.Expression.Call call)
     {
         VisitCall(call);
     }
 
-    public void Visit(Tree.Access access)
+    public void Visit(Tree.Expression.Access access)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Binary binary)
+    public void Visit(Tree.Expression.Binary binary)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Unary unary)
+    public void Visit(Tree.Expression.Unary unary)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Function function)
+    public void Visit(Tree.Expression.Function function)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Name name)
+    public void Visit(Tree.Expression.Name name)
     {
         throw new NotImplementedException();
     }
@@ -367,17 +368,17 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Table table)
+    public void Visit(Tree.Expression.Table table)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Return returnStatement)
+    public void Visit(Tree.Statement.Return returnStatement)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.LocalFunctionDeclaration declaration)
+    public void Visit(Tree.Statement.LocalFunctionDeclaration declaration)
     {
         var functionType = VisitFunctionType(declaration.Function.Type, true);
         if (!source.TryGetTreeSymbol(declaration.Name, out var symbol))
@@ -389,12 +390,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         VisitBlock(declaration.Function.Body);
     }
 
-    public void Visit(Tree.GlobalDeclaration declaration)
+    public void Visit(Tree.Statement.GlobalDeclaration declaration)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.LocalDeclaration localDeclaration)
+    public void Visit(Tree.Statement.LocalDeclaration localDeclaration)
     {
         using var valueTypes = VisitExpressionList(localDeclaration.Values).Types().GetEnumerator();
         for (var i = 0; i < localDeclaration.Declarations.Count; i++)
@@ -438,17 +439,17 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         }
     }
 
-    public void Visit(Tree.RepeatUntil repeatUntil)
+    public void Visit(Tree.Statement.RepeatUntil repeatUntil)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.While whileLoop)
+    public void Visit(Tree.Statement.While whileLoop)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.IteratorFor forLoop)
+    public void Visit(Tree.Statement.IteratorFor forLoop)
     {
         throw new NotImplementedException();
     }
@@ -463,44 +464,44 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new NotImplementedException();
     }
 
-    public Type VisitExpression(Tree.Function function, bool isConstant)
+    public Type VisitExpression(Tree.Expression.Function function, bool isConstant)
     {
         var functionType = VisitFunctionType(function.Type, true);
         VisitBlock(function.Body);
         return functionType;
     }
 
-    public Type VisitExpression(Tree.MethodCall methodCall, bool isConstant)
+    public Type VisitExpression(Tree.Expression.MethodCall methodCall, bool isConstant)
     {
         throw new NotImplementedException();
     }
 
-    public Type VisitExpression(Tree.Call call, bool isConstant)
+    public Type VisitExpression(Tree.Expression.Call call, bool isConstant)
     {
         // TODO show warning if the call returns more than one value?
         return VisitCall(call).Types().FirstOrDefault((Type: Type.Nil, false)).Type;
     }
 
-    public Type VisitExpression(Tree.Access access, bool isConstant)
+    public Type VisitExpression(Tree.Expression.Access access, bool isConstant)
     {
         return GetAccessType(access.Target, access.Key, isConstant);
     }
 
-    public Type VisitExpression(Tree.Binary binary, bool isConstant)
+    public Type VisitExpression(Tree.Expression.Binary binary, bool isConstant)
     {
         throw new NotImplementedException();
     }
 
-    public Type VisitExpression(Tree.Unary unary, bool isConstant)
+    public Type VisitExpression(Tree.Expression.Unary unary, bool isConstant)
     {
         var exprType = unary.Expression.AcceptExpressionVisitor(this, isConstant);
 
-        if (unary is Tree.Not)
+        if (unary is Tree.Expression.Not)
         {
             return Type.Boolean;
         }
 
-        if (unary is Tree.Length)
+        if (unary is Tree.Expression.Length)
         {
             // TODO use __len metamethod
             if (!Type.TablePrimitive.IsAssignableFrom(exprType) && !Type.StringPrimitive.IsAssignableFrom(exprType))
@@ -511,7 +512,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             return Type.NumberPrimitive;
         }
 
-        if (unary is Tree.Negate)
+        if (unary is Tree.Expression.Negate)
         {
             // TODO use __unm metamethod
             if (!Type.NumberPrimitive.IsAssignableFrom(exprType))
@@ -525,7 +526,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         throw new Exception(); // Unreachable.
     }
 
-    public Type VisitExpression(Tree.Name name, bool isConstant)
+    public Type VisitExpression(Tree.Expression.Name name, bool isConstant)
     {
         if (!source.TryGetTreeSymbol(name, out var symbol))
         {
@@ -542,7 +543,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return type;
     }
 
-    public Type VisitExpression(Tree.Table table, bool isConstant)
+    public Type VisitExpression(Tree.Expression.Table table, bool isConstant)
     {
         List<Type.Table.Pair> pairs = [];
 
@@ -557,32 +558,32 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return new Type.Table(pairs);
     }
 
-    public Type VisitExpression(Tree.Number number, bool isConstant)
+    public Type VisitExpression(Tree.Expression.Number number, bool isConstant)
     {
         return isConstant ? new Type.NumberLiteral(number.NumberValue) : Type.NumberPrimitive;
     }
 
-    public Type VisitExpression(Tree.String stringValue, bool isConstant)
+    public Type VisitExpression(Tree.Expression.String stringValue, bool isConstant)
     {
         return isConstant ? new Type.StringLiteral(stringValue.Value) : Type.StringPrimitive;
     }
 
-    public Type VisitExpression(Tree.True trueValue, bool isConstant)
+    public Type VisitExpression(Tree.Expression.True trueValue, bool isConstant)
     {
         return isConstant ? Type.True : Type.Boolean;
     }
 
-    public Type VisitExpression(Tree.False falseValue, bool isConstant)
+    public Type VisitExpression(Tree.Expression.False falseValue, bool isConstant)
     {
         return isConstant ? Type.False : Type.Boolean;
     }
 
-    public Type VisitExpression(Tree.Nil nil, bool isConstant)
+    public Type VisitExpression(Tree.Expression.Nil nil, bool isConstant)
     {
         return Type.Nil;
     }
 
-    public Type VisitExpression(Tree.Error error, bool isConstant)
+    public Type VisitExpression(Tree.Expression.Error error, bool isConstant)
     {
         return Type.Unknown;
     }
@@ -645,11 +646,11 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     /// <param name="targetType">The type of the target being assigned to.</param>
     /// <param name="sourceValue">The value being assigned.</param>
     /// <param name="targetValue">The tree node for the target value, if applicable.</param>
-    private void CheckAssignment(Type targetType, Tree sourceValue, Tree? targetValue)
+    private void CheckAssignment(Type targetType, Tree.Expression sourceValue, Tree.Expression? targetValue)
     {
         var errorRange = (targetValue ?? sourceValue).Range;
 
-        if (sourceValue is Tree.Table sourceTable)
+        if (sourceValue is Tree.Expression.Table sourceTable)
         {
             if (targetType is Type.Table targetTable)
             {
@@ -689,7 +690,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                     new TypeMismatch.Primitive(targetType, sourceValue.AcceptExpressionVisitor(this, false))));
             }
         }
-        else if (sourceValue is Tree.Function)
+        else if (sourceValue is Tree.Expression.Function)
         {
             // TODO
         }

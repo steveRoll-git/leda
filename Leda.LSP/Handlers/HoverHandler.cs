@@ -18,7 +18,7 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
         if (name is not null && source.TryGetTreeSymbol(name, out var symbol))
         {
             string? content = null;
-            if (name is Tree.Name valueName)
+            if (name is Tree.Expression.Name valueName)
             {
                 source.TryGetSymbolType(symbol, out var type);
                 content = $"""

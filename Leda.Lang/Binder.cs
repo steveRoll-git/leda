@@ -93,7 +93,7 @@ public class Binder : Tree.IVisitor
     /// <summary>
     /// Finds the value symbol that a name refers to.
     /// </summary>
-    private bool TryGetBinding(Tree.Name name, [NotNullWhen(true)] out Symbol? symbol)
+    private bool TryGetBinding(Tree.Expression.Name name, [NotNullWhen(true)] out Symbol? symbol)
     {
         return TryGetBinding(name.Value, Tree.NameContext.Value, out symbol, out _);
     }
@@ -148,7 +148,7 @@ public class Binder : Tree.IVisitor
     /// <summary>
     /// Adds a value name's symbol to the current scope.
     /// </summary>
-    private void AddSymbol(Tree.Name name, Symbol symbol)
+    private void AddSymbol(Tree.Expression.Name name, Symbol symbol)
     {
         AddSymbol(name, name.Value, Tree.NameContext.Value, symbol);
     }
@@ -184,14 +184,14 @@ public class Binder : Tree.IVisitor
         }
     }
 
-    public void Visit(Tree.Do block)
+    public void Visit(Tree.Statement.Do block)
     {
         PushScope();
         VisitBlock(block.Body);
         PopScope();
     }
 
-    public void Visit(Tree.NumericalFor numericalFor)
+    public void Visit(Tree.Statement.NumericalFor numericalFor)
     {
         PushScope();
         numericalFor.Start.AcceptVisitor(this);
@@ -210,7 +210,7 @@ public class Binder : Tree.IVisitor
         PopScope();
     }
 
-    public void Visit(Tree.If ifStatement)
+    public void Visit(Tree.Statement.If ifStatement)
     {
         VisitIfBranch(ifStatement.Primary);
         foreach (var branch in ifStatement.ElseIfs)
@@ -226,7 +226,7 @@ public class Binder : Tree.IVisitor
         }
     }
 
-    public void Visit(Tree.Assignment assignment)
+    public void Visit(Tree.Statement.Assignment assignment)
     {
         foreach (var target in assignment.Targets)
         {
@@ -239,7 +239,7 @@ public class Binder : Tree.IVisitor
         }
     }
 
-    public void Visit(Tree.MethodCall methodCall)
+    public void Visit(Tree.Expression.MethodCall methodCall)
     {
         methodCall.Target.AcceptVisitor(this);
         foreach (var parameter in methodCall.Parameters)
@@ -248,7 +248,7 @@ public class Binder : Tree.IVisitor
         }
     }
 
-    public void Visit(Tree.Call call)
+    public void Visit(Tree.Expression.Call call)
     {
         call.Target.AcceptVisitor(this);
         foreach (var parameter in call.Parameters)
@@ -257,31 +257,31 @@ public class Binder : Tree.IVisitor
         }
     }
 
-    public void Visit(Tree.Access access)
+    public void Visit(Tree.Expression.Access access)
     {
         access.Target.AcceptVisitor(this);
         access.Key.AcceptVisitor(this);
     }
 
-    public void Visit(Tree.Binary binary)
+    public void Visit(Tree.Expression.Binary binary)
     {
         binary.Left.AcceptVisitor(this);
         binary.Right.AcceptVisitor(this);
     }
 
-    public void Visit(Tree.Unary unary)
+    public void Visit(Tree.Expression.Unary unary)
     {
         unary.Expression.AcceptVisitor(this);
     }
 
-    public void Visit(Tree.Function function)
+    public void Visit(Tree.Expression.Function function)
     {
         PushScope();
         VisitFunction(function);
         PopScope();
     }
 
-    public void VisitFunction(Tree.Function function)
+    public void VisitFunction(Tree.Expression.Function function)
     {
         Visit(function.Type);
 
@@ -293,7 +293,7 @@ public class Binder : Tree.IVisitor
         VisitBlock(function.Body);
     }
 
-    public void Visit(Tree.Name name)
+    public void Visit(Tree.Expression.Name name)
     {
         if (TryGetBinding(name, out var symbol))
         {
@@ -319,7 +319,7 @@ public class Binder : Tree.IVisitor
         }
     }
 
-    public void Visit(Tree.Table table)
+    public void Visit(Tree.Expression.Table table)
     {
         foreach (var field in table.Fields)
         {
@@ -328,12 +328,12 @@ public class Binder : Tree.IVisitor
         }
     }
 
-    public void Visit(Tree.Return returnStatement)
+    public void Visit(Tree.Statement.Return returnStatement)
     {
-        returnStatement.Expression?.AcceptVisitor(this);
+        returnStatement.Value?.AcceptVisitor(this);
     }
 
-    public void Visit(Tree.LocalFunctionDeclaration declaration)
+    public void Visit(Tree.Statement.LocalFunctionDeclaration declaration)
     {
         AddSymbol(declaration.Name, new Symbol.LocalVariable());
         PushScope();
@@ -341,12 +341,12 @@ public class Binder : Tree.IVisitor
         PopScope();
     }
 
-    public void Visit(Tree.GlobalDeclaration declaration)
+    public void Visit(Tree.Statement.GlobalDeclaration declaration)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.LocalDeclaration localDeclaration)
+    public void Visit(Tree.Statement.LocalDeclaration localDeclaration)
     {
         foreach (var value in localDeclaration.Values)
         {
@@ -361,7 +361,7 @@ public class Binder : Tree.IVisitor
         }
     }
 
-    public void Visit(Tree.RepeatUntil repeatUntil)
+    public void Visit(Tree.Statement.RepeatUntil repeatUntil)
     {
         PushScope();
         VisitBlock(repeatUntil.Body);
@@ -369,7 +369,7 @@ public class Binder : Tree.IVisitor
         PopScope();
     }
 
-    public void Visit(Tree.While whileLoop)
+    public void Visit(Tree.Statement.While whileLoop)
     {
         whileLoop.Condition.AcceptVisitor(this);
         PushScope();
@@ -377,7 +377,7 @@ public class Binder : Tree.IVisitor
         PopScope();
     }
 
-    public void Visit(Tree.IteratorFor forLoop)
+    public void Visit(Tree.Statement.IteratorFor forLoop)
     {
         forLoop.Iterator.AcceptVisitor(this);
 
