@@ -28,6 +28,10 @@ public class Emitter
     private static bool IsSimpleKey(string name) =>
         name.Length > 0 && !char.IsDigit(name[0]) && name.All(Lexer.IsNameChar);
 
+    private static bool AreBinaryParensNeeded(Tree.Expression.Binary outer, Tree.Expression inner) =>
+        inner is Tree.Expression.Binary innerBinary &&
+        innerBinary.Operator.Precedence < outer.Operator.Precedence;
+
     private Emitter() { }
 
     private void Emit(string str)
@@ -72,8 +76,13 @@ public class Emitter
         Emit("end");
     }
 
-    private void EmitExpression(Tree.Expression expression, int indent)
+    private void EmitExpression(Tree.Expression expression, int indent, bool parenthesize = false)
     {
+        if (parenthesize)
+        {
+            Emit('(');
+        }
+
         if (expression is Tree.Expression.Name name)
         {
             Emit(name.Value);
@@ -190,33 +199,13 @@ public class Emitter
         }
         else if (expression is Tree.Expression.Binary binary)
         {
-            if (binary.Left is Tree.Expression.Binary leftBinary &&
-                leftBinary.Operator.Precedence < binary.Operator.Precedence)
-            {
-                Emit('(');
-                EmitExpression(binary.Left, indent);
-                Emit(')');
-            }
-            else
-            {
-                EmitExpression(binary.Left, indent);
-            }
+            EmitExpression(binary.Left, indent, AreBinaryParensNeeded(binary, binary.Left));
 
             Emit(' ');
             Emit(binary.Operator.Value);
             Emit(' ');
 
-            if (binary.Right is Tree.Expression.Binary rightBinary &&
-                rightBinary.Operator.Precedence < binary.Operator.Precedence)
-            {
-                Emit('(');
-                EmitExpression(binary.Right, indent);
-                Emit(')');
-            }
-            else
-            {
-                EmitExpression(binary.Right, indent);
-            }
+            EmitExpression(binary.Right, indent, AreBinaryParensNeeded(binary, binary.Right));
         }
         else if (expression is Tree.Expression.Unary unary)
         {
@@ -226,11 +215,16 @@ public class Emitter
                 Emit(' ');
             }
 
-            EmitExpression(unary.Expression, indent);
+            EmitExpression(unary.Expression, indent, unary.Expression is Tree.Expression.Binary);
         }
         else
         {
             throw new Exception();
+        }
+
+        if (parenthesize)
+        {
+            Emit(')');
         }
     }
 
@@ -248,22 +242,15 @@ public class Emitter
 
     private void EmitPrefixExpression(Tree.Expression expression, bool isStatement, int indent)
     {
-        if (expression is not (Tree.Expression.Call or Tree.Expression.Access or Tree.Expression.Name))
-        {
-            if (isStatement)
-            {
-                // Prevent ambiguities if the line starts with a '('
-                Emit(';');
-            }
+        var parensNeeded = expression is not (Tree.Expression.Call or Tree.Expression.Access or Tree.Expression.Name);
 
-            Emit('(');
-            EmitExpression(expression, indent);
-            Emit(')');
-        }
-        else
+        if (parensNeeded && isStatement)
         {
-            EmitExpression(expression, indent);
+            // Prevent ambiguities if the line starts with a '('
+            Emit(';');
         }
+
+        EmitExpression(expression, indent, parensNeeded);
     }
 
     private void EmitCall(Tree.Expression.Call call, bool isStatement, int indent)
