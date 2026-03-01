@@ -591,10 +591,10 @@ public abstract class Tree
             public override void AcceptVisitor(IVisitor visitor) { }
         }
 
-        public abstract class Unary(Expression expression) : Expression
+        public class Unary(Expression expression, Token op) : Expression
         {
             public Expression Expression => expression;
-            public abstract string Token { get; }
+            public Token Operator => op;
 
             public override void AcceptVisitor(IVisitor visitor)
             {
@@ -605,41 +605,16 @@ public abstract class Tree
             {
                 return visitor.VisitExpression(this, isConstant);
             }
-        }
-
-        /// <summary>
-        /// Unary negation.
-        /// </summary>
-        public class Negate(Expression expression) : Unary(expression)
-        {
-            public override string Token => "-";
-        }
-
-        /// <summary>
-        /// Unary not.
-        /// </summary>
-        public class Not(Expression expression) : Unary(expression)
-        {
-            public override string Token => "not ";
-        }
-
-        /// <summary>
-        /// Unary length (#).
-        /// </summary>
-        public class Length(Expression expression) : Unary(expression)
-        {
-            public override string Token => "#";
         }
 
         /// <summary>
         /// A binary operator.
         /// </summary>
-        public abstract class Binary(Expression left, Expression right) : Expression
+        public class Binary(Expression left, Expression right, Token op) : Expression
         {
             public Expression Left => left;
             public Expression Right => right;
-            public abstract string Token { get; }
-            public abstract int Precedence { get; }
+            public Token Operator => op;
 
             public override void AcceptVisitor(IVisitor visitor)
             {
@@ -650,141 +625,6 @@ public abstract class Tree
             {
                 return visitor.VisitExpression(this, isConstant);
             }
-        }
-
-        /// <summary>
-        /// Addition (+).
-        /// </summary>
-        public class Add(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "+";
-            public override int Precedence => 4;
-        }
-
-        /// <summary>
-        /// Subtraction (-).
-        /// </summary>
-        public class Subtract(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "-";
-            public override int Precedence => 4;
-        }
-
-        /// <summary>
-        /// Multiplication (*).
-        /// </summary>
-        public class Multiply(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "*";
-            public override int Precedence => 5;
-        }
-
-        /// <summary>
-        /// Division (/).
-        /// </summary>
-        public class Divide(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "/";
-            public override int Precedence => 5;
-        }
-
-        /// <summary>
-        /// Modulo (%).
-        /// </summary>
-        public class Modulo(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "%";
-            public override int Precedence => 5;
-        }
-
-        /// <summary>
-        /// Power (^).
-        /// </summary>
-        public class Power(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "^";
-            public override int Precedence => 6;
-        }
-
-        /// <summary>
-        /// Concat (..).
-        /// </summary>
-        public class Concat(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "..";
-            public override int Precedence => 3;
-        }
-
-        /// <summary>
-        /// Equal (==).
-        /// </summary>
-        public class Equal(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "==";
-            public override int Precedence => 2;
-        }
-
-        /// <summary>
-        /// Not equal (~=).
-        /// </summary>
-        public class NotEqual(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "~=";
-            public override int Precedence => 2;
-        }
-
-        /// <summary>
-        /// Less equal (&lt;=).
-        /// </summary>
-        public class LessEqual(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "<=";
-            public override int Precedence => 2;
-        }
-
-        /// <summary>
-        /// Greater equal (>=).
-        /// </summary>
-        public class GreaterEqual(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => ">=";
-            public override int Precedence => 2;
-        }
-
-        /// <summary>
-        /// Less (&lt;).
-        /// </summary>
-        public class Less(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "<";
-            public override int Precedence => 2;
-        }
-
-        /// <summary>
-        /// Greater (>).
-        /// </summary>
-        public class Greater(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => ">";
-            public override int Precedence => 2;
-        }
-
-        /// <summary>
-        /// Boolean and.
-        /// </summary>
-        public class And(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "and";
-            public override int Precedence => 1;
-        }
-
-        /// <summary>
-        /// Boolean or.
-        /// </summary>
-        public class Or(Expression left, Expression right) : Binary(left, right)
-        {
-            public override string Token => "or";
-            public override int Precedence => 0;
         }
 
         /// <summary>

@@ -190,7 +190,8 @@ public class Emitter
         }
         else if (expression is Tree.Expression.Binary binary)
         {
-            if (binary.Left is Tree.Expression.Binary leftBinary && leftBinary.Precedence < binary.Precedence)
+            if (binary.Left is Tree.Expression.Binary leftBinary &&
+                leftBinary.Operator.Precedence < binary.Operator.Precedence)
             {
                 Emit('(');
                 EmitExpression(binary.Left, indent);
@@ -202,10 +203,11 @@ public class Emitter
             }
 
             Emit(' ');
-            Emit(binary.Token);
+            Emit(binary.Operator.Value);
             Emit(' ');
 
-            if (binary.Right is Tree.Expression.Binary rightBinary && rightBinary.Precedence < binary.Precedence)
+            if (binary.Right is Tree.Expression.Binary rightBinary &&
+                rightBinary.Operator.Precedence < binary.Operator.Precedence)
             {
                 Emit('(');
                 EmitExpression(binary.Right, indent);
@@ -218,7 +220,12 @@ public class Emitter
         }
         else if (expression is Tree.Expression.Unary unary)
         {
-            Emit(unary.Token);
+            Emit(unary.Operator.Value);
+            if (unary.Operator is Token.Not)
+            {
+                Emit(' ');
+            }
+
             EmitExpression(unary.Expression, indent);
         }
         else

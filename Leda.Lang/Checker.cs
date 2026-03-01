@@ -496,12 +496,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     {
         var exprType = unary.Expression.AcceptExpressionVisitor(this, isConstant);
 
-        if (unary is Tree.Expression.Not)
+        if (unary.Operator is Token.Not)
         {
             return Type.Boolean;
         }
 
-        if (unary is Tree.Expression.Length)
+        if (unary.Operator is Token.Length)
         {
             // TODO use __len metamethod
             if (!Type.TablePrimitive.IsAssignableFrom(exprType) && !Type.StringPrimitive.IsAssignableFrom(exprType))
@@ -512,7 +512,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             return Type.NumberPrimitive;
         }
 
-        if (unary is Tree.Expression.Negate)
+        if (unary.Operator is Token.Minus)
         {
             // TODO use __unm metamethod
             if (!Type.NumberPrimitive.IsAssignableFrom(exprType))

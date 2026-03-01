@@ -827,25 +827,7 @@ public class Parser
                 right = ParseExpression(right, op.Precedence + (token.Precedence > op.Precedence ? 1 : 0));
             }
 
-            left = EndTree<Tree.Expression.Binary>(op switch
-            {
-                Token.Plus => new Tree.Expression.Add(left, right),
-                Token.Minus => new Tree.Expression.Subtract(left, right),
-                Token.Multiply => new Tree.Expression.Multiply(left, right),
-                Token.Divide => new Tree.Expression.Divide(left, right),
-                Token.Modulo => new Tree.Expression.Modulo(left, right),
-                Token.Power => new Tree.Expression.Power(left, right),
-                Token.Concat => new Tree.Expression.Concat(left, right),
-                Token.Equal => new Tree.Expression.Equal(left, right),
-                Token.NotEqual => new Tree.Expression.NotEqual(left, right),
-                Token.LessEqual => new Tree.Expression.LessEqual(left, right),
-                Token.GreaterEqual => new Tree.Expression.GreaterEqual(left, right),
-                Token.Less => new Tree.Expression.Less(left, right),
-                Token.Greater => new Tree.Expression.Greater(left, right),
-                Token.And => new Tree.Expression.And(left, right),
-                Token.Or => new Tree.Expression.Or(left, right),
-                _ => throw new Exception() // Unreachable.
-            });
+            left = EndTree(new Tree.Expression.Binary(left, right, op));
         }
 
         return left;
@@ -907,13 +889,7 @@ public class Parser
             StartTree();
             var op = Consume();
             var expression = ParsePrimary();
-            return EndTree<Tree.Expression>(op switch
-            {
-                Token.Not => new Tree.Expression.Not(expression),
-                Token.Length => new Tree.Expression.Length(expression),
-                Token.Minus => new Tree.Expression.Negate(expression),
-                _ => throw new Exception() // Unreachable.
-            });
+            return EndTree(new Tree.Expression.Unary(expression, op));
         }
 
         if (token is Token.Vararg)
