@@ -62,11 +62,11 @@ public abstract record Diagnostic(Range Range)
         public override string Message => "Unfinished long comment.";
     }
 
-    public record ExpectedTokenButGotToken(Range Range, Token Expected, Token Got)
+    public record ExpectedToken(Range Range, Token Expected)
         : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"Expected \"{Expected.KindName}\", but got \"{Got.Value}\".";
+        public override string Message => $"Expected \"{Expected.KindName}\".";
     }
 
     public record ExpectedExpressionButGotToken(Range Range, Token Got) : Diagnostic(Range)

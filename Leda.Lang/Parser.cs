@@ -135,7 +135,7 @@ public class Parser
             return gotT;
         }
 
-        Report(new Diagnostic.ExpectedTokenButGotToken(got.Range, expected, got));
+        Report(new Diagnostic.ExpectedToken(got.Range, expected));
         return expected;
     }
 
@@ -420,7 +420,7 @@ public class Parser
         Expect(For);
         if (token is not Token.Name)
         {
-            Report(new Diagnostic.ExpectedTokenButGotToken(Name.Range, Name, token));
+            Report(new Diagnostic.ExpectedToken(Name.Range, Name));
         }
 
         // 'for' name '=' exp ',' exp [',' exp] 'do' block 'end'
