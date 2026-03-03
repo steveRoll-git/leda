@@ -22,7 +22,6 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     /// </summary>
     private void VisitBlock(Tree.Block block)
     {
-        // TODO iterate over block's type declarations
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
             if (!source.TryGetTreeSymbol(typeDeclaration.Name, out var symbol))
@@ -270,21 +269,32 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.Statement.Assignment assignment)
     {
-        for (var i = 0; i < assignment.Targets.Count; i++)
+        CheckAssignment(assignment, assignment.Values);
+    }
+
+    /// <summary>
+    /// Checks an assignment of a list of values to a list of targets, inferring types along the way.<br/>
+    /// This is used in assignments, local declarations, and TODO function parameters.
+    /// </summary>
+    /// <param name="targets">The targets being assigned to.</param>
+    /// <param name="values">The values being assigned.</param>
+    public void CheckAssignment(Tree.IAssignmentTargetList targets, List<Tree.Expression> values)
+    {
+        for (var i = 0; i < targets.Count; i++)
         {
-            var target = assignment.Targets[i];
+            var target = targets[i];
             var targetType = target.AcceptExpressionVisitor(this, false);
-            if (i < assignment.Values.Count)
+            if (i < values.Count)
             {
-                var value = assignment.Values[i];
-                if (i == assignment.Values.Count - 1 && value is Tree.Expression.Call or Tree.Expression.Vararg)
+                var value = values[i];
+                if (i == values.Count - 1 && value is Tree.Expression.Call or Tree.Expression.Vararg)
                 {
                     // If the last value being assigned could be a type list, switch over to this method.
-                    CheckTypeListAssignment(assignment.Targets, value, i);
+                    CheckTypeListAssignment(targets, value, i);
                     return;
                 }
 
-                CheckAssignment(targetType, value, target);
+                CheckSingleAssignment(targetType, value, target);
             }
             else
             {
@@ -299,14 +309,14 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     /// <param name="targets">The targets being assigned to.</param>
     /// <param name="value">The value being assigned, that returns a type list.</param>
     /// <param name="i">The index to start from.</param>
-    private void CheckTypeListAssignment(List<Tree.Expression> targets, Tree.Expression value, int i)
+    private void CheckTypeListAssignment(Tree.IAssignmentTargetList targets, Tree.Expression value, int i)
     {
-        TypeList typeList = null!;
+        TypeList typeList;
         if (value is Tree.Expression.Call call)
         {
             typeList = VisitCall(call);
         }
-        else if (value is Tree.Expression.Vararg)
+        else
         {
             throw new NotImplementedException();
         }
@@ -397,37 +407,18 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.Statement.LocalDeclaration localDeclaration)
     {
-        using var valueTypes = VisitExpressionList(localDeclaration.Values).Types().GetEnumerator();
-        for (var i = 0; i < localDeclaration.Declarations.Count; i++)
+        foreach (var declaration in localDeclaration.Declarations)
         {
-            var declaration = localDeclaration.Declarations[i];
-
-            var valueType = Type.Nil;
-            if (valueTypes.MoveNext())
-            {
-                valueType = valueTypes.Current.Type; // TODO handle `Rest` values
-            }
-            else
-            {
-                // TODO report error/warning
-            }
-
             Type variableType;
 
             if (declaration.Type != null)
             {
-                var declarationType = declaration.Type.AcceptTypeVisitor(this);
-                if (!declarationType.IsAssignableFrom(valueType, out var reason))
-                {
-                    Report(new Diagnostic.TypeMismatch(declaration.Name.Range, reason));
-                }
-
-                variableType = declarationType;
+                variableType = declaration.Type.AcceptTypeVisitor(this);
             }
             else
             {
                 // The variable's type is inferred from the value.
-                variableType = valueType;
+                variableType = new Type.Infer();
             }
 
             if (!source.TryGetTreeSymbol(declaration.Name, out var symbol))
@@ -437,6 +428,8 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
             source.SetSymbolType(symbol, variableType);
         }
+
+        CheckAssignment(localDeclaration, localDeclaration.Values);
     }
 
     public void Visit(Tree.Statement.RepeatUntil repeatUntil)
@@ -640,54 +633,44 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     }
 
     /// <summary>
-    /// Checks an assignment of some value to a target type. If applicable, errors in the source value will be shown,
+    /// Checks an assignment of a single value to a target type. If applicable, errors in the source value will be shown,
     /// and types of function parameters will be inferred.
     /// </summary>
     /// <param name="targetType">The type of the target being assigned to.</param>
     /// <param name="sourceValue">The value being assigned.</param>
     /// <param name="targetValue">The tree node for the target value, if applicable.</param>
-    private void CheckAssignment(Type targetType, Tree.Expression sourceValue, Tree.Expression? targetValue)
+    private void CheckSingleAssignment(Type targetType, Tree.Expression sourceValue, Tree.Expression? targetValue)
     {
         var errorRange = (targetValue ?? sourceValue).Range;
 
-        if (sourceValue is Tree.Expression.Table sourceTable)
+        if (sourceValue is Tree.Expression.Table sourceTable && targetType is Type.Table targetTable)
         {
-            if (targetType is Type.Table targetTable)
+            // TODO use lookup
+            var missingKeys = new HashSet<Type>(targetTable.Pairs.Select(p => p.Key));
+            foreach (var sourceField in sourceTable.Fields)
             {
-                // TODO use lookup
-                var missingKeys = new HashSet<Type>(targetTable.Pairs.Select(p => p.Key));
-                foreach (var sourceField in sourceTable.Fields)
+                var sourceKeyType = sourceField.Key.AcceptExpressionVisitor(this, IsSimpleLiteral(sourceField.Key));
+                var targetKey = missingKeys.FirstOrDefault(k => k.IsAssignableFrom(sourceKeyType));
+                if (targetKey == null)
                 {
-                    var sourceKeyType = sourceField.Key.AcceptExpressionVisitor(this, IsSimpleLiteral(sourceField.Key));
-                    var targetKey = missingKeys.FirstOrDefault(k => k.IsAssignableFrom(sourceKeyType));
-                    if (targetKey == null)
-                    {
-                        // TODO check for duplicate fields
-                        Report(new Diagnostic.TableLiteralOnlyKnownKeys(sourceField.Key.Range, targetTable,
-                            sourceKeyType));
-                        sourceField.Value.AcceptExpressionVisitor(this, false);
-                    }
-                    else
-                    {
-                        missingKeys.Remove(targetKey);
-                        var targetPair = targetTable.Pairs.Find(p => p.Key == targetKey);
-                        CheckAssignment(targetPair.Value, sourceField.Value, sourceField.Key);
-                    }
+                    // TODO check for duplicate fields
+                    Report(new Diagnostic.TableLiteralOnlyKnownKeys(sourceField.Key.Range, targetTable,
+                        sourceKeyType));
+                    sourceField.Value.AcceptExpressionVisitor(this, false);
                 }
-
-                if (missingKeys.Count > 0)
+                else
                 {
-                    Report(new Diagnostic.MissingKeys(errorRange, targetType,
-                        sourceValue.AcceptExpressionVisitor(this, false),
-                        missingKeys.ToList()));
+                    missingKeys.Remove(targetKey);
+                    var targetPair = targetTable.Pairs.Find(p => p.Key == targetKey);
+                    CheckSingleAssignment(targetPair.Value, sourceField.Value, sourceField.Key);
                 }
             }
-            else
+
+            if (missingKeys.Count > 0)
             {
-                // The type object for the source value wasn't needed so far,
-                // but we generate it here for displaying in the diagnostic.
-                Report(new Diagnostic.TypeMismatch(errorRange,
-                    new TypeMismatch.Primitive(targetType, sourceValue.AcceptExpressionVisitor(this, false))));
+                Report(new Diagnostic.MissingKeys(errorRange, targetType,
+                    sourceValue.AcceptExpressionVisitor(this, false),
+                    missingKeys.ToList()));
             }
         }
         else if (sourceValue is Tree.Expression.Function)
@@ -702,14 +685,21 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     }
 
     /// <summary>
-    /// Checks if `sourceType` is assignable to `targetType`, and reports a diagnostic if it isn't.
+    /// Checks if `sourceType` is assignable to `targetType`, and reports a diagnostic if it isn't.<br/>
+    /// Additionally, updates `Infer` types to the given `sourceType`.
     /// </summary>
     /// <param name="targetType">The type being assigned to.</param>
     /// <param name="sourceType">The type being assigned from.</param>
     /// <param name="errorRange">The range where the diagnostic should be shown.</param>
     private void CheckSimpleAssign(Type targetType, Type sourceType, Range errorRange)
     {
-        if (!targetType.IsAssignableFrom(sourceType, out var reason))
+        if (targetType is Type.Infer { Inferred: null } infer)
+        {
+            // TODO this may have unintended consequences and a type may be inferred way outside of the place it's
+            // intended to get inferred in
+            infer.Inferred = sourceType;
+        }
+        else if (!targetType.IsAssignableFrom(sourceType, out var reason))
         {
             Report(new Diagnostic.TypeMismatch(errorRange, reason));
         }

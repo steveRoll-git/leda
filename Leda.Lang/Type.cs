@@ -291,6 +291,29 @@ public abstract class Type
     }
 
     /// <summary>
+    /// A reference to a type that is inferred from assignment.
+    /// </summary>
+    public class Infer : Type
+    {
+        /// <summary>
+        /// The type that was inferred, or null if it wasn't inferred yet.
+        /// </summary>
+        public Type? Inferred { get; set; }
+
+        public Type Actual => Inferred ?? Unknown;
+
+        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+        {
+            return Actual.IsAssignableFrom(other, out reason);
+        }
+
+        public override string Display()
+        {
+            return Actual.Display();
+        }
+    }
+
+    /// <summary>
     /// Returns whether a value of type `other` can be assigned to a variable of this type.
     /// </summary>
     public abstract bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason);
