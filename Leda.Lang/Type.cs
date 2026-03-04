@@ -13,6 +13,11 @@ public abstract class Type
     public virtual bool UserNameable => false;
 
     /// <summary>
+    /// If this type indirectly references another type, returns that type after dereferencing.
+    /// </summary>
+    public virtual Type Actual => this;
+
+    /// <summary>
     /// A type that doesn't require much checking logic other than checking that the source
     /// type is equal to one or more existing types.
     /// </summary>
@@ -20,7 +25,7 @@ public abstract class Type
     {
         private Func<Type, bool> AssignableFunc => assignableFunc;
 
-        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
             if (DefinitelyAssignable(other))
             {
@@ -85,7 +90,7 @@ public abstract class Type
     {
         public double Literal => literal;
 
-        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
             // ReSharper disable once CompareOfFloatsByEqualityOperator
             if (DefinitelyAssignable(other) || other is NumberLiteral l && l.Literal == Literal)
@@ -117,7 +122,7 @@ public abstract class Type
     {
         public string Literal => literal;
 
-        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
             if (DefinitelyAssignable(other) || other is StringLiteral l && l.Literal == Literal)
             {
@@ -155,7 +160,7 @@ public abstract class Type
         /// </summary>
         public TypeList Return { get; } = returns;
 
-        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
             if (DefinitelyAssignable(other))
             {
@@ -219,7 +224,7 @@ public abstract class Type
 
         public List<Pair> Pairs => pairs;
 
-        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
             if (DefinitelyAssignable(other))
             {
@@ -295,14 +300,24 @@ public abstract class Type
     /// </summary>
     public class Infer : Type
     {
+        private Type? inferred;
+
         /// <summary>
         /// The type that was inferred, or null if it wasn't inferred yet.
         /// </summary>
-        public Type? Inferred { get; set; }
+        public Type? Inferred
+        {
+            get => inferred;
+            set
+            {
+                inferred = value;
+                Name = value?.Name;
+            }
+        }
 
-        public Type Actual => Inferred ?? Unknown;
+        public override Type Actual => Inferred ?? Unknown;
 
-        public override bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
             return Actual.IsAssignableFrom(other, out reason);
         }
@@ -314,9 +329,18 @@ public abstract class Type
     }
 
     /// <summary>
+    /// Returns whether a value of type `other` can be assigned to a variable of this type.<br/>
+    /// `other` is dereferenced.
+    /// </summary>
+    protected abstract bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason);
+
+    /// <summary>
     /// Returns whether a value of type `other` can be assigned to a variable of this type.
     /// </summary>
-    public abstract bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason);
+    public bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
+    {
+        return IsAssignableFromActual(other.Actual, out reason);
+    }
 
     public bool IsAssignableFrom(Type other)
     {
