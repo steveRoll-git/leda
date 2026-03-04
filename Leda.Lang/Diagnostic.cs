@@ -214,6 +214,12 @@ public abstract record Diagnostic(Range Range)
             ? $"Key '{Keys[0]}' is missing in type '{Source}' but required in type '{Target}'."
             : $"Type '{Source}' is missing the following keys from type '{Target}': {string.Join(", ", Keys)}";
     }
+
+    public record ImplicitAnyType(Range Range, string Name) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Parameter '{Name}' implicitly has 'any' type.";
+    }
 }
 
 public enum DiagnosticSeverity

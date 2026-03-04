@@ -125,60 +125,73 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return new TypeList(list, continued);
     }
 
-    private Type VisitFunctionType(Tree.Type.Function functionType, bool addSymbols = false)
+    private Type.Function VisitFunction(Tree.Expression.Function function, Type.Function? targetFunction)
     {
-        List<Type> parameters = [];
-        List<string> paramNames = [];
-        foreach (var parameter in functionType.Parameters)
+        var targetParams = targetFunction?.Parameters.Types().GetEnumerator();
+        try
         {
-            if (parameter.Type != null)
+            List<Type> parameters = [];
+            List<string> paramNames = [];
+            foreach (var parameter in function.Type.Parameters)
             {
-                var type = parameter.Type.AcceptTypeVisitor(this);
+                Type type;
+                if (parameter.Type != null)
+                {
+                    type = parameter.Type.AcceptTypeVisitor(this);
+                }
+                else if (targetParams != null && targetParams.MoveNext())
+                {
+                    type = targetParams.Current.Type;
+                }
+                else
+                {
+                    type = Type.Any;
+                    Report(new Diagnostic.ImplicitAnyType(parameter.Range, parameter.Name.Value));
+                }
+
                 parameters.Add(type);
 
-                if (addSymbols)
+                if (!source.TryGetTreeSymbol(parameter.Name, out var symbol))
                 {
-                    if (!source.TryGetTreeSymbol(parameter.Name, out var symbol))
-                    {
-                        throw new Exception("Parameter doesn't have symbol");
-                    }
-
-                    source.SetSymbolType(symbol, type);
+                    throw new Exception("Parameter doesn't have symbol");
                 }
-            }
-            else
-            {
-                // TODO infer parameter types from target
-                parameters.Add(Type.Any);
+
+                source.SetSymbolType(symbol, type);
+
+                paramNames.Add(parameter.Name.Value);
             }
 
-            paramNames.Add(parameter.Name.Value);
+            var parameterTypeList = new TypeList(parameters) { NameList = paramNames };
+            // TODO handle rest parameter
+
+            var returnTypeList = GetFunctionReturnType(function.Type);
+            returnTypeList ??= TypeList.None; // TODO infer return type
+
+            VisitBlock(function.Body);
+
+            return new Type.Function(parameterTypeList, returnTypeList);
         }
-
-        var parameterTypeList = new TypeList(parameters) { NameList = paramNames };
-        // TODO handle rest parameter
-
-        var returnTypeList = GetFunctionReturnType(functionType);
-        returnTypeList ??= TypeList.None; // TODO infer return type
-
-        return new Type.Function(parameterTypeList, returnTypeList);
+        finally
+        {
+            targetParams?.Dispose();
+        }
     }
 
     private TypeList? GetFunctionReturnType(Tree.Type.Function functionType)
     {
-        if (functionType.ReturnTypes != null)
+        if (functionType.ReturnTypes == null)
         {
-            List<Type> returnTypes = [];
-            foreach (var returnType in functionType.ReturnTypes)
-            {
-                returnTypes.Add(returnType.AcceptTypeVisitor(this));
-            }
-
-            // TODO handle Rest and Continued
-            return new TypeList(returnTypes);
+            return null;
         }
 
-        return null;
+        List<Type> returnTypes = [];
+        foreach (var returnType in functionType.ReturnTypes)
+        {
+            returnTypes.Add(returnType.AcceptTypeVisitor(this));
+        }
+
+        // TODO handle Rest and Continued
+        return new TypeList(returnTypes);
     }
 
     private Type GetAccessType(Tree.Expression target, Tree.Expression key, bool isConstant)
@@ -390,14 +403,13 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.Statement.LocalFunctionDeclaration declaration)
     {
-        var functionType = VisitFunctionType(declaration.Function.Type, true);
+        var functionType = VisitFunction(declaration.Function, null);
         if (!source.TryGetTreeSymbol(declaration.Name, out var symbol))
         {
             throw new Exception();
         }
 
         source.SetSymbolType(symbol, functionType);
-        VisitBlock(declaration.Function.Body);
     }
 
     public void Visit(Tree.Statement.GlobalDeclaration declaration)
@@ -459,9 +471,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.Expression.Function function, bool isConstant)
     {
-        var functionType = VisitFunctionType(function.Type, true);
-        VisitBlock(function.Body);
-        return functionType;
+        return VisitFunction(function, null);
     }
 
     public Type VisitExpression(Tree.Expression.MethodCall methodCall, bool isConstant)
@@ -607,7 +617,31 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitType(Tree.Type.Function functionType)
     {
-        return VisitFunctionType(functionType);
+        // This code does a lot of the same things that VisitFunction does,
+        // perhaps the shared parts could be merged somehow?
+        List<Type> parameters = [];
+        List<string> paramNames = [];
+        foreach (var parameter in functionType.Parameters)
+        {
+            if (parameter.Type != null)
+            {
+                parameters.Add(parameter.Type.AcceptTypeVisitor(this));
+            }
+            else
+            {
+                Report(new Diagnostic.ImplicitAnyType(parameter.Range, parameter.Name.Value));
+            }
+
+            paramNames.Add(parameter.Name.Value);
+        }
+
+        var parameterTypeList = new TypeList(parameters) { NameList = paramNames };
+        // TODO handle rest parameter
+
+        var returnTypeList = GetFunctionReturnType(functionType);
+        returnTypeList ??= TypeList.None;
+
+        return new Type.Function(parameterTypeList, returnTypeList);
     }
 
     public Type VisitType(Tree.Type.Table table)
@@ -673,9 +707,11 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                     missingKeys.ToList()));
             }
         }
-        else if (sourceValue is Tree.Expression.Function)
+        else if (sourceValue is Tree.Expression.Function sourceFunction &&
+                 targetType is Type.Function targetFunction)
         {
-            // TODO
+            var sourceType = VisitFunction(sourceFunction, targetFunction);
+            CheckSimpleAssign(targetType, sourceType, errorRange);
         }
         else
         {
