@@ -844,6 +844,8 @@ public class Parser
 
         while (!Accept<Token.RCurly>())
         {
+            var isListElement = false;
+
             StartTree();
 
             Tree.Expression key;
@@ -865,10 +867,17 @@ public class Parser
             {
                 key = new Tree.Expression.Number(lastNumberIndex.ToString(), lastNumberIndex);
                 lastNumberIndex++;
+                isListElement = true;
             }
 
             var value = ParseExpression();
             fields.Add(EndTree(new Tree.Expression.Table.Field(key, value)));
+
+            if (isListElement)
+            {
+                // Errors regarding the key will highlight the value.
+                key.Range = value.Range;
+            }
 
             if (!Accept<Token.Comma>() && !Accept<Token.Semicolon>())
             {
