@@ -80,34 +80,6 @@ public class TypeList
         }
     }
 
-    /// <summary>
-    /// Iterate over all of this list's types, including any types in `Continued` and `Rest`.<br/>
-    /// If this list has a `Rest` type, it will be infinitely returned at the end of the list.
-    /// </summary>
-    /// <returns>An iterator for tuples with the current type, and whether this type is the final repeated `Rest` type.</returns>
-    public IEnumerable<(Type Type, bool Repeated)> Types()
-    {
-        foreach (var type in List)
-        {
-            yield return (type, false);
-        }
-
-        if (Continued != null)
-        {
-            foreach (var pair in Continued.Types())
-            {
-                yield return pair;
-            }
-        }
-        else if (Rest != null)
-        {
-            while (true)
-            {
-                yield return (Rest, true);
-            }
-        }
-    }
-
     public bool IsAssignableFrom(TypeList other, [NotNullWhen(false)] out List<TypeMismatch>? reasons,
         TypeListKind kind)
     {
@@ -119,22 +91,23 @@ public class TypeList
 
         reasons = [];
 
-        using var sourceEnumerator = other.Types().GetEnumerator();
+        var targetIterator = GetIterator();
+        var sourceIterator = other.GetIterator();
         var sourceIndex = 0;
 
-        // TODO handle Continued and Rest
-        foreach (var target in List)
+        while (targetIterator.Next(out var targetType))
         {
-            var sourceType = Type.Nil;
-            var gotSource = false;
-            if (sourceEnumerator.MoveNext())
+            var gotSource = sourceIterator.Next(out var sourceType);
+            if (targetIterator.IsRest && !gotSource)
             {
-                // TODO handle the source being a `Rest` value
-                sourceType = sourceEnumerator.Current.Type;
-                gotSource = true;
+                // If the target type list has a rest type, we only need to check them as long as the source is
+                // providing unique types.
+                break;
             }
 
-            if (!target.IsAssignableFrom(sourceType, out var subReason))
+            sourceType ??= Type.Nil;
+
+            if (!targetType.IsAssignableFrom(sourceType, out var subReason))
             {
                 reasons.Add(new TypeMismatch.ValueInListIncompatible(sourceIndex, kind) { Children = [subReason] });
             }
@@ -142,6 +115,11 @@ public class TypeList
             if (gotSource)
             {
                 sourceIndex++;
+                if (targetIterator.IsRest && sourceIterator.IsRest)
+                {
+                    // If both type lists end with a rest type, we have to check their assignability just once.
+                    break;
+                }
             }
         }
 
@@ -208,5 +186,62 @@ public class TypeList
         /// Any other use of TypeLists.
         /// </summary>
         Value
+    }
+
+    /// <summary>
+    /// Iterates over the types of a TypeList.
+    /// </summary>
+    public class Iterator
+    {
+        private TypeList typeList;
+        private int index;
+
+        public Iterator(TypeList typeList)
+        {
+            this.typeList = typeList;
+            index = -1;
+            Advance();
+        }
+
+        /// <summary>
+        /// The current type, or `null` if there are no more types.
+        /// </summary>
+        public Type? Current => index < typeList.List.Count ? typeList.List[index] : typeList.Rest;
+
+        /// <summary>
+        /// Whether the current type is the "rest" part of the list.
+        /// </summary>
+        public bool IsRest => index >= typeList.List.Count && typeList.Rest != null;
+
+        /// <summary>
+        /// Advances to the next type.
+        /// </summary>
+        private void Advance()
+        {
+            index++;
+            if (index >= typeList.List.Count && typeList.Continued != null)
+            {
+                typeList = typeList.Continued;
+                index = -1;
+                Advance();
+            }
+        }
+
+        /// <summary>
+        /// Can be used to iterate over the types in a while loop.
+        /// </summary>
+        /// <param name="type">The current type.</param>
+        /// <returns>Whether iteration can continue.</returns>
+        public bool Next([NotNullWhen(true)] out Type? type)
+        {
+            type = Current;
+            Advance();
+            return type != null;
+        }
+    }
+
+    public Iterator GetIterator()
+    {
+        return new Iterator(this);
     }
 }

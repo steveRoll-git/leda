@@ -99,7 +99,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             {
                 // If more items are present after the last continued list, only its first value is added.
                 // TODO show warning about discarded values?
-                list.Add(continued.Types().First().Type);
+                list.Add(continued.GetIterator().Current ?? Type.Nil);
             }
 
             if (expression is Tree.Expression.Call call)
@@ -127,54 +127,47 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     private Type.Function VisitFunction(Tree.Expression.Function function, Type.Function? targetFunction)
     {
-        var targetParams = targetFunction?.Parameters.Types().GetEnumerator();
-        try
+        var iterator = targetFunction?.Parameters.GetIterator();
+        List<Type> parameters = [];
+        List<string> paramNames = [];
+        foreach (var parameter in function.Type.Parameters)
         {
-            List<Type> parameters = [];
-            List<string> paramNames = [];
-            foreach (var parameter in function.Type.Parameters)
+            Type type;
+            if (parameter.Type != null)
             {
-                Type type;
-                if (parameter.Type != null)
-                {
-                    type = parameter.Type.AcceptTypeVisitor(this);
-                }
-                else if (targetParams != null && targetParams.MoveNext())
-                {
-                    type = targetParams.Current.Type;
-                }
-                else
-                {
-                    type = Type.Any;
-                    Report(new Diagnostic.ImplicitAnyType(parameter.Range, parameter.Name.Value));
-                }
-
-                parameters.Add(type);
-
-                if (!source.TryGetTreeSymbol(parameter.Name, out var symbol))
-                {
-                    throw new Exception("Parameter doesn't have symbol");
-                }
-
-                source.SetSymbolType(symbol, type);
-
-                paramNames.Add(parameter.Name.Value);
+                type = parameter.Type.AcceptTypeVisitor(this);
+            }
+            else if (iterator != null && iterator.Next(out var targetParamType))
+            {
+                type = targetParamType;
+            }
+            else
+            {
+                type = Type.Any;
+                Report(new Diagnostic.ImplicitAnyType(parameter.Range, parameter.Name.Value));
             }
 
-            var parameterTypeList = new TypeList(parameters) { NameList = paramNames };
-            // TODO handle rest parameter
+            parameters.Add(type);
 
-            var returnTypeList = GetFunctionReturnType(function.Type);
-            returnTypeList ??= TypeList.None; // TODO infer return type
+            if (!source.TryGetTreeSymbol(parameter.Name, out var symbol))
+            {
+                throw new Exception("Parameter doesn't have symbol");
+            }
 
-            VisitBlock(function.Body);
+            source.SetSymbolType(symbol, type);
 
-            return new Type.Function(parameterTypeList, returnTypeList);
+            paramNames.Add(parameter.Name.Value);
         }
-        finally
-        {
-            targetParams?.Dispose();
-        }
+
+        var parameterTypeList = new TypeList(parameters) { NameList = paramNames };
+        // TODO handle rest parameter
+
+        var returnTypeList = GetFunctionReturnType(function.Type);
+        returnTypeList ??= TypeList.None; // TODO infer return type
+
+        VisitBlock(function.Body);
+
+        return new Type.Function(parameterTypeList, returnTypeList);
     }
 
     private TypeList? GetFunctionReturnType(Tree.Type.Function functionType)
@@ -334,14 +327,13 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             throw new NotImplementedException();
         }
 
-        using var typeListTypes = typeList.Types().GetEnumerator();
+        var iterator = typeList.GetIterator();
         for (; i < targets.Count; i++)
         {
             var target = targets[i];
             var targetType = target.AcceptExpressionVisitor(this, false);
-            if (typeListTypes.MoveNext())
+            if (iterator.Next(out var sourceType))
             {
-                var sourceType = typeListTypes.Current.Type;
                 CheckSimpleAssign(targetType, sourceType, target.Range);
             }
             else
@@ -482,7 +474,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     public Type VisitExpression(Tree.Expression.Call call, bool isConstant)
     {
         // TODO show warning if the call returns more than one value?
-        return VisitCall(call).Types().FirstOrDefault((Type: Type.Nil, false)).Type;
+        return VisitCall(call).GetIterator().Current ?? Type.Nil;
     }
 
     public Type VisitExpression(Tree.Expression.Access access, bool isConstant)
