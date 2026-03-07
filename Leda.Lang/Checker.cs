@@ -69,7 +69,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         if (target is Type.Function function)
         {
             // TODO support overloads
-            CheckAssignment(function.Parameters, new ExpressionListValueList(call.Parameters));
+            CheckAssignment(function.Parameters, new ExpressionListValueList(call.Parameters), call.Target);
 
             return function.Return;
         }
@@ -286,7 +286,8 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     /// </summary>
     /// <param name="targets">The targets being assigned to.</param>
     /// <param name="sources">The values being assigned.</param>
-    private void CheckAssignment(ITypeValueList targets, ITypeValueList sources)
+    /// <param name="callTarget">The tree node of the target being called, if a call's parameters are checked.</param>
+    private void CheckAssignment(ITypeValueList targets, ITypeValueList sources, Tree.Expression? callTarget = null)
     {
         Range errorRange = new(); // TODO can we figure out an initial value for this?
 
@@ -295,39 +296,35 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
         while (true)
         {
-            var targetItem = targets[targetIndex];
-            var targetType = targetItem.Type;
-            var targetValue = targetItem.Value;
-            if (targetValue != null)
+            var (targetType, targetExpression, _) = targets[targetIndex];
+            if (targetExpression != null)
             {
-                targetType = targetValue.AcceptExpressionVisitor(this, false);
-                errorRange = targetValue.Range;
+                targetType = targetExpression.AcceptExpressionVisitor(this, false);
+                errorRange = targetExpression.Range;
             }
 
-            SourceAgain:
-            var sourceItem = sources[sourceIndex];
-            var sourceType = sourceItem.Type;
-            var sourceValue = sourceItem.Value;
-            if (targetValue == null && sourceValue != null)
+            var (sourceType, sourceExpression, _) = sources[sourceIndex];
+            if (targetExpression == null && sourceExpression != null)
             {
-                errorRange = sourceValue.Range;
+                errorRange = sourceExpression.Range;
             }
 
             if (sources[sourceIndex + 1].IsNone)
             {
                 // If this is the last source value, and it may produce a type list of its own, iterate over that.
-                if (sourceValue is Tree.Expression.Call call)
+                if (sourceExpression is Tree.Expression.Call call)
                 {
                     sources = VisitCall(call);
                     sourceIndex = 0;
-                    goto SourceAgain;
                 }
 
-                if (sourceValue is Tree.Expression.Vararg)
+                if (sourceExpression is Tree.Expression.Vararg)
                 {
                     throw new NotImplementedException();
                 }
             }
+
+            // TODO if target and source are typelists, control should probably be transferred to typelist's IsAssignableFrom
 
             if (targetType != null)
             {
@@ -335,18 +332,27 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 {
                     CheckTypeToType(targetType, sourceType, errorRange);
                 }
-                else if (sourceValue != null)
+                else if (sourceExpression != null)
                 {
-                    CheckValueToType(targetType, sourceValue, targetValue);
+                    CheckValueToType(targetType, sourceExpression, targetExpression);
                 }
                 else
                 {
+                    if (targets is TypeList targetTypeList && callTarget != null &&
+                        sourceIndex < targetTypeList.MinimumValues)
+                    {
+                        Report(new Diagnostic.TypeMismatch(callTarget.Range,
+                            new TypeMismatch.NotEnoughValues(targetTypeList.MinimumValues, sourceIndex,
+                                TypeList.TypeListKind.Parameter)));
+                        break;
+                    }
+
                     CheckTypeToType(targetType, Type.Nil, errorRange);
                 }
             }
-            else if (sourceValue != null)
+            else if (sourceExpression != null)
             {
-                sourceValue.AcceptExpressionVisitor(this, false);
+                sourceExpression.AcceptExpressionVisitor(this, false);
             }
             else
             {
