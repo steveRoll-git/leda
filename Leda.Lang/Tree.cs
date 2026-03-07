@@ -62,15 +62,6 @@ public abstract class Tree
     }
 
     /// <summary>
-    /// An interface for tree nodes that have a list of targets getting values assigned to them.
-    /// </summary>
-    public interface IAssignmentTargetList
-    {
-        Expression this[int index] { get; }
-        int Count { get; }
-    }
-
-    /// <summary>
     /// The range in the source code that this tree occupies.
     /// </summary>
     public Range Range { get; internal set; }
@@ -302,7 +293,7 @@ public abstract class Tree
         /// Declarations of one or more local variables.
         /// </summary>
         public class LocalDeclaration(List<Declaration> declarations, List<Expression> values)
-            : Statement, IAssignmentTargetList
+            : Statement
         {
             public List<Declaration> Declarations => declarations;
             public List<Expression> Values => values;
@@ -311,10 +302,6 @@ public abstract class Tree
             {
                 visitor.Visit(this);
             }
-
-            public Expression this[int index] => Declarations[index].Name;
-
-            public int Count => Declarations.Count;
         }
 
         /// <summary>
@@ -371,7 +358,7 @@ public abstract class Tree
         /// <summary>
         /// An assignment of one or more values to one or more targets.
         /// </summary>
-        public class Assignment(List<Expression> targets, List<Expression> values) : Statement, IAssignmentTargetList
+        public class Assignment(List<Expression> targets, List<Expression> values) : Statement
         {
             public List<Expression> Targets => targets;
             public List<Expression> Values => values;
@@ -380,10 +367,6 @@ public abstract class Tree
             {
                 visitor.Visit(this);
             }
-
-            public Expression this[int index] => Targets[index];
-
-            public int Count => Targets.Count;
         }
 
         /// <summary>

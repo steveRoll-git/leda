@@ -45,43 +45,31 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     private TypeList VisitCall(Tree.Expression.Call call)
     {
-        var parameters = VisitExpressionList(call.Parameters);
         var target = call.Target.AcceptExpressionVisitor(this, false);
 
         if (target == Type.Unknown)
         {
+            VisitExpressionList(call.Parameters);
             return TypeList.Unknown;
         }
 
         if (!Type.FunctionPrimitive.IsAssignableFrom(target)) // TODO handle __call metamethod
         {
             Report(new Diagnostic.TypeNotCallable(call.Target.Range));
+            VisitExpressionList(call.Parameters);
             return TypeList.Unknown;
         }
 
         if (target == Type.FunctionPrimitive)
         {
+            VisitExpressionList(call.Parameters);
             return TypeList.Any;
         }
 
         if (target is Type.Function function)
         {
             // TODO support overloads
-            if (!function.Parameters.IsAssignableFrom(parameters, out var reasons, TypeList.TypeListKind.Parameter))
-            {
-                foreach (var reason in reasons)
-                {
-                    if (reason is TypeMismatch.ValueInListIncompatible incompatible)
-                    {
-                        var faultyParam = call.Parameters[Math.Min(call.Parameters.Count - 1, incompatible.Index)];
-                        Report(new Diagnostic.TypeMismatch(faultyParam.Range, reason));
-                    }
-                    else if (reason is TypeMismatch.NotEnoughValues)
-                    {
-                        Report(new Diagnostic.TypeMismatch(call.Target.Range, reason));
-                    }
-                }
-            }
+            CheckAssignment(function.Parameters, new ExpressionListValueList(call.Parameters));
 
             return function.Return;
         }
@@ -99,7 +87,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             {
                 // If more items are present after the last continued list, only its first value is added.
                 // TODO show warning about discarded values?
-                list.Add(continued.GetIterator().Current ?? Type.Nil);
+                list.Add(continued[0].Type ?? Type.Nil);
             }
 
             if (expression is Tree.Expression.Call call)
@@ -127,7 +115,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     private Type.Function VisitFunction(Tree.Expression.Function function, Type.Function? targetFunction)
     {
-        var iterator = targetFunction?.Parameters.GetIterator();
+        var targetParamIndex = 0;
         List<Type> parameters = [];
         List<string> paramNames = [];
         foreach (var parameter in function.Type.Parameters)
@@ -137,9 +125,10 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             {
                 type = parameter.Type.AcceptTypeVisitor(this);
             }
-            else if (iterator != null && iterator.Next(out var targetParamType))
+            else if (targetFunction?.Parameters[targetParamIndex].Type is { } targetParamType)
             {
                 type = targetParamType;
+                targetParamIndex++;
             }
             else
             {
@@ -273,73 +262,99 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         }
     }
 
+    private class ExpressionListValueList(List<Tree.Expression> expressions) : ITypeValueList
+    {
+        public ITypeValueList.TypeValue this[int index] =>
+            new() { Value = index < expressions.Count ? expressions[index] : null };
+    }
+
+    private class DeclarationValueList(List<Tree.Declaration> declarations) : ITypeValueList
+    {
+        public ITypeValueList.TypeValue this[int index] =>
+            new() { Value = index < declarations.Count ? declarations[index].Name : null };
+    }
+
     public void Visit(Tree.Statement.Assignment assignment)
     {
-        CheckAssignment(assignment, assignment.Values);
+        CheckAssignment(new ExpressionListValueList(assignment.Targets),
+            new ExpressionListValueList(assignment.Values));
     }
 
     /// <summary>
     /// Checks an assignment of a list of values to a list of targets, inferring types along the way.<br/>
-    /// This is used in assignments, local declarations, and TODO function parameters.
+    /// This is used in assignments, local declarations, and function parameters.
     /// </summary>
     /// <param name="targets">The targets being assigned to.</param>
-    /// <param name="values">The values being assigned.</param>
-    public void CheckAssignment(Tree.IAssignmentTargetList targets, List<Tree.Expression> values)
+    /// <param name="sources">The values being assigned.</param>
+    private void CheckAssignment(ITypeValueList targets, ITypeValueList sources)
     {
-        for (var i = 0; i < targets.Count; i++)
+        Range errorRange = new(); // TODO can we figure out an initial value for this?
+
+        var targetIndex = 0;
+        var sourceIndex = 0;
+
+        while (true)
         {
-            var target = targets[i];
-            var targetType = target.AcceptExpressionVisitor(this, false);
-            if (i < values.Count)
+            var targetItem = targets[targetIndex];
+            var targetType = targetItem.Type;
+            var targetValue = targetItem.Value;
+            if (targetValue != null)
             {
-                var value = values[i];
-                if (i == values.Count - 1 && value is Tree.Expression.Call or Tree.Expression.Vararg)
+                targetType = targetValue.AcceptExpressionVisitor(this, false);
+                errorRange = targetValue.Range;
+            }
+
+            SourceAgain:
+            var sourceItem = sources[sourceIndex];
+            var sourceType = sourceItem.Type;
+            var sourceValue = sourceItem.Value;
+            if (targetValue == null && sourceValue != null)
+            {
+                errorRange = sourceValue.Range;
+            }
+
+            if (sources[sourceIndex + 1].IsNone)
+            {
+                // If this is the last source value, and it may produce a type list of its own, iterate over that.
+                if (sourceValue is Tree.Expression.Call call)
                 {
-                    // If the last value being assigned could be a type list, switch over to this method.
-                    CheckTypeListAssignment(targets, value, i);
-                    return;
+                    sources = VisitCall(call);
+                    sourceIndex = 0;
+                    goto SourceAgain;
                 }
 
-                CheckSingleAssignment(targetType, value, target);
+                if (sourceValue is Tree.Expression.Vararg)
+                {
+                    throw new NotImplementedException();
+                }
+            }
+
+            if (targetType != null)
+            {
+                if (sourceType != null)
+                {
+                    CheckTypeToType(targetType, sourceType, errorRange);
+                }
+                else if (sourceValue != null)
+                {
+                    CheckValueToType(targetType, sourceValue, targetValue);
+                }
+                else
+                {
+                    CheckTypeToType(targetType, Type.Nil, errorRange);
+                }
+            }
+            else if (sourceValue != null)
+            {
+                sourceValue.AcceptExpressionVisitor(this, false);
             }
             else
             {
-                CheckSimpleAssign(targetType, Type.Nil, target.Range);
+                break;
             }
-        }
-    }
 
-    /// <summary>
-    /// Does an assignment check for a list of targets, with a value that evaluates to a type list.
-    /// </summary>
-    /// <param name="targets">The targets being assigned to.</param>
-    /// <param name="value">The value being assigned, that returns a type list.</param>
-    /// <param name="i">The index to start from.</param>
-    private void CheckTypeListAssignment(Tree.IAssignmentTargetList targets, Tree.Expression value, int i)
-    {
-        TypeList typeList;
-        if (value is Tree.Expression.Call call)
-        {
-            typeList = VisitCall(call);
-        }
-        else
-        {
-            throw new NotImplementedException();
-        }
-
-        var iterator = typeList.GetIterator();
-        for (; i < targets.Count; i++)
-        {
-            var target = targets[i];
-            var targetType = target.AcceptExpressionVisitor(this, false);
-            if (iterator.Next(out var sourceType))
-            {
-                CheckSimpleAssign(targetType, sourceType, target.Range);
-            }
-            else
-            {
-                CheckSimpleAssign(targetType, Type.Nil, target.Range);
-            }
+            targetIndex++;
+            sourceIndex++;
         }
     }
 
@@ -433,7 +448,8 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             source.SetSymbolType(symbol, variableType);
         }
 
-        CheckAssignment(localDeclaration, localDeclaration.Values);
+        CheckAssignment(new DeclarationValueList(localDeclaration.Declarations),
+            new ExpressionListValueList(localDeclaration.Values));
     }
 
     public void Visit(Tree.Statement.RepeatUntil repeatUntil)
@@ -474,7 +490,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     public Type VisitExpression(Tree.Expression.Call call, bool isConstant)
     {
         // TODO show warning if the call returns more than one value?
-        return VisitCall(call).GetIterator().Current ?? Type.Nil;
+        return VisitCall(call)[0].Type ?? Type.Nil;
     }
 
     public Type VisitExpression(Tree.Expression.Access access, bool isConstant)
@@ -499,7 +515,8 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         if (unary.Operator is Token.Length)
         {
             // TODO use __len metamethod
-            if (!Type.TablePrimitive.IsAssignableFrom(exprType) && !Type.StringPrimitive.IsAssignableFrom(exprType))
+            if (!Type.TablePrimitive.IsAssignableFrom(exprType) &&
+                !Type.StringPrimitive.IsAssignableFrom(exprType))
             {
                 Report(new Diagnostic.CantGetLength(unary.Range, exprType));
             }
@@ -665,7 +682,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     /// <param name="targetType">The type of the target being assigned to.</param>
     /// <param name="sourceValue">The value being assigned.</param>
     /// <param name="targetValue">The tree node for the target value, if applicable.</param>
-    private void CheckSingleAssignment(Type targetType, Tree.Expression sourceValue, Tree.Expression? targetValue)
+    private void CheckValueToType(Type targetType, Tree.Expression sourceValue, Tree.Expression? targetValue)
     {
         var errorRange = (targetValue ?? sourceValue).Range;
 
@@ -688,7 +705,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 {
                     missingKeys.Remove(targetKey);
                     var targetPair = targetTable.Pairs.Find(p => p.Key == targetKey);
-                    CheckSingleAssignment(targetPair.Value, sourceField.Value, sourceField.Key);
+                    CheckValueToType(targetPair.Value, sourceField.Value, sourceField.Key);
                 }
             }
 
@@ -703,12 +720,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                  targetType is Type.Function targetFunction)
         {
             var sourceType = VisitFunction(sourceFunction, targetFunction);
-            CheckSimpleAssign(targetType, sourceType, errorRange);
+            CheckTypeToType(targetType, sourceType, errorRange);
         }
         else
         {
             var valueType = sourceValue.AcceptExpressionVisitor(this, false);
-            CheckSimpleAssign(targetType, valueType, errorRange);
+            CheckTypeToType(targetType, valueType, errorRange);
         }
     }
 
@@ -719,7 +736,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     /// <param name="targetType">The type being assigned to.</param>
     /// <param name="sourceType">The type being assigned from.</param>
     /// <param name="errorRange">The range where the diagnostic should be shown.</param>
-    private void CheckSimpleAssign(Type targetType, Type sourceType, Range errorRange)
+    private void CheckTypeToType(Type targetType, Type sourceType, Range errorRange)
     {
         if (targetType is Type.Infer { Inferred: null } infer)
         {

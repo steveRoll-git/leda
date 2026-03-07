@@ -3,9 +3,9 @@ using System.Diagnostics.CodeAnalysis;
 namespace Leda.Lang;
 
 /// <summary>
-/// Represents a list of values with an optional `rest` type.
+/// Represents a list of types with an optional `rest` type.
 /// </summary>
-public class TypeList
+public class TypeList : ITypeValueList
 {
     /// <summary>
     /// A TypeList that contains no values.
@@ -33,6 +33,7 @@ public class TypeList
     /// </summary>
     public List<string>? NameList { get; init; }
 
+    // TODO need to ensure a TypeList cannot continue itself.
     /// <summary>
     /// A TypeList that continues this one. If this is not null, `Rest` must be null.
     /// </summary>
@@ -43,7 +44,7 @@ public class TypeList
     /// </summary>
     public Type? Rest { get; private init; } = null;
 
-    public int MinimumValues { get; private set; }
+    public int MinimumValues { get; }
 
     public bool Empty { get; private init; }
 
@@ -51,22 +52,23 @@ public class TypeList
     {
         List = [];
         MinimumValues = 0;
+        Empty = true;
     }
 
     public TypeList(List<Type> list)
     {
         List = list;
-        CalculateMinimum();
+        MinimumValues = CalculateMinimum();
     }
 
     public TypeList(List<Type> list, TypeList? continued)
     {
         List = list;
         Continued = continued;
-        CalculateMinimum();
+        MinimumValues = CalculateMinimum();
     }
 
-    private void CalculateMinimum()
+    private int CalculateMinimum()
     {
         // TODO consider Continued
         for (var i = List.Count - 1; i >= 0; i--)
@@ -74,10 +76,12 @@ public class TypeList
             // TODO consider nillable values
             if (true)
             {
-                MinimumValues = i + 1;
+                return i + 1;
                 break;
             }
         }
+
+        return 0;
     }
 
     public bool IsAssignableFrom(TypeList other, [NotNullWhen(false)] out List<TypeMismatch>? reasons,
@@ -91,36 +95,41 @@ public class TypeList
 
         reasons = [];
 
-        var targetIterator = GetIterator();
-        var sourceIterator = other.GetIterator();
+        var targetIndex = 0;
         var sourceIndex = 0;
 
-        while (targetIterator.Next(out var targetType))
+        while (true)
         {
-            var gotSource = sourceIterator.Next(out var sourceType);
-            if (targetIterator.IsRest && !gotSource)
+            var (sourceType, _, isSourceRest) = other[sourceIndex];
+            var (targetType, _, isTargetRest) = this[targetIndex];
+
+            if (targetType == null)
+            {
+                // No more target types, there is no need to check the source further.
+                // (But a warning about excessive values could be shown here)
+                break;
+            }
+
+            if (isTargetRest && sourceType == null)
             {
                 // If the target type list has a rest type, we only need to check them as long as the source is
                 // providing unique types.
                 break;
             }
 
-            sourceType ??= Type.Nil;
-
-            if (!targetType.IsAssignableFrom(sourceType, out var subReason))
+            if (!targetType.IsAssignableFrom(sourceType ?? Type.Nil, out var subReason))
             {
                 reasons.Add(new TypeMismatch.ValueInListIncompatible(sourceIndex, kind) { Children = [subReason] });
             }
 
-            if (gotSource)
+            if (isTargetRest && isSourceRest)
             {
-                sourceIndex++;
-                if (targetIterator.IsRest && sourceIterator.IsRest)
-                {
-                    // If both type lists end with a rest type, we have to check their assignability just once.
-                    break;
-                }
+                // If both type lists end with a rest type, we have to check their assignability just once.
+                break;
             }
+
+            sourceIndex++;
+            targetIndex++;
         }
 
         if (reasons.Count > 0)
@@ -188,60 +197,26 @@ public class TypeList
         Value
     }
 
-    /// <summary>
-    /// Iterates over the types of a TypeList.
-    /// </summary>
-    public class Iterator
+    public ITypeValueList.TypeValue this[int index]
     {
-        private TypeList typeList;
-        private int index;
-
-        public Iterator(TypeList typeList)
+        get
         {
-            this.typeList = typeList;
-            index = -1;
-            Advance();
-        }
-
-        /// <summary>
-        /// The current type, or `null` if there are no more types.
-        /// </summary>
-        public Type? Current => index < typeList.List.Count ? typeList.List[index] : typeList.Rest;
-
-        /// <summary>
-        /// Whether the current type is the "rest" part of the list.
-        /// </summary>
-        public bool IsRest => index >= typeList.List.Count && typeList.Rest != null;
-
-        /// <summary>
-        /// Advances to the next type.
-        /// </summary>
-        private void Advance()
-        {
-            index++;
-            if (index >= typeList.List.Count && typeList.Continued != null)
+            if (index < List.Count)
             {
-                typeList = typeList.Continued;
-                index = -1;
-                Advance();
+                return new() { Type = List[index], Rest = false };
             }
-        }
 
-        /// <summary>
-        /// Can be used to iterate over the types in a while loop.
-        /// </summary>
-        /// <param name="type">The current type.</param>
-        /// <returns>Whether iteration can continue.</returns>
-        public bool Next([NotNullWhen(true)] out Type? type)
-        {
-            type = Current;
-            Advance();
-            return type != null;
-        }
-    }
+            if (Rest != null)
+            {
+                return new() { Type = Rest, Rest = true };
+            }
 
-    public Iterator GetIterator()
-    {
-        return new Iterator(this);
+            if (Continued != null)
+            {
+                return Continued[index - List.Count];
+            }
+
+            return new();
+        }
     }
 }
