@@ -5,6 +5,10 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     private readonly Source source;
     public List<Diagnostic> Diagnostics { get; } = [];
 
+    private record FunctionInfo(Type.Function Function, bool InferReturn);
+
+    private readonly Stack<FunctionInfo> functionStack = [];
+
     private void Report(Diagnostic diagnostic)
     {
         Diagnostics.Add(diagnostic);
@@ -69,7 +73,8 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         if (target is Type.Function function)
         {
             // TODO support overloads
-            CheckAssignment(function.Parameters, new ExpressionListValueList(call.Parameters), call.Target);
+            CheckAssignment(function.Parameters, new ExpressionListValueList(call.Parameters),
+                TypeList.TypeListKind.Parameter, call.Target.Range);
 
             return function.Return;
         }
@@ -79,6 +84,11 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     private TypeList VisitExpressionList(List<Tree.Expression> expressions)
     {
+        if (expressions.Count == 0)
+        {
+            return TypeList.None;
+        }
+
         List<Type> list = new(1);
         TypeList? continued = null;
         foreach (var expression in expressions)
@@ -151,29 +161,30 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         var parameterTypeList = new TypeList(parameters) { NameList = paramNames };
         // TODO handle rest parameter
 
-        var returnTypeList = GetFunctionReturnType(function.Type);
-        returnTypeList ??= TypeList.None; // TODO infer return type
+        TypeList? returnTypeList = null;
+        if (function.Type.ReturnTypes != null)
+        {
+            returnTypeList = VisitTypeList(function.Type.ReturnTypes);
+        }
 
+        var functionType = new Type.Function(parameterTypeList, returnTypeList ?? TypeList.Unknown);
+
+        functionStack.Push(new(functionType, returnTypeList == null));
         VisitBlock(function.Body);
+        functionStack.Pop();
 
-        return new Type.Function(parameterTypeList, returnTypeList);
+        return functionType;
     }
 
-    private TypeList? GetFunctionReturnType(Tree.Type.Function functionType)
+    private TypeList VisitTypeList(List<Tree.Type> typeTrees)
     {
-        if (functionType.ReturnTypes == null)
+        List<Type> types = [];
+        foreach (var typeTree in typeTrees)
         {
-            return null;
+            types.Add(typeTree.AcceptTypeVisitor(this));
         }
 
-        List<Type> returnTypes = [];
-        foreach (var returnType in functionType.ReturnTypes)
-        {
-            returnTypes.Add(returnType.AcceptTypeVisitor(this));
-        }
-
-        // TODO handle Rest and Continued
-        return new TypeList(returnTypes);
+        return new TypeList(types);
     }
 
     private Type GetAccessType(Tree.Expression target, Tree.Expression key, bool isConstant)
@@ -277,7 +288,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     public void Visit(Tree.Statement.Assignment assignment)
     {
         CheckAssignment(new ExpressionListValueList(assignment.Targets),
-            new ExpressionListValueList(assignment.Values));
+            new ExpressionListValueList(assignment.Values), TypeList.TypeListKind.Value);
     }
 
     /// <summary>
@@ -286,8 +297,10 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     /// </summary>
     /// <param name="targets">The targets being assigned to.</param>
     /// <param name="sources">The values being assigned.</param>
-    /// <param name="callTarget">The tree node of the target being called, if a call's parameters are checked.</param>
-    private void CheckAssignment(ITypeValueList targets, ITypeValueList sources, Tree.Expression? callTarget = null)
+    /// <param name="kind">The kind of typelist being checked.</param>
+    /// <param name="sideErrorRange">The range to show an error, if there are no source or target nodes.</param>
+    private void CheckAssignment(ITypeValueList targets, ITypeValueList sources, TypeList.TypeListKind kind,
+        Range sideErrorRange = new())
     {
         Range errorRange = new(); // TODO can we figure out an initial value for this?
 
@@ -326,7 +339,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
             // TODO if target and source are typelists, control should probably be transferred to typelist's IsAssignableFrom
 
-            if (targetType != null)
+            if (targetType != null && targetType != Type.Unknown && targetType != Type.Any)
             {
                 if (targetType is Type.Infer infer)
                 {
@@ -343,12 +356,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 }
                 else
                 {
-                    if (targets is TypeList targetTypeList && callTarget != null &&
+                    if (targets is TypeList targetTypeList &&
                         sourceIndex < targetTypeList.MinimumValues)
                     {
-                        Report(new Diagnostic.TypeMismatch(callTarget.Range,
+                        Report(new Diagnostic.TypeMismatch(sideErrorRange,
                             new TypeMismatch.NotEnoughValues(targetTypeList.MinimumValues, sourceIndex,
-                                TypeList.TypeListKind.Parameter)));
+                                kind)));
                         break;
                     }
 
@@ -416,7 +429,18 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public void Visit(Tree.Statement.Return returnStatement)
     {
-        throw new NotImplementedException();
+        var (function, inferReturn) = functionStack.Peek();
+        if (inferReturn && function.Return == TypeList.Unknown)
+        {
+            // TODO make the function's return type a union of all possible returns, if they're different
+            function.Return = VisitExpressionList(returnStatement.Values);
+        }
+        else
+        {
+            CheckAssignment(function.Return, new ExpressionListValueList(returnStatement.Values),
+                TypeList.TypeListKind.Return,
+                returnStatement.Range);
+        }
     }
 
     public void Visit(Tree.Statement.LocalFunctionDeclaration declaration)
@@ -460,7 +484,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         }
 
         CheckAssignment(new DeclarationValueList(localDeclaration.Declarations),
-            new ExpressionListValueList(localDeclaration.Values));
+            new ExpressionListValueList(localDeclaration.Values), TypeList.TypeListKind.Value);
     }
 
     public void Visit(Tree.Statement.RepeatUntil repeatUntil)
@@ -658,8 +682,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         var parameterTypeList = new TypeList(parameters) { NameList = paramNames };
         // TODO handle rest parameter
 
-        var returnTypeList = GetFunctionReturnType(functionType);
-        returnTypeList ??= TypeList.None;
+        var returnTypeList = functionType.ReturnTypes != null ? VisitTypeList(functionType.ReturnTypes) : TypeList.None;
 
         return new Type.Function(parameterTypeList, returnTypeList);
     }
@@ -757,6 +780,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     public static List<Diagnostic> Check(Source source)
     {
         var checker = new Checker(source);
+        checker.functionStack.Push(new(new Type.Function(TypeList.Any, TypeList.Any), false)); // TODO
         checker.VisitBlock(source.Tree);
         return checker.Diagnostics;
     }

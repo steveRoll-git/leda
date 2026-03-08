@@ -158,7 +158,7 @@ public abstract class Type
         /// <summary>
         /// This function's return types.
         /// </summary>
-        public TypeList Return { get; } = returns;
+        public TypeList Return { get; set; } = returns;
 
         protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
