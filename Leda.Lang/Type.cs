@@ -296,35 +296,26 @@ public abstract class Type
     }
 
     /// <summary>
-    /// A reference to a type that is inferred from assignment.
+    /// A placeholder for a type that will be inferred from assignment.
     /// </summary>
-    public class Infer : Type
+    public class Infer(Action<Type> onInferred) : Type
     {
-        private Type? inferred;
-
         /// <summary>
-        /// The type that was inferred, or null if it wasn't inferred yet.
+        /// The action that will be performed once the type is inferred.
         /// </summary>
-        public Type? Inferred
-        {
-            get => inferred;
-            set
-            {
-                inferred = value;
-                Name = value?.Name;
-            }
-        }
+        public Action<Type> OnInferred { get; } = onInferred;
 
-        public override Type Actual => Inferred ?? Unknown;
+        public override Type Actual => Unknown;
 
         protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
         {
-            return Actual.IsAssignableFrom(other, out reason);
+            reason = null;
+            return true;
         }
 
         public override string Display()
         {
-            return Actual.Display();
+            return "unknown";
         }
     }
 

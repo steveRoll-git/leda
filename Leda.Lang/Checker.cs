@@ -328,7 +328,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
             if (targetType != null)
             {
-                if (sourceType != null)
+                if (targetType is Type.Infer infer)
+                {
+                    sourceType ??= sourceExpression?.AcceptExpressionVisitor(this, false) ?? Type.Nil;
+                    infer.OnInferred(sourceType);
+                }
+                else if (sourceType != null)
                 {
                     CheckTypeToType(targetType, sourceType, errorRange);
                 }
@@ -436,6 +441,11 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         {
             Type variableType;
 
+            if (!source.TryGetTreeSymbol(declaration.Name, out var symbol))
+            {
+                throw new Exception("Variable doesn't have a symbol");
+            }
+
             if (declaration.Type != null)
             {
                 variableType = declaration.Type.AcceptTypeVisitor(this);
@@ -443,12 +453,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             else
             {
                 // The variable's type is inferred from the value.
-                variableType = new Type.Infer();
-            }
-
-            if (!source.TryGetTreeSymbol(declaration.Name, out var symbol))
-            {
-                throw new Exception("Variable doesn't have a symbol");
+                variableType = new Type.Infer(inferred => source.SetSymbolType(symbol, inferred));
             }
 
             source.SetSymbolType(symbol, variableType);
@@ -737,20 +742,13 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     /// <summary>
     /// Checks if `sourceType` is assignable to `targetType`, and reports a diagnostic if it isn't.<br/>
-    /// Additionally, updates `Infer` types to the given `sourceType`.
     /// </summary>
     /// <param name="targetType">The type being assigned to.</param>
     /// <param name="sourceType">The type being assigned from.</param>
     /// <param name="errorRange">The range where the diagnostic should be shown.</param>
     private void CheckTypeToType(Type targetType, Type sourceType, Range errorRange)
     {
-        if (targetType is Type.Infer { Inferred: null } infer)
-        {
-            // TODO this may have unintended consequences and a type may be inferred way outside of the place it's
-            // intended to get inferred in
-            infer.Inferred = sourceType;
-        }
-        else if (!targetType.IsAssignableFrom(sourceType, out var reason))
+        if (!targetType.IsAssignableFrom(sourceType, out var reason))
         {
             Report(new Diagnostic.TypeMismatch(errorRange, reason));
         }
