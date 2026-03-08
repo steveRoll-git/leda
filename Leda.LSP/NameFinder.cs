@@ -143,9 +143,7 @@ public static class NameFinder
             Tree.Statement.RepeatUntil repeatUntil => GetNameAtPosition(repeatUntil.Body, position) ??
                                                       GetNameAtPosition(repeatUntil.Condition, position),
 
-            Tree.Statement.Return returnStatement => returnStatement.Value != null
-                ? GetNameAtPosition(returnStatement.Value, position)
-                : null,
+            Tree.Statement.Return returnStatement => GetNameAtPosition(returnStatement.Values, position),
 
             Tree.Expression.Table table => GetNameAtPosition(table.Fields, position),
 

@@ -266,9 +266,12 @@ public class Parser
         {
             StartTree();
             NextToken(); // skip 'return'
-            return EndTree(IsStatementEndingToken(token)
-                ? new Tree.Statement.Return(null)
-                : new Tree.Statement.Return(ParseExpression()));
+            return EndTree(
+                new Tree.Statement.Return(
+                    IsStatementEndingToken(token)
+                        ? []
+                        : ParseExpressionList())
+            );
         }
 
         if (token is Token.Break)

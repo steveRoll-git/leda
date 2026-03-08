@@ -311,10 +311,10 @@ public class Emitter
         else if (statement is Tree.Statement.Return returnStatement)
         {
             Emit("return");
-            if (returnStatement.Value != null)
+            if (returnStatement.Values.Count > 0)
             {
                 Emit(" ");
-                EmitExpression(returnStatement.Value, indent);
+                EmitExpressionList(returnStatement.Values, indent);
             }
         }
         else if (statement is Tree.Statement.Do doBlock)

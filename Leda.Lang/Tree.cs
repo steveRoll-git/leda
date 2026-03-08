@@ -335,11 +335,11 @@ public abstract class Tree
         }
 
         /// <summary>
-        /// A `return` statement, with an optional return value.
+        /// A `return` statement, with optional return values.
         /// </summary>
-        public class Return(Expression? value) : Statement
+        public class Return(List<Expression> values) : Statement
         {
-            public Expression? Value => value;
+            public List<Expression> Values => values;
 
             public override void AcceptVisitor(IVisitor visitor)
             {

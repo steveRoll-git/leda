@@ -330,7 +330,10 @@ public class Binder : Tree.IVisitor
 
     public void Visit(Tree.Statement.Return returnStatement)
     {
-        returnStatement.Value?.AcceptVisitor(this);
+        foreach (var value in returnStatement.Values)
+        {
+            value.AcceptVisitor(this);
+        }
     }
 
     public void Visit(Tree.Statement.LocalFunctionDeclaration declaration)
