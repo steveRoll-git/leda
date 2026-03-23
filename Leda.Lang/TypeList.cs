@@ -84,63 +84,6 @@ public class TypeList : ITypeValueList
         return 0;
     }
 
-    public bool IsAssignableFrom(TypeList other, [NotNullWhen(false)] out List<TypeMismatch>? reasons,
-        TypeListKind kind)
-    {
-        if (other.MinimumValues < MinimumValues)
-        {
-            reasons = [new TypeMismatch.NotEnoughValues(MinimumValues, other.MinimumValues, kind)];
-            return false;
-        }
-
-        reasons = [];
-
-        var targetIndex = 0;
-        var sourceIndex = 0;
-
-        while (true)
-        {
-            var (sourceType, _, isSourceRest) = other[sourceIndex];
-            var (targetType, _, isTargetRest) = this[targetIndex];
-
-            if (targetType == null)
-            {
-                // No more target types, there is no need to check the source further.
-                // (But a warning about excessive values could be shown here)
-                break;
-            }
-
-            if (isTargetRest && sourceType == null)
-            {
-                // If the target type list has a rest type, we only need to check them as long as the source is
-                // providing unique types.
-                break;
-            }
-
-            if (!targetType.IsAssignableFrom(sourceType ?? Type.Nil, out var subReason))
-            {
-                reasons.Add(new TypeMismatch.ValueInListIncompatible(sourceIndex, kind) { Children = [subReason] });
-            }
-
-            if (isTargetRest && isSourceRest)
-            {
-                // If both type lists end with a rest type, we have to check their assignability just once.
-                break;
-            }
-
-            sourceIndex++;
-            targetIndex++;
-        }
-
-        if (reasons.Count > 0)
-        {
-            return false;
-        }
-
-        reasons = null;
-        return true;
-    }
-
     public override string ToString()
     {
         string result;

@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Leda.Lang;
 
 public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeVisitor<Type>
@@ -57,7 +59,8 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             return TypeList.Unknown;
         }
 
-        if (!Type.FunctionPrimitive.IsAssignableFrom(target)) // TODO handle __call metamethod
+        // TODO we could store a simple flag for whether a type is callable instead of checking like this.
+        if (!IsAssignableFrom(Type.FunctionPrimitive, target)) // TODO handle __call metamethod
         {
             Report(new Diagnostic.TypeNotCallable(call.Target.Range));
             VisitExpressionList(call.Parameters);
@@ -207,7 +210,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         // TODO use lookup
         foreach (var pair in table.Pairs)
         {
-            if (pair.Key.IsAssignableFrom(keyType))
+            if (IsAssignableFrom(pair.Key, keyType))
             {
                 return pair.Value;
             }
@@ -226,13 +229,13 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     public void Visit(Tree.Statement.NumericalFor numericalFor)
     {
         var startType = numericalFor.Start.AcceptExpressionVisitor(this, false);
-        if (!Type.NumberPrimitive.IsAssignableFrom(startType))
+        if (!IsAssignableFrom(Type.NumberPrimitive, startType))
         {
             Report(new Diagnostic.ForLoopStartNotNumber(numericalFor.Start.Range, startType));
         }
 
         var limitType = numericalFor.Limit.AcceptExpressionVisitor(this, false);
-        if (!Type.NumberPrimitive.IsAssignableFrom(limitType))
+        if (!IsAssignableFrom(Type.NumberPrimitive, limitType))
         {
             Report(new Diagnostic.ForLoopLimitNotNumber(numericalFor.Limit.Range, limitType));
         }
@@ -240,7 +243,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         if (numericalFor.Step != null)
         {
             var stepType = numericalFor.Step.AcceptExpressionVisitor(this, false);
-            if (!Type.NumberPrimitive.IsAssignableFrom(stepType))
+            if (!IsAssignableFrom(Type.NumberPrimitive, stepType))
             {
                 Report(new Diagnostic.ForLoopStepNotNumber(numericalFor.Step.Range, stepType));
             }
@@ -309,6 +312,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
         while (true)
         {
+            // TODO check rest
             var (targetType, targetExpression, _) = targets[targetIndex];
             if (targetExpression != null)
             {
@@ -550,8 +554,8 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         if (unary.Operator is Token.Length)
         {
             // TODO use __len metamethod
-            if (!Type.TablePrimitive.IsAssignableFrom(exprType) &&
-                !Type.StringPrimitive.IsAssignableFrom(exprType))
+            if (!IsAssignableFrom(Type.TablePrimitive, exprType) &&
+                !IsAssignableFrom(Type.StringPrimitive, exprType))
             {
                 Report(new Diagnostic.CantGetLength(unary.Range, exprType));
             }
@@ -562,7 +566,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         if (unary.Operator is Token.Minus)
         {
             // TODO use __unm metamethod
-            if (!Type.NumberPrimitive.IsAssignableFrom(exprType))
+            if (!IsAssignableFrom(Type.NumberPrimitive, exprType))
             {
                 Report(new Diagnostic.CantNegate(unary.Range, exprType));
             }
@@ -727,7 +731,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             foreach (var sourceField in sourceTable.Fields)
             {
                 var sourceKeyType = sourceField.Key.AcceptExpressionVisitor(this, IsSimpleLiteral(sourceField.Key));
-                var targetKey = missingKeys.FirstOrDefault(k => k.IsAssignableFrom(sourceKeyType));
+                var targetKey = missingKeys.FirstOrDefault(targetKey => IsAssignableFrom(targetKey, sourceKeyType));
                 if (targetKey == null)
                 {
                     // TODO check for duplicate fields
@@ -771,10 +775,210 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     /// <param name="errorRange">The range where the diagnostic should be shown.</param>
     private void CheckTypeToType(Type targetType, Type sourceType, Range errorRange)
     {
-        if (!targetType.IsAssignableFrom(sourceType, out var reason))
+        if (!IsAssignableFrom(targetType, sourceType, out var reason))
         {
             Report(new Diagnostic.TypeMismatch(errorRange, reason));
         }
+    }
+
+    private Type Dereference(Type type)
+    {
+        return type;
+    }
+
+    private static bool IsTriviallyAssignableFrom(Type targetType, Type sourceType)
+    {
+        if (targetType == Type.Unknown || sourceType == Type.Unknown)
+        {
+            return true;
+        }
+
+        return targetType == sourceType;
+    }
+
+    private bool IsAssignableFrom(Type targetType, Type sourceType, [NotNullWhen(false)] out TypeMismatch? reason)
+    {
+        reason = null;
+        if (IsTriviallyAssignableFrom(targetType, sourceType))
+        {
+            return true;
+        }
+
+        targetType = Dereference(targetType);
+        sourceType = Dereference(sourceType);
+        if (IsTriviallyAssignableFrom(targetType, sourceType))
+        {
+            return true;
+        }
+
+        if (targetType is Type.PrimitiveType primitive)
+        {
+            if (primitive.AssignableFunc(sourceType))
+            {
+                return true;
+            }
+
+            reason = new TypeMismatch.Primitive(targetType, sourceType);
+            return false;
+        }
+
+        // ReSharper disable once CompareOfFloatsByEqualityOperator
+        if (targetType is Type.NumberLiteral numberLiteral)
+        {
+            if (sourceType is Type.NumberLiteral sourceLiteral &&
+                numberLiteral.Literal == sourceLiteral.Literal)
+            {
+                return true;
+            }
+
+            reason = new TypeMismatch.Primitive(targetType, sourceType);
+            return false;
+        }
+
+        if (targetType is Type.StringLiteral stringLiteral)
+        {
+            if (sourceType is Type.StringLiteral sourceLiteral &&
+                stringLiteral.Literal == sourceLiteral.Literal)
+            {
+                return true;
+            }
+
+            reason = new TypeMismatch.Primitive(targetType, sourceType);
+            return false;
+        }
+
+        if (targetType is Type.Table targetTable && sourceType is Type.Table sourceTable)
+        {
+            return IsAssignableFrom(targetTable, sourceTable, out reason);
+        }
+
+        if (targetType is Type.Function targetFunction && sourceType is Type.Function sourceFunction)
+        {
+            return IsAssignableFrom(targetFunction, sourceFunction, out reason);
+        }
+
+        reason = new TypeMismatch.Primitive(targetType, sourceType);
+        return false;
+    }
+
+    private bool IsAssignableFrom(Type targetType, Type sourceType)
+    {
+        return IsAssignableFrom(targetType, sourceType, out _);
+    }
+
+    private bool IsAssignableFrom(Type.Table targetTable, Type.Table sourceTable,
+        [NotNullWhen(false)] out TypeMismatch? reason)
+    {
+        List<TypeMismatch> reasons = [];
+
+        foreach (var targetPair in targetTable.Pairs)
+        {
+            // TODO use lookup
+            var sourcePair =
+                sourceTable.Pairs.FirstOrDefault(sourcePair => IsAssignableFrom(targetPair.Key, sourcePair.Key));
+            if (sourcePair.Key == null)
+            {
+                reasons.Add(new TypeMismatch.SourceMissingKey(targetTable, sourceTable, targetPair.Key));
+                continue;
+            }
+
+            if (!IsAssignableFrom(targetPair.Value, sourcePair.Value, out var valueReason))
+            {
+                reasons.Add(new TypeMismatch.TableKeyIncompatible(targetPair.Key) { Children = [valueReason] });
+            }
+        }
+
+        if (reasons.Count > 0)
+        {
+            reason = new TypeMismatch.Primitive(targetTable, sourceTable) { Children = reasons };
+            return false;
+        }
+
+        reason = null;
+        return true;
+    }
+
+    private bool IsAssignableFrom(Type.Function targetFunction, Type.Function sourceFunction,
+        [NotNullWhen(false)] out TypeMismatch? reason)
+    {
+        List<TypeMismatch> reasons = [];
+        if (!IsAssignableFrom(sourceFunction.Parameters, targetFunction.Parameters, out var parameterReasons,
+                TypeList.TypeListKind.FunctionTypeParameter))
+        {
+            reasons.AddRange(parameterReasons);
+        }
+
+        if (!IsAssignableFrom(targetFunction.Return, sourceFunction.Return, out var returnReasons,
+                TypeList.TypeListKind.FunctionTypeReturn))
+        {
+            reasons.AddRange(returnReasons);
+        }
+
+        if (reasons.Count > 0)
+        {
+            reason = new TypeMismatch.Primitive(targetFunction, sourceFunction) { Children = reasons };
+            return false;
+        }
+
+        reason = null;
+        return true;
+    }
+
+    private bool IsAssignableFrom(TypeList target, TypeList other, [NotNullWhen(false)] out List<TypeMismatch>? reasons,
+        TypeList.TypeListKind kind)
+    {
+        if (other.MinimumValues < target.MinimumValues)
+        {
+            reasons = [new TypeMismatch.NotEnoughValues(target.MinimumValues, other.MinimumValues, kind)];
+            return false;
+        }
+
+        reasons = [];
+
+        var targetIndex = 0;
+        var sourceIndex = 0;
+
+        while (true)
+        {
+            var (sourceType, _, isSourceRest) = other[sourceIndex];
+            var (targetType, _, isTargetRest) = target[targetIndex];
+
+            if (targetType == null)
+            {
+                // No more target types, there is no need to check the source further.
+                // (But a warning about excessive values could be shown here)
+                break;
+            }
+
+            if (isTargetRest && sourceType == null)
+            {
+                // If the target type list has a rest type, we only need to check them as long as the source is
+                // providing unique types.
+                break;
+            }
+
+            if (!IsAssignableFrom(targetType, sourceType ?? Type.Nil, out var subReason))
+            {
+                reasons.Add(new TypeMismatch.ValueInListIncompatible(sourceIndex, kind) { Children = [subReason] });
+            }
+
+            if (isTargetRest && isSourceRest)
+            {
+                // If both type lists end with a rest type, we have to check their assignability just once.
+                break;
+            }
+
+            sourceIndex++;
+            targetIndex++;
+        }
+
+        if (reasons.Count > 0)
+        {
+            return false;
+        }
+
+        reasons = null;
+        return true;
     }
 
     public static List<Diagnostic> Check(Source source)

@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace Leda.Lang;
@@ -13,35 +12,12 @@ public abstract class Type
     public virtual bool UserNameable => false;
 
     /// <summary>
-    /// If this type indirectly references another type, returns that type after dereferencing.
-    /// </summary>
-    public virtual Type Actual => this;
-
-    /// <summary>
     /// A type that doesn't require much checking logic other than checking that the source
     /// type is equal to one or more existing types.
     /// </summary>
     public class PrimitiveType(Func<Type, bool> assignableFunc) : Type
     {
-        private Func<Type, bool> AssignableFunc => assignableFunc;
-
-        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
-        {
-            if (DefinitelyAssignable(other))
-            {
-                reason = null;
-                return true;
-            }
-
-            if (!AssignableFunc(other))
-            {
-                reason = new TypeMismatch.Primitive(this, other);
-                return false;
-            }
-
-            reason = null;
-            return true;
-        }
+        public Func<Type, bool> AssignableFunc => assignableFunc;
 
         public override string Display()
         {
@@ -62,46 +38,33 @@ public abstract class Type
     /// <summary>
     /// The `nil` unit type.
     /// </summary>
-    public static readonly Type Nil = new PrimitiveType(other => other == Nil) { Name = "nil" };
+    public static readonly Type Nil = new PrimitiveType(_ => false) { Name = "nil" };
 
     /// <summary>
     /// The `true` boolean literal.
     /// </summary>
-    public static readonly Type True = new PrimitiveType(other => other == True) { Name = "true" };
+    public static readonly Type True = new PrimitiveType(_ => false) { Name = "true" };
 
     /// <summary>
     /// The `false` boolean literal.
     /// </summary>
-    public static readonly Type False = new PrimitiveType(other => other == False) { Name = "false" };
+    public static readonly Type False = new PrimitiveType(_ => false) { Name = "false" };
 
     /// <summary>
     /// The primitive boolean type.
     /// </summary>
     public static readonly Type Boolean =
-        new PrimitiveType(other => other == Boolean || other == True || other == False) { Name = "boolean" };
+        new PrimitiveType(other => other == True || other == False) { Name = "boolean" };
 
     /// <summary>
     /// The primitive number type.
     /// </summary>
     public static readonly Type NumberPrimitive =
-        new PrimitiveType(other => other == NumberPrimitive || other is NumberLiteral) { Name = "number" };
+        new PrimitiveType(other => other is NumberLiteral) { Name = "number" };
 
     public class NumberLiteral(double literal) : Type
     {
         public double Literal => literal;
-
-        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
-        {
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
-            if (DefinitelyAssignable(other) || other is NumberLiteral l && l.Literal == Literal)
-            {
-                reason = null;
-                return true;
-            }
-
-            reason = new TypeMismatch.Primitive(this, other);
-            return false;
-        }
 
         public override string Display()
         {
@@ -113,7 +76,7 @@ public abstract class Type
     /// The primitive string type.
     /// </summary>
     public static readonly Type StringPrimitive =
-        new PrimitiveType(other => other == StringPrimitive || other is StringLiteral) { Name = "string" };
+        new PrimitiveType(other => other is StringLiteral) { Name = "string" };
 
     /// <summary>
     /// A string literal.
@@ -121,18 +84,6 @@ public abstract class Type
     public class StringLiteral(string literal) : Type
     {
         public string Literal => literal;
-
-        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
-        {
-            if (DefinitelyAssignable(other) || other is StringLiteral l && l.Literal == Literal)
-            {
-                reason = null;
-                return true;
-            }
-
-            reason = new TypeMismatch.Primitive(this, other);
-            return false;
-        }
 
         public override string Display()
         {
@@ -144,7 +95,7 @@ public abstract class Type
     /// Supertype of all function types.
     /// </summary>
     public static readonly Type FunctionPrimitive =
-        new PrimitiveType(other => other == FunctionPrimitive || other is Function) { Name = "function" };
+        new PrimitiveType(other => other is Function) { Name = "function" };
 
     public class Function(TypeList parameters, TypeList returns) : Type
     {
@@ -159,44 +110,6 @@ public abstract class Type
         /// This function's return types.
         /// </summary>
         public TypeList Return { get; set; } = returns;
-
-        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
-        {
-            if (DefinitelyAssignable(other))
-            {
-                reason = null;
-                return true;
-            }
-
-            // TODO accept other types that may be callable like tables with __call
-            if (other is not Function function)
-            {
-                reason = new TypeMismatch.Primitive(this, other);
-                return false;
-            }
-
-            List<TypeMismatch> reasons = [];
-            if (!function.Parameters.IsAssignableFrom(Parameters, out var parameterReasons,
-                    TypeList.TypeListKind.FunctionTypeParameter))
-            {
-                reasons.AddRange(parameterReasons);
-            }
-
-            if (!Return.IsAssignableFrom(function.Return, out var returnReasons,
-                    TypeList.TypeListKind.FunctionTypeReturn))
-            {
-                reasons.AddRange(returnReasons);
-            }
-
-            if (reasons.Count > 0)
-            {
-                reason = new TypeMismatch.Primitive(this, other) { Children = reasons };
-                return false;
-            }
-
-            reason = null;
-            return true;
-        }
 
         public override string Display()
         {
@@ -223,48 +136,6 @@ public abstract class Type
         }
 
         public List<Pair> Pairs => pairs;
-
-        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
-        {
-            if (DefinitelyAssignable(other))
-            {
-                reason = null;
-                return true;
-            }
-
-            if (other is not Table otherTable)
-            {
-                reason = new TypeMismatch.Primitive(this, other);
-                return false;
-            }
-
-            List<TypeMismatch> reasons = [];
-
-            foreach (var pair in Pairs)
-            {
-                // TODO use lookup
-                var otherPair = otherTable.Pairs.FirstOrDefault(p => pair.Key.IsAssignableFrom(p.Key));
-                if (otherPair.Key == null)
-                {
-                    reasons.Add(new TypeMismatch.SourceMissingKey(this, other, pair.Key));
-                    continue;
-                }
-
-                if (!pair.Value.IsAssignableFrom(otherPair.Value, out var valueReason))
-                {
-                    reasons.Add(new TypeMismatch.TableKeyIncompatible(pair.Key) { Children = [valueReason] });
-                }
-            }
-
-            if (reasons.Count > 0)
-            {
-                reason = new TypeMismatch.Primitive(this, other) { Children = reasons };
-                return false;
-            }
-
-            reason = null;
-            return true;
-        }
 
         public override string Display()
         {
@@ -305,46 +176,10 @@ public abstract class Type
         /// </summary>
         public Action<Type> OnInferred { get; } = onInferred;
 
-        public override Type Actual => Unknown;
-
-        protected override bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
-        {
-            reason = null;
-            return true;
-        }
-
         public override string Display()
         {
             return "unknown";
         }
-    }
-
-    /// <summary>
-    /// Returns whether a value of type `other` can be assigned to a variable of this type.<br/>
-    /// `other` is dereferenced.
-    /// </summary>
-    protected abstract bool IsAssignableFromActual(Type other, [NotNullWhen(false)] out TypeMismatch? reason);
-
-    /// <summary>
-    /// Returns whether a value of type `other` can be assigned to a variable of this type.
-    /// </summary>
-    public bool IsAssignableFrom(Type other, [NotNullWhen(false)] out TypeMismatch? reason)
-    {
-        return IsAssignableFromActual(other.Actual, out reason);
-    }
-
-    public bool IsAssignableFrom(Type other)
-    {
-        return IsAssignableFrom(other, out _);
-    }
-
-    /// <summary>
-    /// Returns whether the type `other` is definitely assignable to this type, without doing any specific checks.
-    /// Returns `true` if `other` is the `unknown` type, or the target type itself.
-    /// </summary>
-    public bool DefinitelyAssignable(Type other)
-    {
-        return other == Unknown || other == this;
     }
 
     /// <summary>
