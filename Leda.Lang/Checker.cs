@@ -345,6 +345,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
             if (targetType != null && targetType != Type.Unknown && targetType != Type.Any)
             {
+                targetType = Dereference(targetType);
                 if (targetType is Type.Infer infer)
                 {
                     sourceType ??= sourceExpression?.AcceptExpressionVisitor(this, false) ?? Type.Nil;
@@ -657,6 +658,8 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             {
                 return type;
             }
+
+            return new Type.Reference(symbol);
         }
 
         // TODO report error?
@@ -724,6 +727,8 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
     {
         var errorRange = (targetValue ?? sourceValue).Range;
 
+        targetType = Dereference(targetType);
+
         if (sourceValue is Tree.Expression.Table sourceTable && targetType is Type.Table targetTable)
         {
             // TODO use lookup
@@ -781,8 +786,21 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         }
     }
 
+    /// <summary>
+    /// If the type points to another type, returns the pointed-to type.
+    /// </summary>
     private Type Dereference(Type type)
     {
+        if (type is Type.Reference reference)
+        {
+            if (source.TryGetSymbolType(reference.Symbol, out var dereferenced))
+            {
+                return Dereference(dereferenced);
+            }
+
+            return Type.Unknown;
+        }
+
         return type;
     }
 
