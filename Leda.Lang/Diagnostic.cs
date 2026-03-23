@@ -99,37 +99,24 @@ public abstract record Diagnostic(Range Range)
         public override string Message => "Function is implicitly global. Prefix 'global' if this is intentional.";
     }
 
-    public record NameNotFound(Range Range, string Name, Tree.Expression.NameContext Context) : Diagnostic(Range)
+    public record NameNotFound(Range Range, string Name, Tree.NameContext Context) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
 
         private string Noun => Context switch
         {
-            Tree.Expression.NameContext.Type => "type",
+            Tree.NameContext.Type => "type",
             _ => "value"
         };
 
         public override string Message => $"Cannot find {Noun} named '{Name}'.";
     }
 
-    public record ValueAlreadyDeclared(Range Range, string Name, Symbol ExistingSymbol)
+    public record ValueAlreadyDeclared(Range Range, string Name)
         : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-
-
-        public override string Message
-        {
-            get
-            {
-                var noun = ExistingSymbol switch
-                {
-                    Symbol.LocalVariable => "local variable",
-                    _ => "value"
-                };
-                return $"A {noun} named '{Name}' has already been declared.";
-            }
-        }
+        public override string Message => $"A value named '{Name}' has already been declared.";
     }
 
     public record TypeAlreadyDeclared(Range Range, string Name) : Diagnostic(Range)

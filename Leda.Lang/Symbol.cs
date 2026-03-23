@@ -1,22 +1,25 @@
 namespace Leda.Lang;
 
+public enum SymbolKind
+{
+    LocalVariable,
+    Parameter,
+    Type
+}
+
 /// <summary>
 /// A value or type that has some origin in the source code, that may be referenced in multiple places.
 /// </summary>
-public class Symbol
+public class Symbol(SymbolKind kind)
 {
     /// <summary>
     /// The location where this symbol was defined.
     /// </summary>
     public Location Definition { get; internal set; }
 
-    public class LocalVariable : Symbol { }
+    public SymbolKind Kind => kind;
 
-    public class Parameter : Symbol { }
-
-    public class TypeSymbol : Symbol { }
-
-    public class IntrinsicType(Type type) : Symbol
+    public class IntrinsicType(Type type) : Symbol(SymbolKind.Type)
     {
         public Type Type => type;
     }

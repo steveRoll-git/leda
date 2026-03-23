@@ -113,12 +113,12 @@ public class Binder : Tree.IVisitor
     private void AddSymbol(Tree node, string name, Tree.NameContext context, Symbol symbol)
     {
         // TODO report warning if a name is shadowed
-        if (TryGetBinding(name, context, out var existingSymbol, out var existingScope) &&
+        if (TryGetBinding(name, context, out _, out var existingScope) &&
             existingScope == CurrentScope)
         {
             if (context == Tree.NameContext.Value)
             {
-                Report(new Diagnostic.ValueAlreadyDeclared(node.Range, name, existingSymbol));
+                Report(new Diagnostic.ValueAlreadyDeclared(node.Range, name));
             }
             else if (context == Tree.NameContext.Type)
             {
@@ -132,9 +132,9 @@ public class Binder : Tree.IVisitor
             CurrentScope[name] = currentBinding;
         }
 
-        if (symbol is Symbol.TypeSymbol typeSymbol)
+        if (symbol.Kind == SymbolKind.Type)
         {
-            currentBinding.TypeSymbol = typeSymbol;
+            currentBinding.TypeSymbol = symbol;
         }
         else
         {
@@ -148,17 +148,17 @@ public class Binder : Tree.IVisitor
     /// <summary>
     /// Adds a value name's symbol to the current scope.
     /// </summary>
-    private void AddSymbol(Tree.Expression.Name name, Symbol symbol)
+    private void AddSymbol(Tree.Expression.Name name, SymbolKind kind)
     {
-        AddSymbol(name, name.Value, Tree.NameContext.Value, symbol);
+        AddSymbol(name, name.Value, Tree.NameContext.Value, new Symbol(kind));
     }
 
     /// <summary>
     /// Adds a type name's symbol to the current scope.
     /// </summary>
-    private void AddTypeSymbol(Tree.Type.Name name, Symbol symbol)
+    private void AddTypeSymbol(Tree.Type.Name name)
     {
-        AddSymbol(name, name.Value, Tree.NameContext.Type, symbol);
+        AddSymbol(name, name.Value, Tree.NameContext.Type, new Symbol(SymbolKind.Type));
     }
 
     /// <summary>
@@ -170,7 +170,7 @@ public class Binder : Tree.IVisitor
         // for `typeof` to work correctly.
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
-            AddTypeSymbol(typeDeclaration.Name, new Symbol.TypeSymbol());
+            AddTypeSymbol(typeDeclaration.Name);
         }
 
         foreach (var typeDeclaration in block.TypeDeclarations)
@@ -197,7 +197,7 @@ public class Binder : Tree.IVisitor
         numericalFor.Start.AcceptVisitor(this);
         numericalFor.Limit.AcceptVisitor(this);
         numericalFor.Step?.AcceptVisitor(this);
-        AddSymbol(numericalFor.Counter, new Symbol.LocalVariable());
+        AddSymbol(numericalFor.Counter, SymbolKind.LocalVariable);
         VisitBlock(numericalFor.Body);
         PopScope();
     }
@@ -287,7 +287,7 @@ public class Binder : Tree.IVisitor
 
         foreach (var parameter in function.Type.Parameters)
         {
-            AddSymbol(parameter.Name, new Symbol.Parameter());
+            AddSymbol(parameter.Name, SymbolKind.Parameter);
         }
 
         VisitBlock(function.Body);
@@ -338,7 +338,7 @@ public class Binder : Tree.IVisitor
 
     public void Visit(Tree.Statement.LocalFunctionDeclaration declaration)
     {
-        AddSymbol(declaration.Name, new Symbol.LocalVariable());
+        AddSymbol(declaration.Name, SymbolKind.LocalVariable);
         PushScope();
         VisitFunction(declaration.Function);
         PopScope();
@@ -359,7 +359,7 @@ public class Binder : Tree.IVisitor
         foreach (var declaration in localDeclaration.Declarations)
         {
             // TODO should the declaration node be the definition?
-            AddSymbol(declaration.Name, new Symbol.LocalVariable());
+            AddSymbol(declaration.Name, SymbolKind.LocalVariable);
             declaration.Type?.AcceptVisitor(this);
         }
     }
@@ -388,7 +388,7 @@ public class Binder : Tree.IVisitor
 
         foreach (var declaration in forLoop.Declarations)
         {
-            AddSymbol(declaration.Name, new Symbol.LocalVariable());
+            AddSymbol(declaration.Name, SymbolKind.LocalVariable);
         }
 
         VisitBlock(forLoop.Body);
