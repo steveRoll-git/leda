@@ -182,13 +182,16 @@ public abstract class Type
         }
     }
 
-    public class Reference(Symbol symbol) : Type
+    /// <summary>
+    /// A reference to a symbol.
+    /// </summary>
+    public class Reference(Symbol symbol, string name) : Type
     {
         public Symbol Symbol => symbol;
 
         public override string Display()
         {
-            return "unknown";
+            return name;
         }
     }
 

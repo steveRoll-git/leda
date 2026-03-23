@@ -659,7 +659,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 return type;
             }
 
-            return new Type.Reference(symbol);
+            return new Type.Reference(symbol, name.Value);
         }
 
         // TODO report error?
