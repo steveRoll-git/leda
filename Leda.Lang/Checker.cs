@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Leda.Lang;
 
-public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeVisitor<Type>
+public class Checker
 {
     private readonly Source source;
     public List<Diagnostic> Diagnostics { get; } = [];
@@ -35,7 +35,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 throw new Exception();
             }
 
-            var type = typeDeclaration.Type.AcceptTypeVisitor(this);
+            var type = VisitType(typeDeclaration.Type);
             source.SetSymbolType(symbol, type);
             if (type.UserNameable)
             {
@@ -45,13 +45,13 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
         foreach (var statement in block.Statements)
         {
-            statement.AcceptVisitor(this);
+            VisitStatement(statement);
         }
     }
 
     private TypeList VisitCall(Tree.Expression.Call call)
     {
-        var target = call.Target.AcceptExpressionVisitor(this, false);
+        var target = VisitExpression(call.Target, false);
 
         if (target == Type.Unknown)
         {
@@ -113,7 +113,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             }
             else
             {
-                var type = expression.AcceptExpressionVisitor(this, false);
+                var type = VisitExpression(expression, false);
                 list.Add(type);
             }
         }
@@ -136,7 +136,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             Type type;
             if (parameter.Type != null)
             {
-                type = parameter.Type.AcceptTypeVisitor(this);
+                type = VisitType(parameter.Type);
             }
             else if (targetFunction?.Parameters[targetParamIndex].Type is { } targetParamType)
             {
@@ -184,7 +184,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         List<Type> types = [];
         foreach (var typeTree in typeTrees)
         {
-            types.Add(typeTree.AcceptTypeVisitor(this));
+            types.Add(VisitType(typeTree));
         }
 
         return new TypeList(types);
@@ -192,7 +192,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     private Type GetAccessType(Tree.Expression target, Tree.Expression key, bool isConstant)
     {
-        var targetType = target.AcceptExpressionVisitor(this, isConstant);
+        var targetType = VisitExpression(target, isConstant);
         // TODO handle __index
         if (targetType is not Type.Table table)
         {
@@ -200,7 +200,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             return Type.Unknown;
         }
 
-        var keyType = key.AcceptExpressionVisitor(this, IsSimpleLiteral(key));
+        var keyType = VisitExpression(key, IsSimpleLiteral(key));
 
         if (keyType == Type.Unknown)
         {
@@ -221,20 +221,122 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         return Type.Unknown;
     }
 
-    public void Visit(Tree.Statement.Do block)
+    private void VisitStatement(Tree.Statement stmt)
+    {
+        switch (stmt)
+        {
+            case Tree.Statement.Assignment assignment:
+                VisitStatement(assignment);
+                break;
+            case Tree.Statement.Call call:
+                VisitCall(call.CallExpr);
+                break;
+            case Tree.Statement.Do @do:
+                VisitStatement(@do);
+                break;
+            case Tree.Statement.GlobalDeclaration globalDeclaration:
+                VisitStatement(globalDeclaration);
+                break;
+            case Tree.Statement.If @if:
+                VisitStatement(@if);
+                break;
+            case Tree.Statement.IteratorFor iteratorFor:
+                VisitStatement(iteratorFor);
+                break;
+            case Tree.Statement.LocalDeclaration localDeclaration:
+                VisitStatement(localDeclaration);
+                break;
+            case Tree.Statement.LocalFunctionDeclaration localFunctionDeclaration:
+                VisitStatement(localFunctionDeclaration);
+                break;
+            case Tree.Statement.MethodCall methodCall:
+                VisitExpression(methodCall.CallExpr, false);
+                break;
+            case Tree.Statement.NumericalFor numericalFor:
+                VisitStatement(numericalFor);
+                break;
+            case Tree.Statement.RepeatUntil repeatUntil:
+                VisitStatement(repeatUntil);
+                break;
+            case Tree.Statement.Return @return:
+                VisitStatement(@return);
+                break;
+            case Tree.Statement.While @while:
+                VisitStatement(@while);
+                break;
+        }
+    }
+
+    private Type VisitExpression(Tree.Expression expr, bool isConstant)
+    {
+        switch (expr)
+        {
+            case Tree.Expression.Access access:
+                return VisitExpression(access, isConstant);
+            case Tree.Expression.Binary binary:
+                return VisitExpression(binary, isConstant);
+            case Tree.Expression.Call call:
+                return VisitExpression(call, isConstant);
+            case Tree.Expression.Error error:
+                return VisitExpression(error, isConstant);
+            case Tree.Expression.False @false:
+                return VisitExpression(@false, isConstant);
+            case Tree.Expression.Function function:
+                return VisitExpression(function, isConstant);
+            case Tree.Expression.MethodCall methodCall:
+                return VisitExpression(methodCall, isConstant);
+            case Tree.Expression.Name name:
+                return VisitExpression(name, isConstant);
+            case Tree.Expression.Nil nil:
+                return VisitExpression(nil, isConstant);
+            case Tree.Expression.Number number:
+                return VisitExpression(number, isConstant);
+            case Tree.Expression.String s:
+                return VisitExpression(s, isConstant);
+            case Tree.Expression.Table table:
+                return VisitExpression(table, isConstant);
+            case Tree.Expression.True @true:
+                return VisitExpression(@true, isConstant);
+            case Tree.Expression.Unary unary:
+                return VisitExpression(unary, isConstant);
+        }
+
+        throw new ArgumentOutOfRangeException(nameof(expr));
+    }
+
+    private Type VisitType(Tree.Type type)
+    {
+        switch (type)
+        {
+            case Tree.Type.Function function:
+                return VisitType(function);
+            case Tree.Type.Name name:
+                return VisitType(name);
+            case Tree.Type.Table table:
+                return VisitType(table);
+            case Tree.Type.StringLiteral stringLiteral:
+                return VisitType(stringLiteral);
+            case Tree.Type.NumberLiteral numberLiteral:
+                return VisitType(numberLiteral);
+        }
+
+        throw new ArgumentOutOfRangeException(nameof(type));
+    }
+
+    private void VisitStatement(Tree.Statement.Do block)
     {
         VisitBlock(block.Body);
     }
 
-    public void Visit(Tree.Statement.NumericalFor numericalFor)
+    private void VisitStatement(Tree.Statement.NumericalFor numericalFor)
     {
-        var startType = numericalFor.Start.AcceptExpressionVisitor(this, false);
+        var startType = VisitExpression(numericalFor.Start, false);
         if (!IsAssignableFrom(Type.NumberPrimitive, startType))
         {
             Report(new Diagnostic.ForLoopStartNotNumber(numericalFor.Start.Range, startType));
         }
 
-        var limitType = numericalFor.Limit.AcceptExpressionVisitor(this, false);
+        var limitType = VisitExpression(numericalFor.Limit, false);
         if (!IsAssignableFrom(Type.NumberPrimitive, limitType))
         {
             Report(new Diagnostic.ForLoopLimitNotNumber(numericalFor.Limit.Range, limitType));
@@ -242,7 +344,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
         if (numericalFor.Step != null)
         {
-            var stepType = numericalFor.Step.AcceptExpressionVisitor(this, false);
+            var stepType = VisitExpression(numericalFor.Step, false);
             if (!IsAssignableFrom(Type.NumberPrimitive, stepType))
             {
                 Report(new Diagnostic.ForLoopStepNotNumber(numericalFor.Step.Range, stepType));
@@ -259,14 +361,14 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         VisitBlock(numericalFor.Body);
     }
 
-    public void Visit(Tree.Statement.If ifStatement)
+    private void VisitStatement(Tree.Statement.If ifStatement)
     {
-        ifStatement.Primary.Condition.AcceptExpressionVisitor(this, false);
+        VisitExpression(ifStatement.Primary.Condition, false);
         VisitBlock(ifStatement.Primary.Body);
 
         foreach (var branch in ifStatement.ElseIfs)
         {
-            branch.Condition.AcceptExpressionVisitor(this, false);
+            VisitExpression(branch.Condition, false);
             VisitBlock(branch.Body);
         }
 
@@ -288,7 +390,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             new() { Value = index < declarations.Count ? declarations[index].Name : null };
     }
 
-    public void Visit(Tree.Statement.Assignment assignment)
+    private void VisitStatement(Tree.Statement.Assignment assignment)
     {
         CheckAssignment(new ExpressionListValueList(assignment.Targets),
             new ExpressionListValueList(assignment.Values), TypeList.TypeListKind.Value);
@@ -316,7 +418,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             var (targetType, targetExpression, _) = targets[targetIndex];
             if (targetExpression != null)
             {
-                targetType = targetExpression.AcceptExpressionVisitor(this, false);
+                targetType = VisitExpression(targetExpression, false);
                 errorRange = targetExpression.Range;
             }
 
@@ -348,7 +450,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
                 targetType = Dereference(targetType);
                 if (targetType is Type.Infer infer)
                 {
-                    sourceType ??= sourceExpression?.AcceptExpressionVisitor(this, false) ?? Type.Nil;
+                    sourceType ??= sourceExpression != null ? VisitExpression(sourceExpression, false) : Type.Nil;
                     infer.OnInferred(sourceType);
                 }
                 else if (sourceType != null)
@@ -375,7 +477,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             }
             else if (sourceExpression != null)
             {
-                sourceExpression.AcceptExpressionVisitor(this, false);
+                VisitExpression(sourceExpression, false);
             }
             else
             {
@@ -387,52 +489,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         }
     }
 
-    public void Visit(Tree.Expression.MethodCall methodCall)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void Visit(Tree.Expression.Call call)
-    {
-        VisitCall(call);
-    }
-
-    public void Visit(Tree.Expression.Access access)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void Visit(Tree.Expression.Binary binary)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void Visit(Tree.Expression.Unary unary)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void Visit(Tree.Expression.Function function)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void Visit(Tree.Expression.Name name)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void Visit(Tree.Type.Name name)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void Visit(Tree.Expression.Table table)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void Visit(Tree.Statement.Return returnStatement)
+    private void VisitStatement(Tree.Statement.Return returnStatement)
     {
         var (function, inferReturn) = functionStack.Peek();
         if (inferReturn && function.Return == TypeList.Unknown)
@@ -448,7 +505,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         }
     }
 
-    public void Visit(Tree.Statement.LocalFunctionDeclaration declaration)
+    private void VisitStatement(Tree.Statement.LocalFunctionDeclaration declaration)
     {
         var functionType = VisitFunction(declaration.Function, null);
         if (!source.TryGetTreeSymbol(declaration.Name, out var symbol))
@@ -459,12 +516,12 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         source.SetSymbolType(symbol, functionType);
     }
 
-    public void Visit(Tree.Statement.GlobalDeclaration declaration)
+    private void VisitStatement(Tree.Statement.GlobalDeclaration declaration)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Statement.LocalDeclaration localDeclaration)
+    private void VisitStatement(Tree.Statement.LocalDeclaration localDeclaration)
     {
         foreach (var declaration in localDeclaration.Declarations)
         {
@@ -477,7 +534,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
             if (declaration.Type != null)
             {
-                variableType = declaration.Type.AcceptTypeVisitor(this);
+                variableType = VisitType(declaration.Type);
             }
             else
             {
@@ -492,27 +549,17 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             new ExpressionListValueList(localDeclaration.Values), TypeList.TypeListKind.Value);
     }
 
-    public void Visit(Tree.Statement.RepeatUntil repeatUntil)
+    private void VisitStatement(Tree.Statement.RepeatUntil repeatUntil)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Statement.While whileLoop)
+    private void VisitStatement(Tree.Statement.While whileLoop)
     {
         throw new NotImplementedException();
     }
 
-    public void Visit(Tree.Statement.IteratorFor forLoop)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void Visit(Tree.Type.Function functionType)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void Visit(Tree.Type.Table table)
+    private void VisitStatement(Tree.Statement.IteratorFor forLoop)
     {
         throw new NotImplementedException();
     }
@@ -545,7 +592,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
     public Type VisitExpression(Tree.Expression.Unary unary, bool isConstant)
     {
-        var exprType = unary.Expression.AcceptExpressionVisitor(this, isConstant);
+        var exprType = VisitExpression(unary.Expression, isConstant);
 
         if (unary.Operator is Token.Not)
         {
@@ -602,9 +649,9 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         foreach (var field in table.Fields)
         {
             pairs.Add(new Type.Table.Pair(
-                field.Key.AcceptExpressionVisitor(this, true),
+                VisitExpression(field.Key, true),
                 // The value is visited as a non-constant — until we'll have const assertions like TypeScript's.
-                field.Value.AcceptExpressionVisitor(this, false)));
+                VisitExpression(field.Value, false)));
         }
 
         return new Type.Table(pairs);
@@ -676,7 +723,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         {
             if (parameter.Type != null)
             {
-                parameters.Add(parameter.Type.AcceptTypeVisitor(this));
+                parameters.Add(VisitType(parameter.Type));
             }
             else
             {
@@ -700,7 +747,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
 
         foreach (var (key, value) in table.Pairs)
         {
-            pairs.Add(new(key.AcceptTypeVisitor(this), value.AcceptTypeVisitor(this)));
+            pairs.Add(new(VisitType(key), VisitType(value)));
         }
 
         return new Type.Table(pairs);
@@ -735,14 +782,14 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             var missingKeys = new HashSet<Type>(targetTable.Pairs.Select(p => p.Key));
             foreach (var sourceField in sourceTable.Fields)
             {
-                var sourceKeyType = sourceField.Key.AcceptExpressionVisitor(this, IsSimpleLiteral(sourceField.Key));
+                var sourceKeyType = VisitExpression(sourceField.Key, IsSimpleLiteral(sourceField.Key));
                 var targetKey = missingKeys.FirstOrDefault(targetKey => IsAssignableFrom(targetKey, sourceKeyType));
                 if (targetKey == null)
                 {
                     // TODO check for duplicate fields
                     Report(new Diagnostic.TableLiteralOnlyKnownKeys(sourceField.Key.Range, targetTable,
                         sourceKeyType));
-                    sourceField.Value.AcceptExpressionVisitor(this, false);
+                    VisitExpression(sourceField.Value, false);
                 }
                 else
                 {
@@ -755,7 +802,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
             if (missingKeys.Count > 0)
             {
                 Report(new Diagnostic.MissingKeys(errorRange, targetType,
-                    sourceValue.AcceptExpressionVisitor(this, false),
+                    VisitExpression(sourceValue, false),
                     missingKeys.ToList()));
             }
         }
@@ -767,7 +814,7 @@ public class Checker : Tree.IVisitor, Tree.IExpressionVisitor<Type>, Tree.ITypeV
         }
         else
         {
-            var valueType = sourceValue.AcceptExpressionVisitor(this, false);
+            var valueType = VisitExpression(sourceValue, false);
             CheckTypeToType(targetType, valueType, errorRange);
         }
     }

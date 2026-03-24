@@ -6,78 +6,15 @@ namespace Leda.Lang;
 public abstract class Tree
 {
     /// <summary>
-    /// An interface for visiting all nodes of a tree.
-    /// </summary>
-    public interface IVisitor
-    {
-        void Visit(Statement.Do block);
-        void Visit(Statement.NumericalFor numericalFor);
-        void Visit(Statement.If ifStatement);
-        void Visit(Statement.Assignment assignment);
-        void Visit(Expression.MethodCall methodCall);
-        void Visit(Expression.Call call);
-        void Visit(Expression.Access access);
-        void Visit(Expression.Binary binary);
-        void Visit(Expression.Unary unary);
-        void Visit(Expression.Function function);
-        void Visit(Expression.Name name);
-        void Visit(Type.Name name);
-        void Visit(Expression.Table table);
-        void Visit(Statement.Return returnStatement);
-        void Visit(Statement.LocalFunctionDeclaration declaration);
-        void Visit(Statement.GlobalDeclaration declaration);
-        void Visit(Statement.LocalDeclaration localDeclaration);
-        void Visit(Statement.RepeatUntil repeatUntil);
-        void Visit(Statement.While whileLoop);
-        void Visit(Statement.IteratorFor forLoop);
-        void Visit(Type.Function functionType);
-        void Visit(Type.Table table);
-    }
-
-    public interface IExpressionVisitor<T>
-    {
-        T VisitExpression(Expression.Function function, bool isConstant);
-        T VisitExpression(Expression.MethodCall methodCall, bool isConstant);
-        T VisitExpression(Expression.Call call, bool isConstant);
-        T VisitExpression(Expression.Access access, bool isConstant);
-        T VisitExpression(Expression.Binary binary, bool isConstant);
-        T VisitExpression(Expression.Unary unary, bool isConstant);
-        T VisitExpression(Expression.Name name, bool isConstant);
-        T VisitExpression(Expression.Number number, bool isConstant);
-        T VisitExpression(Expression.String stringValue, bool isConstant);
-        T VisitExpression(Expression.Table table, bool isConstant);
-        T VisitExpression(Expression.True trueValue, bool isConstant);
-        T VisitExpression(Expression.False falseValue, bool isConstant);
-        T VisitExpression(Expression.Nil nil, bool isConstant);
-        T VisitExpression(Expression.Error error, bool isConstant);
-    }
-
-    public interface ITypeVisitor<T>
-    {
-        T VisitType(Type.Name name);
-        T VisitType(Type.Function function);
-        T VisitType(Type.Table table);
-        T VisitType(Type.StringLiteral stringLiteral);
-        T VisitType(Type.NumberLiteral numberLiteral);
-    }
-
-    /// <summary>
     /// The range in the source code that this tree occupies.
     /// </summary>
     public Range Range { get; internal set; }
-
-    /// <summary>
-    /// Calls the `visitor`'s appropriate `Visit` method.
-    /// </summary>
-    public abstract void AcceptVisitor(IVisitor visitor);
 
     /// <summary>
     /// A tree that defines a type.
     /// </summary>
     public abstract class Type : Tree
     {
-        public abstract T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor);
-
         /// <summary>
         /// A named reference to a type.
         /// </summary>
@@ -86,40 +23,16 @@ public abstract class Tree
             public string Value => value;
 
             public override string ToString() => Value;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
-
-            public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
-            {
-                return visitor.VisitType(this);
-            }
         }
 
         public class StringLiteral(string value) : Type
         {
             public string Value => value;
-
-            public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
-            {
-                return visitor.VisitType(this);
-            }
-
-            public override void AcceptVisitor(IVisitor visitor) { }
         }
 
         public class NumberLiteral(double value) : Type
         {
             public double Value => value;
-
-            public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
-            {
-                return visitor.VisitType(this);
-            }
-
-            public override void AcceptVisitor(IVisitor visitor) { }
         }
 
         /// <summary>
@@ -133,16 +46,6 @@ public abstract class Tree
         public class Table(List<Pair> pairs) : Type
         {
             public List<Pair> Pairs => pairs;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
-
-            public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
-            {
-                return visitor.VisitType(this);
-            }
         }
 
         /// <summary>
@@ -152,16 +55,6 @@ public abstract class Tree
         {
             public List<Declaration> Parameters => parameters;
             public List<Type>? ReturnTypes => returnTypes;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
-
-            public override T AcceptTypeVisitor<T>(ITypeVisitor<T> visitor)
-            {
-                return visitor.VisitType(this);
-            }
         }
 
         // public class Union(List<Type> types) : Type
@@ -191,10 +84,7 @@ public abstract class Tree
         /// <summary>
         /// An invalid tree node - returned when an error was encountered during parsing.
         /// </summary>
-        public class Error : Statement
-        {
-            public override void AcceptVisitor(IVisitor visitor) { }
-        }
+        public class Error : Statement;
 
         /// <summary>
         /// A do-end block.
@@ -202,11 +92,6 @@ public abstract class Tree
         public class Do(Block body) : Statement
         {
             public Block Body => body;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
         }
 
         /// <summary>
@@ -217,11 +102,6 @@ public abstract class Tree
             public IfBranch Primary => primary;
             public List<IfBranch> ElseIfs => elseIfs;
             public Block? ElseBody => elseBody;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
         }
 
         /// <summary>
@@ -239,11 +119,6 @@ public abstract class Tree
             public Expression Limit => limit;
             public Expression? Step => step;
             public Block Body => body;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
         }
 
         /// <summary>
@@ -254,11 +129,6 @@ public abstract class Tree
             public List<Declaration> Declarations => declarations;
             public Expression Iterator => iterator;
             public Block Body => body;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
         }
 
         /// <summary>
@@ -268,11 +138,6 @@ public abstract class Tree
         {
             public Expression Condition => condition;
             public Block Body => body;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
         }
 
         /// <summary>
@@ -282,11 +147,6 @@ public abstract class Tree
         {
             public Block Body => body;
             public Expression Condition => condition;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
         }
 
         /// <summary>
@@ -297,11 +157,6 @@ public abstract class Tree
         {
             public List<Declaration> Declarations => declarations;
             public List<Expression> Values => values;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
         }
 
         /// <summary>
@@ -311,11 +166,6 @@ public abstract class Tree
         {
             public List<Declaration> Declarations => declarations;
             public List<Expression> Values => values;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
         }
 
         /// <summary>
@@ -327,11 +177,6 @@ public abstract class Tree
         {
             public Expression.Name Name => name;
             public Expression.Function Function => function;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
         }
 
         /// <summary>
@@ -340,20 +185,12 @@ public abstract class Tree
         public class Return(List<Expression> values) : Statement
         {
             public List<Expression> Values => values;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
         }
 
         /// <summary>
         /// A `break` statement.
         /// </summary>
-        public class Break : Statement
-        {
-            public override void AcceptVisitor(IVisitor visitor) { }
-        }
+        public class Break : Statement;
 
         /// <summary>
         /// An assignment of one or more values to one or more targets.
@@ -362,11 +199,6 @@ public abstract class Tree
         {
             public List<Expression> Targets => targets;
             public List<Expression> Values => values;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
         }
 
         /// <summary>
@@ -375,11 +207,6 @@ public abstract class Tree
         public class Call(Expression.Call call) : Statement
         {
             public Expression.Call CallExpr => call;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                CallExpr.AcceptVisitor(visitor);
-            }
         }
 
         /// <summary>
@@ -388,11 +215,6 @@ public abstract class Tree
         public class MethodCall(Expression.MethodCall methodCall) : Statement
         {
             public Expression.MethodCall CallExpr => methodCall;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                CallExpr.AcceptVisitor(visitor);
-            }
         }
     }
 
@@ -402,22 +224,9 @@ public abstract class Tree
     public abstract class Expression : Tree
     {
         /// <summary>
-        /// Calls the `visitor`'s appropriate `Visit` method.
-        /// </summary>
-        public abstract T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant);
-
-        /// <summary>
         /// An invalid tree node - returned when an error was encountered during parsing.
         /// </summary>
-        public class Error : Expression
-        {
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
-
-            public override void AcceptVisitor(IVisitor visitor) { }
-        }
+        public class Error : Expression;
 
         /// <summary>
         /// A named reference to a variable.
@@ -427,56 +236,22 @@ public abstract class Tree
             public string Value => value;
 
             public override string ToString() => Value;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
-
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
         }
 
         /// <summary>
         /// The `nil` value.
         /// </summary>
-        public class Nil : Expression
-        {
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
-
-            public override void AcceptVisitor(IVisitor visitor) { }
-        }
+        public class Nil : Expression;
 
         /// <summary>
         /// The `true` value.
         /// </summary>
-        public class True : Expression
-        {
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
-
-            public override void AcceptVisitor(IVisitor visitor) { }
-        }
+        public class True : Expression;
 
         /// <summary>
         /// The `false` value.
         /// </summary>
-        public class False : Expression
-        {
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
-
-            public override void AcceptVisitor(IVisitor visitor) { }
-        }
+        public class False : Expression;
 
         /// <summary>
         /// A numerical constant.
@@ -487,13 +262,6 @@ public abstract class Tree
             public double NumberValue => numberValue;
 
             public override string ToString() => Value;
-
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
-
-            public override void AcceptVisitor(IVisitor visitor) { }
         }
 
         /// <summary>
@@ -504,13 +272,6 @@ public abstract class Tree
             public string Value { get; } = value;
 
             public override string ToString() => Value;
-
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
-
-            public override void AcceptVisitor(IVisitor visitor) { }
         }
 
         /// <summary>
@@ -519,11 +280,6 @@ public abstract class Tree
         public class LongString(string value, int level) : String(value)
         {
             public int Level { get; } = level;
-
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
         }
 
         /// <summary>
@@ -533,15 +289,6 @@ public abstract class Tree
         {
             public List<Field> Fields => fields;
 
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
-
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
 
             /// <summary>
             /// A field in a table constructor.
@@ -550,7 +297,6 @@ public abstract class Tree
             {
                 public Expression Key => key;
                 public Expression Value => value;
-                public override void AcceptVisitor(IVisitor visitor) { }
             }
         }
 
@@ -566,45 +312,17 @@ public abstract class Tree
             /// Whether this function was defined with a `:`.
             /// </summary>
             public bool IsMethod => isMethod;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
-
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
         }
 
         /// <summary>
         /// A vararg expression (...).
         /// </summary>
-        public class Vararg : Expression
-        {
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void AcceptVisitor(IVisitor visitor) { }
-        }
+        public class Vararg : Expression;
 
         public class Unary(Expression expression, Token op) : Expression
         {
             public Expression Expression => expression;
             public Token Operator => op;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
-
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
         }
 
         /// <summary>
@@ -615,16 +333,6 @@ public abstract class Tree
             public Expression Left => left;
             public Expression Right => right;
             public Token Operator => op;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
-
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
         }
 
         /// <summary>
@@ -634,16 +342,6 @@ public abstract class Tree
         {
             public Expression Target => target;
             public Expression Key => key;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
-
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
         }
 
         /// <summary>
@@ -653,16 +351,6 @@ public abstract class Tree
         {
             public Expression Target => target;
             public List<Expression> Parameters => parameters;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
-
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
         }
 
         /// <summary>
@@ -673,16 +361,6 @@ public abstract class Tree
             public Expression Target => target;
             public String FuncName => funcName;
             public List<Expression> Parameters => parameters;
-
-            public override void AcceptVisitor(IVisitor visitor)
-            {
-                visitor.Visit(this);
-            }
-
-            public override T AcceptExpressionVisitor<T>(IExpressionVisitor<T> visitor, bool isConstant)
-            {
-                return visitor.VisitExpression(this, isConstant);
-            }
         }
     }
 
@@ -702,7 +380,6 @@ public abstract class Tree
     {
         public Expression.Name Name => name;
         public Type? Type => type;
-        public override void AcceptVisitor(IVisitor visitor) { }
     }
 
     /// <summary>
@@ -728,6 +405,5 @@ public abstract class Tree
     {
         public Type.Name Name => name;
         public Type Type => type;
-        public override void AcceptVisitor(IVisitor visitor) { }
     }
 }
