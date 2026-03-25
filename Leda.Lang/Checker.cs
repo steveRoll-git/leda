@@ -5,7 +5,7 @@ namespace Leda.Lang;
 public class Checker
 {
     private readonly Source source;
-    public List<Diagnostic> Diagnostics { get; } = [];
+    private List<Diagnostic> Diagnostics { get; } = [];
 
     private record FunctionInfo(Type.Function Function, bool InferReturn);
 
@@ -564,33 +564,33 @@ public class Checker
         throw new NotImplementedException();
     }
 
-    public Type VisitExpression(Tree.Expression.Function function, bool isConstant)
+    private Type VisitExpression(Tree.Expression.Function function, bool isConstant)
     {
         return VisitFunction(function, null);
     }
 
-    public Type VisitExpression(Tree.Expression.MethodCall methodCall, bool isConstant)
+    private Type VisitExpression(Tree.Expression.MethodCall methodCall, bool isConstant)
     {
         throw new NotImplementedException();
     }
 
-    public Type VisitExpression(Tree.Expression.Call call, bool isConstant)
+    private Type VisitExpression(Tree.Expression.Call call, bool isConstant)
     {
         // TODO show warning if the call returns more than one value?
         return VisitCall(call)[0].Type ?? Type.Nil;
     }
 
-    public Type VisitExpression(Tree.Expression.Access access, bool isConstant)
+    private Type VisitExpression(Tree.Expression.Access access, bool isConstant)
     {
         return GetAccessType(access.Target, access.Key, isConstant);
     }
 
-    public Type VisitExpression(Tree.Expression.Binary binary, bool isConstant)
+    private Type VisitExpression(Tree.Expression.Binary binary, bool isConstant)
     {
         throw new NotImplementedException();
     }
 
-    public Type VisitExpression(Tree.Expression.Unary unary, bool isConstant)
+    private Type VisitExpression(Tree.Expression.Unary unary, bool isConstant)
     {
         var exprType = VisitExpression(unary.Expression, isConstant);
 
@@ -625,7 +625,7 @@ public class Checker
         throw new Exception(); // Unreachable.
     }
 
-    public Type VisitExpression(Tree.Expression.Name name, bool isConstant)
+    private Type VisitExpression(Tree.Expression.Name name, bool isConstant)
     {
         if (!source.TryGetTreeSymbol(name, out var symbol))
         {
@@ -642,7 +642,7 @@ public class Checker
         return type;
     }
 
-    public Type VisitExpression(Tree.Expression.Table table, bool isConstant)
+    private Type VisitExpression(Tree.Expression.Table table, bool isConstant)
     {
         List<Type.Table.Pair> pairs = [];
 
@@ -657,32 +657,32 @@ public class Checker
         return new Type.Table(pairs);
     }
 
-    public Type VisitExpression(Tree.Expression.Number number, bool isConstant)
+    private Type VisitExpression(Tree.Expression.Number number, bool isConstant)
     {
         return isConstant ? new Type.NumberLiteral(number.NumberValue) : Type.NumberPrimitive;
     }
 
-    public Type VisitExpression(Tree.Expression.String stringValue, bool isConstant)
+    private Type VisitExpression(Tree.Expression.String stringValue, bool isConstant)
     {
         return isConstant ? new Type.StringLiteral(stringValue.Value) : Type.StringPrimitive;
     }
 
-    public Type VisitExpression(Tree.Expression.True trueValue, bool isConstant)
+    private Type VisitExpression(Tree.Expression.True trueValue, bool isConstant)
     {
         return isConstant ? Type.True : Type.Boolean;
     }
 
-    public Type VisitExpression(Tree.Expression.False falseValue, bool isConstant)
+    private Type VisitExpression(Tree.Expression.False falseValue, bool isConstant)
     {
         return isConstant ? Type.False : Type.Boolean;
     }
 
-    public Type VisitExpression(Tree.Expression.Nil nil, bool isConstant)
+    private Type VisitExpression(Tree.Expression.Nil nil, bool isConstant)
     {
         return Type.Nil;
     }
 
-    public Type VisitExpression(Tree.Expression.Error error, bool isConstant)
+    private Type VisitExpression(Tree.Expression.Error error, bool isConstant)
     {
         return Type.Unknown;
     }
@@ -692,7 +692,7 @@ public class Checker
         this.source = source;
     }
 
-    public Type VisitType(Tree.Type.Name name)
+    private Type VisitType(Tree.Type.Name name)
     {
         if (source.TryGetTreeSymbol(name, out var symbol))
         {
@@ -713,7 +713,7 @@ public class Checker
         return Type.Unknown;
     }
 
-    public Type VisitType(Tree.Type.Function functionType)
+    private Type VisitType(Tree.Type.Function functionType)
     {
         // This code does a lot of the same things that VisitFunction does,
         // perhaps the shared parts could be merged somehow?
@@ -741,7 +741,7 @@ public class Checker
         return new Type.Function(parameterTypeList, returnTypeList);
     }
 
-    public Type VisitType(Tree.Type.Table table)
+    private Type VisitType(Tree.Type.Table table)
     {
         List<Type.Table.Pair> pairs = [];
 
@@ -753,12 +753,12 @@ public class Checker
         return new Type.Table(pairs);
     }
 
-    public Type VisitType(Tree.Type.StringLiteral stringLiteral)
+    private Type VisitType(Tree.Type.StringLiteral stringLiteral)
     {
         return new Type.StringLiteral(stringLiteral.Value);
     }
 
-    public Type VisitType(Tree.Type.NumberLiteral numberLiteral)
+    private Type VisitType(Tree.Type.NumberLiteral numberLiteral)
     {
         return new Type.NumberLiteral(numberLiteral.Value);
     }
