@@ -27,6 +27,8 @@ public class Parser
     private static readonly Token.End End = new();
     private static readonly Token.Function Function = new();
     private static readonly Token.Local Local = new();
+    private static readonly Token.Less Less = new();
+    private static readonly Token.Greater Greater = new();
 
     /// <summary>
     /// Returns whether `token` can end a statement.
@@ -651,6 +653,30 @@ public class Parser
         return EndTree(new Tree.Statement.Assignment([path], [function]));
     }
 
+    private Tree.Type.TypeParameterList ParseTypeParameterList()
+    {
+        StartTree();
+
+        Expect(Less);
+
+        if (Accept<Token.Greater>())
+        {
+            var tree = EndTree(new Tree.Type.TypeParameterList([]));
+            Report(new Diagnostic.EmptyTypeParameterList(tree.Range));
+            return tree;
+        }
+
+        List<Tree.Type.Name> parameters = [];
+        do
+        {
+            parameters.Add(ParseTypeName());
+        } while (Accept<Token.Comma>());
+
+        Expect(Greater);
+
+        return EndTree(new Tree.Type.TypeParameterList(parameters));
+    }
+
     /// <summary>
     /// Parses the parameters and return type of a function.
     /// </summary>
@@ -658,13 +684,20 @@ public class Parser
     {
         StartTree();
 
-        var lParenRange = token.Range;
+        // ['<' typeparams '>'] '(' declarations ')' [':' typelist]
 
-        // '(' declarations ')' [':' typelist]
+        Tree.Type.TypeParameterList? typeParameters = null;
+        if (token is Token.Less)
+        {
+            typeParameters = ParseTypeParameterList();
+        }
+
+        var lParenRange = token.Range;
         Expect(LParen);
         List<Tree.Declaration> parameters = [];
         if (isMethod)
         {
+            // TODO this is probably a bad way of handling `self`. Should be handled by the Binder
             parameters.Add(new(new Tree.Expression.Name("self") { Range = lParenRange }, null));
         }
 
@@ -680,7 +713,7 @@ public class Parser
             returnTypes = ParseTypeList();
         }
 
-        return EndTree(new Tree.Type.Function(parameters, returnTypes));
+        return EndTree(new Tree.Type.Function(parameters, returnTypes, typeParameters));
     }
 
     /// <summary>

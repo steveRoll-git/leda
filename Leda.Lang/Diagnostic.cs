@@ -207,6 +207,12 @@ public abstract record Diagnostic(Range Range)
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Parameter '{Name}' implicitly has 'any' type.";
     }
+
+    public record EmptyTypeParameterList(Range Range) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "Type parameter list cannot be empty.";
+    }
 }
 
 public enum DiagnosticSeverity
