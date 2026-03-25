@@ -435,6 +435,8 @@ public class Checker
                 {
                     sources = VisitCall(call);
                     sourceIndex = 0;
+                    sourceType = sources[sourceIndex].Type;
+                    sourceExpression = null;
                 }
 
                 if (sourceExpression is Tree.Expression.Vararg)
