@@ -29,7 +29,7 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
             }
             else if (name is Tree.Type.Name typeName)
             {
-                var typeValue = symbol is not Symbol.IntrinsicType
+                var typeValue = symbol is not Symbol.IntrinsicType && symbol.Kind != SymbolKind.TypeParameter
                     ? " = " + (source.TryGetSymbolType(symbol, out var type) ? type.Display() : "???")
                     : "";
                 content = $"""

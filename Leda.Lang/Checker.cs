@@ -128,6 +128,20 @@ public class Checker
 
     private Type.Function VisitFunction(Tree.Expression.Function function, Type.Function? targetFunction)
     {
+        List<Type.TypeParameter> typeParameters = [];
+        if (function.Type.TypeParameters != null)
+        {
+            foreach (var name in function.Type.TypeParameters)
+            {
+                var typeParameter = new Type.TypeParameter(name.Value);
+                typeParameters.Add(typeParameter);
+                if (source.TryGetTreeSymbol(name, out var symbol))
+                {
+                    source.SetSymbolType(symbol, typeParameter);
+                }
+            }
+        }
+
         var targetParamIndex = 0;
         List<Type> parameters = [];
         List<string> paramNames = [];
@@ -170,7 +184,7 @@ public class Checker
             returnTypeList = VisitTypeList(function.Type.ReturnTypes);
         }
 
-        var functionType = new Type.Function(parameterTypeList, returnTypeList ?? TypeList.Unknown);
+        var functionType = new Type.Function(parameterTypeList, returnTypeList ?? TypeList.Unknown, typeParameters);
 
         functionStack.Push(new(functionType, returnTypeList == null));
         VisitBlock(function.Body);
@@ -717,6 +731,9 @@ public class Checker
 
     private Type VisitType(Tree.Type.Function functionType)
     {
+        // TODO type parameters are stored in the function type, but currently we don't check them if they're not used
+        // in a function value.
+
         // This code does a lot of the same things that VisitFunction does,
         // perhaps the shared parts could be merged somehow?
         List<Type> parameters = [];
@@ -740,7 +757,7 @@ public class Checker
 
         var returnTypeList = functionType.ReturnTypes != null ? VisitTypeList(functionType.ReturnTypes) : TypeList.None;
 
-        return new Type.Function(parameterTypeList, returnTypeList);
+        return new Type.Function(parameterTypeList, returnTypeList, []);
     }
 
     private Type VisitType(Tree.Type.Table table)
@@ -1051,7 +1068,7 @@ public class Checker
     public static List<Diagnostic> Check(Source source)
     {
         var checker = new Checker(source);
-        checker.functionStack.Push(new(new Type.Function(TypeList.Any, TypeList.Any), false)); // TODO
+        checker.functionStack.Push(new(new Type.Function(TypeList.Any, TypeList.Any, []), false)); // TODO
         checker.VisitBlock(source.Tree);
         return checker.Diagnostics;
     }

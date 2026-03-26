@@ -6,8 +6,13 @@ public static class NameFinder
 {
     // TODO could the return type of all these methods be something more specific than the base Tree?
 
-    private static Tree? GetNameAtPosition<T>(List<T> trees, Position position) where T : Tree
+    private static Tree? GetNameAtPosition<T>(List<T>? trees, Position position) where T : Tree
     {
+        if (trees == null)
+        {
+            return null;
+        }
+
         foreach (var tree in trees)
         {
             if (GetNameAtPosition(tree, position) is { } found)
@@ -56,8 +61,13 @@ public static class NameFinder
         return null;
     }
 
-    public static Tree? GetNameAtPosition(Tree.Block block, Position position)
+    public static Tree? GetNameAtPosition(Tree.Block? block, Position position)
     {
+        if (block == null)
+        {
+            return null;
+        }
+
         return GetNameAtPosition(block.TypeDeclarations, position) ?? GetNameAtPosition(block.Statements, position);
     }
 
@@ -65,8 +75,13 @@ public static class NameFinder
     /// Finds the name that lies on the given position by recursively descending the tree.
     /// </summary>
     /// <returns>The expression or type name under the given position, or null if it wasn't found.</returns>
-    public static Tree? GetNameAtPosition(Tree tree, Position position)
+    public static Tree? GetNameAtPosition(Tree? tree, Position position)
     {
+        if (tree == null)
+        {
+            return null;
+        }
+
         if (!tree.Range.Contains(position))
         {
             return null;
@@ -92,9 +107,7 @@ public static class NameFinder
                                          GetNameAtPosition(call.Parameters, position),
 
             Tree.Declaration declaration => GetNameAtPosition(declaration.Name, position) ??
-                                            (declaration.Type != null
-                                                ? GetNameAtPosition(declaration.Type, position)
-                                                : null),
+                                            GetNameAtPosition(declaration.Type, position),
 
             Tree.Statement.Do doBlock => GetNameAtPosition(doBlock.Body, position),
 
@@ -102,17 +115,14 @@ public static class NameFinder
                                                  GetNameAtPosition(function.Body, position),
 
             Tree.Type.Function functionType => GetNameAtPosition(functionType.Parameters, position) ??
-                                               (functionType.ReturnTypes != null
-                                                   ? GetNameAtPosition(functionType.ReturnTypes, position)
-                                                   : null),
+                                               GetNameAtPosition(functionType.ReturnTypes, position) ??
+                                               GetNameAtPosition(functionType.TypeParameters, position),
 
             Tree.Statement.GlobalDeclaration globalDeclaration => throw new NotImplementedException(),
 
             Tree.Statement.If ifStmt => GetNameAtPosition(ifStmt.Primary, position) ??
                                         GetNameAtPosition(ifStmt.ElseIfs, position) ??
-                                        (ifStmt.ElseBody != null
-                                            ? GetNameAtPosition(ifStmt.ElseBody, position)
-                                            : null),
+                                        GetNameAtPosition(ifStmt.ElseBody, position),
 
             Tree.Statement.IteratorFor iteratorFor => GetNameAtPosition(iteratorFor.Declarations, position) ??
                                                       GetNameAtPosition(iteratorFor.Iterator, position) ??
@@ -135,9 +145,7 @@ public static class NameFinder
             Tree.Statement.NumericalFor numericalFor => GetNameAtPosition(numericalFor.Counter, position) ??
                                                         GetNameAtPosition(numericalFor.Start, position) ??
                                                         GetNameAtPosition(numericalFor.Limit, position) ??
-                                                        (numericalFor.Step != null
-                                                            ? GetNameAtPosition(numericalFor.Step, position)
-                                                            : null) ??
+                                                        GetNameAtPosition(numericalFor.Step, position) ??
                                                         GetNameAtPosition(numericalFor.Body, position),
 
             Tree.Statement.RepeatUntil repeatUntil => GetNameAtPosition(repeatUntil.Body, position) ??

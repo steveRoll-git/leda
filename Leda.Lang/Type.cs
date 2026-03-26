@@ -97,7 +97,7 @@ public abstract class Type
     public static readonly Type FunctionPrimitive =
         new PrimitiveType(other => other is Function) { Name = "function" };
 
-    public class Function(TypeList parameters, TypeList returns) : Type
+    public class Function(TypeList parameters, TypeList returns, List<TypeParameter> typeParameters) : Type
     {
         public override bool UserNameable => true;
 
@@ -111,9 +111,12 @@ public abstract class Type
         /// </summary>
         public TypeList Return { get; set; } = returns;
 
+        public List<TypeParameter> TypeParameters { get; } = typeParameters;
+
         public override string Display()
         {
-            return $"function({Parameters}){(Return.Empty ? "" : ": " + Return)}";
+            return
+                $"function{(TypeParameters.Count > 0 ? $"<{string.Join(", ", TypeParameters)}>" : "")}({Parameters}){(Return.Empty ? "" : ": " + Return)}";
         }
     }
 
@@ -189,6 +192,17 @@ public abstract class Type
     {
         public Symbol Symbol => symbol;
 
+        public override string Display()
+        {
+            return name;
+        }
+    }
+
+    /// <summary>
+    /// A generic type parameter.
+    /// </summary>
+    public class TypeParameter(string name) : Type
+    {
         public override string Display()
         {
             return name;

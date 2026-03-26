@@ -120,7 +120,7 @@ public class Binder
             {
                 Report(new Diagnostic.ValueAlreadyDeclared(node.Range, name));
             }
-            else if (context == Tree.NameContext.Type)
+            else
             {
                 Report(new Diagnostic.TypeAlreadyDeclared(node.Range, name));
             }
@@ -132,13 +132,13 @@ public class Binder
             CurrentScope[name] = currentBinding;
         }
 
-        if (symbol.Kind == SymbolKind.Type)
+        if (context == Tree.NameContext.Value)
         {
-            currentBinding.TypeSymbol = symbol;
+            currentBinding.ValueSymbol = symbol;
         }
         else
         {
-            currentBinding.ValueSymbol = symbol;
+            currentBinding.TypeSymbol = symbol;
         }
 
         symbol.Definition = new(source, node.Range);
@@ -156,9 +156,9 @@ public class Binder
     /// <summary>
     /// Adds a type name's symbol to the current scope.
     /// </summary>
-    private void AddTypeSymbol(Tree.Type.Name name)
+    private void AddTypeSymbol(Tree.Type.Name name, SymbolKind kind)
     {
-        AddSymbol(name, name.Value, Tree.NameContext.Type, new Symbol(SymbolKind.Type));
+        AddSymbol(name, name.Value, Tree.NameContext.Type, new Symbol(kind));
     }
 
     /// <summary>
@@ -170,7 +170,7 @@ public class Binder
         // for `typeof` to work correctly.
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
-            AddTypeSymbol(typeDeclaration.Name);
+            AddTypeSymbol(typeDeclaration.Name, SymbolKind.Type);
         }
 
         foreach (var typeDeclaration in block.TypeDeclarations)
@@ -266,7 +266,9 @@ public class Binder
         switch (type)
         {
             case Tree.Type.Function function:
+                PushScope(); // For type parameters.
                 Visit(function);
+                PopScope();
                 break;
             case Tree.Type.Name name:
                 Visit(name);
@@ -496,8 +498,21 @@ public class Binder
         PopScope();
     }
 
+    private void VisitTypeParameterList(List<Tree.Type.Name> typeParameters)
+    {
+        foreach (var typeParameter in typeParameters)
+        {
+            AddTypeSymbol(typeParameter, SymbolKind.TypeParameter);
+        }
+    }
+
     private void Visit(Tree.Type.Function functionType)
     {
+        if (functionType.TypeParameters != null)
+        {
+            VisitTypeParameterList(functionType.TypeParameters);
+        }
+
         foreach (var parameter in functionType.Parameters)
         {
             if (parameter.Type != null)

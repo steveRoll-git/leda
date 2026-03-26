@@ -4,7 +4,8 @@ public enum SymbolKind
 {
     LocalVariable,
     Parameter,
-    Type
+    Type,
+    TypeParameter
 }
 
 /// <summary>
