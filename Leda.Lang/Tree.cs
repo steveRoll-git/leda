@@ -49,22 +49,14 @@ public abstract class Tree
         }
 
         /// <summary>
-        /// A list of generic type parameters.
-        /// </summary>
-        public class TypeParameterList(List<Name> parameters) : Tree
-        {
-            public List<Name> Parameters => parameters;
-        }
-
-        /// <summary>
         /// The type of a function.
         /// </summary>
-        public class Function(List<Declaration> parameters, List<Type>? returnTypes, TypeParameterList? typeParameters)
+        public class Function(List<Declaration> parameters, List<Type>? returnTypes, List<Name>? typeParameters)
             : Type
         {
             public List<Declaration> Parameters => parameters;
             public List<Type>? ReturnTypes => returnTypes;
-            public TypeParameterList? TypeParameters => typeParameters;
+            public List<Name>? TypeParameters => typeParameters;
         }
 
         // public class Union(List<Type> types) : Type

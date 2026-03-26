@@ -23,6 +23,11 @@ public struct Range(Position start, Position end)
         return position >= Start && position <= End;
     }
 
+    public Range Union(Range other)
+    {
+        return new(Start < other.Start ? Start : other.Start, End > other.End ? End : other.End);
+    }
+
     public override string ToString()
     {
         return $"({Start} {End})";

@@ -653,17 +653,14 @@ public class Parser
         return EndTree(new Tree.Statement.Assignment([path], [function]));
     }
 
-    private Tree.Type.TypeParameterList ParseTypeParameterList()
+    private List<Tree.Type.Name> ParseTypeParameterList()
     {
-        StartTree();
+        var less = Expect(Less);
 
-        Expect(Less);
-
-        if (Accept<Token.Greater>())
+        if (Accept<Token.Greater>(out var greater))
         {
-            var tree = EndTree(new Tree.Type.TypeParameterList([]));
-            Report(new Diagnostic.EmptyTypeParameterList(tree.Range));
-            return tree;
+            Report(new Diagnostic.EmptyTypeParameterList(less.Range.Union(greater.Range)));
+            return [];
         }
 
         List<Tree.Type.Name> parameters = [];
@@ -674,7 +671,7 @@ public class Parser
 
         Expect(Greater);
 
-        return EndTree(new Tree.Type.TypeParameterList(parameters));
+        return parameters;
     }
 
     /// <summary>
@@ -686,7 +683,7 @@ public class Parser
 
         // ['<' typeparams '>'] '(' declarations ')' [':' typelist]
 
-        Tree.Type.TypeParameterList? typeParameters = null;
+        List<Tree.Type.Name>? typeParameters = null;
         if (token is Token.Less)
         {
             typeParameters = ParseTypeParameterList();
