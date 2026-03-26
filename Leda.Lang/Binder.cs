@@ -279,6 +279,14 @@ public class Binder
         }
     }
 
+    private void Visit(List<Tree.Expression> expressions)
+    {
+        foreach (var expression in expressions)
+        {
+            Visit(expression);
+        }
+    }
+
     private void Visit(Tree.Statement.Do block)
     {
         PushScope();
@@ -327,33 +335,20 @@ public class Binder
 
     private void Visit(Tree.Statement.Assignment assignment)
     {
-        foreach (var target in assignment.Targets)
-        {
-            Visit(target);
-        }
-
-        foreach (var value in assignment.Values)
-        {
-            Visit(value);
-        }
+        Visit(assignment.Targets);
+        Visit(assignment.Values);
     }
 
     private void Visit(Tree.Expression.MethodCall methodCall)
     {
         Visit(methodCall.Target);
-        foreach (var parameter in methodCall.Parameters)
-        {
-            Visit(parameter);
-        }
+        Visit(methodCall.Parameters);
     }
 
     private void Visit(Tree.Expression.Call call)
     {
         Visit(call.Target);
-        foreach (var parameter in call.Parameters)
-        {
-            Visit(parameter);
-        }
+        Visit(call.Parameters);
     }
 
     private void Visit(Tree.Expression.Access access)
@@ -429,10 +424,7 @@ public class Binder
 
     private void Visit(Tree.Statement.Return returnStatement)
     {
-        foreach (var value in returnStatement.Values)
-        {
-            Visit(value);
-        }
+        Visit(returnStatement.Values);
     }
 
     private void Visit(Tree.Statement.LocalFunctionDeclaration declaration)
@@ -450,10 +442,7 @@ public class Binder
 
     private void Visit(Tree.Statement.LocalDeclaration localDeclaration)
     {
-        foreach (var value in localDeclaration.Values)
-        {
-            Visit(value);
-        }
+        Visit(localDeclaration.Values);
 
         foreach (var declaration in localDeclaration.Declarations)
         {
