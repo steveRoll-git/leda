@@ -287,6 +287,14 @@ public class Binder
         }
     }
 
+    private void Visit(List<Tree.Type> types)
+    {
+        foreach (var type in types)
+        {
+            Visit(type);
+        }
+    }
+
     private void Visit(Tree.Statement.Do block)
     {
         PushScope();
@@ -349,6 +357,10 @@ public class Binder
     {
         Visit(call.Target);
         Visit(call.Parameters);
+        if (call.TypeParameters != null)
+        {
+            Visit(call.TypeParameters);
+        }
     }
 
     private void Visit(Tree.Expression.Access access)
@@ -487,7 +499,7 @@ public class Binder
         PopScope();
     }
 
-    private void VisitTypeParameterList(List<Tree.Type.Name> typeParameters)
+    private void VisitTypeParameterDeclaration(List<Tree.Type.Name> typeParameters)
     {
         foreach (var typeParameter in typeParameters)
         {
@@ -499,7 +511,7 @@ public class Binder
     {
         if (functionType.TypeParameters != null)
         {
-            VisitTypeParameterList(functionType.TypeParameters);
+            VisitTypeParameterDeclaration(functionType.TypeParameters);
         }
 
         foreach (var parameter in functionType.Parameters)
@@ -512,10 +524,7 @@ public class Binder
 
         if (functionType.ReturnTypes != null)
         {
-            foreach (var returnType in functionType.ReturnTypes)
-            {
-                Visit(returnType);
-            }
+            Visit(functionType.ReturnTypes);
         }
     }
 

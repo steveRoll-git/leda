@@ -349,10 +349,11 @@ public abstract class Tree
         /// <summary>
         /// A function call.
         /// </summary>
-        public class Call(Expression target, List<Expression> parameters) : Expression
+        public class Call(Expression target, List<Expression> parameters, List<Type>? typeParameters) : Expression
         {
             public Expression Target => target;
             public List<Expression> Parameters => parameters;
+            public List<Type>? TypeParameters => typeParameters;
         }
 
         /// <summary>

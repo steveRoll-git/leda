@@ -760,9 +760,26 @@ public class Parser
     {
         StartTree(previous.Range.Start);
 
-        // Access with a dot: '.' Name
         if (Accept<Token.Dot>())
         {
+            if (Accept<Token.Less>(out var less))
+            {
+                // Function call with type parameters: '.' '<' typelist '>' '(' [explist] ')'
+                List<Tree.Type>? typeParameters = null;
+                if (Accept<Token.Greater>(out var greater))
+                {
+                    Report(new Diagnostic.EmptyTypeParameterList(less.Range.Union(greater.Range)));
+                }
+                else
+                {
+                    typeParameters = ParseTypeList();
+                    Expect(Greater);
+                }
+
+                return ParsePrefixExpression(EndTree(ParseCall(previous, typeParameters)));
+            }
+
+            // Access with a dot: '.' Name
             var name = ParseStringIdentifier();
             return ParsePrefixExpression(EndTree(new Tree.Expression.Access(previous, name)));
         }
@@ -772,6 +789,8 @@ public class Parser
         {
             var funcName = ParseStringIdentifier();
             Expect(LParen);
+
+            // TODO parse optional type parameters
 
             if (Accept<Token.RParen>())
             {
@@ -791,28 +810,39 @@ public class Parser
             return ParsePrefixExpression(EndTree(new Tree.Expression.Access(previous, expression)));
         }
 
-        // Function call: '(' [explist] ')'
         if (token is Token.LParen)
         {
-            // If the '(' is on a new line, it could be a new statement that starts with it - report ambiguous syntax.
-            if (previous.Range.End.Line < token.Range.Start.Line)
-            {
-                Report(new Diagnostic.AmbiguousSyntax(token.Range));
-            }
-
-            NextToken(); // skip '('
-
-            if (Accept<Token.RParen>())
-            {
-                return ParsePrefixExpression(EndTree(new Tree.Expression.Call(previous, [])));
-            }
-
-            var parameters = ParseExpressionList();
-            Expect(RParen);
-            return ParsePrefixExpression(EndTree(new Tree.Expression.Call(previous, parameters)));
+            return ParsePrefixExpression(EndTree(ParseCall(previous, null)));
         }
 
         return EndTree(previous);
+    }
+
+    /// <summary>
+    /// Parses a function call. Expects to begin on the left paren.
+    ///
+    /// Unlike other parsing functions, expects the caller to start and end the tree.
+    /// </summary>
+    private Tree.Expression.Call ParseCall(Tree.Expression previous, List<Tree.Type>? typeParameters)
+    {
+        // Function call: '(' [explist] ')'
+
+        Expect(LParen);
+
+        // If the '(' is on a new line, it could be a new statement that starts with it - report ambiguous syntax.
+        if (previous.Range.End.Line < token.Range.Start.Line)
+        {
+            Report(new Diagnostic.AmbiguousSyntax(token.Range));
+        }
+
+        if (Accept<Token.RParen>())
+        {
+            return new Tree.Expression.Call(previous, [], typeParameters);
+        }
+
+        var parameters = ParseExpressionList();
+        Expect(RParen);
+        return new Tree.Expression.Call(previous, parameters, typeParameters);
     }
 
     /// <summary>
