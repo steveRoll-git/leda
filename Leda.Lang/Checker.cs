@@ -19,31 +19,24 @@ public class Checker
     }
 
     /// <summary>
-    /// Returns whether `tree` is a simple literal, which means that when it appears as a key, its type should be
-    /// interpreted as constant.
-    /// </summary>
-    private static bool IsSimpleLiteral(Tree.Expression tree) =>
-        tree is Tree.Expression.String or Tree.Expression.Number or Tree.Expression.True or Tree.Expression.False;
-
-    /// <summary>
     /// Visits all of a block's statements.
     /// </summary>
     private void VisitBlock(Tree.Block block)
     {
-        foreach (var typeDeclaration in block.TypeDeclarations)
-        {
-            if (!source.TryGetTreeSymbol(typeDeclaration.Name, out var symbol))
-            {
-                throw new Exception();
-            }
-
-            var type = VisitType(typeDeclaration.Type);
-            source.SetSymbolType(symbol, type);
-            if (type.UserNameable)
-            {
-                type.Name = typeDeclaration.Name.Value;
-            }
-        }
+        // foreach (var typeDeclaration in block.TypeDeclarations)
+        // {
+        //     if (!source.TryGetTreeSymbol(typeDeclaration.Name, out var symbol))
+        //     {
+        //         throw new Exception();
+        //     }
+        //
+        //     var type = VisitType(typeDeclaration.Type);
+        //     source.SetSymbolType(symbol, type);
+        //     if (type.UserNameable)
+        //     {
+        //         type.Name = typeDeclaration.Name.Value;
+        //     }
+        // }
 
         foreach (var statement in block.Statements)
         {
@@ -53,7 +46,7 @@ public class Checker
 
     private TypeList VisitCall(Tree.Expression.Call call)
     {
-        var target = VisitExpression(call.Target, false);
+        var target = evaluator.GetTypeOfExpression(call.Target);
 
         if (target == Type.Unknown)
         {
@@ -87,154 +80,34 @@ public class Checker
         throw new NotImplementedException("Types other than `Function` aren't callable yet");
     }
 
-    private TypeList VisitExpressionList(List<Tree.Expression> expressions)
+    private void VisitExpressionList(List<Tree.Expression> expressions)
     {
-        if (expressions.Count == 0)
-        {
-            return TypeList.None;
-        }
-
-        List<Type> list = new(1);
-        TypeList? continued = null;
         foreach (var expression in expressions)
         {
-            if (continued != null)
-            {
-                // If more items are present after the last continued list, only its first value is added.
-                // TODO show warning about discarded values?
-                list.Add(continued[0].Type ?? Type.Nil);
-            }
-
-            if (expression is Tree.Expression.Call call)
-            {
-                continued = VisitCall(call);
-            }
-            else if (expression is Tree.Expression.Vararg)
-            {
-                throw new NotImplementedException();
-            }
-            else
-            {
-                var type = VisitExpression(expression, false);
-                list.Add(type);
-            }
+            VisitExpression(expression);
         }
-
-        if (list.Count == 0)
-        {
-            return continued ?? TypeList.None;
-        }
-
-        return new TypeList(list, continued);
     }
 
-    private Type.Function VisitFunction(Tree.Expression.Function function, Type.Function? targetFunction)
+    private void VisitFunction(Tree.Expression.Function function)
     {
-        List<Type.TypeParameter> typeParameters = [];
-        if (function.Type.TypeParameters != null)
-        {
-            foreach (var name in function.Type.TypeParameters)
-            {
-                var typeParameter = new Type.TypeParameter(name.Value);
-                typeParameters.Add(typeParameter);
-                if (source.TryGetTreeSymbol(name, out var symbol))
-                {
-                    source.SetSymbolType(symbol, typeParameter);
-                }
-            }
-        }
-
-        var targetParamIndex = 0;
-        List<Type> parameters = [];
-        List<string> paramNames = [];
-        foreach (var parameter in function.Type.Parameters)
-        {
-            Type type;
-            if (parameter.Type != null)
-            {
-                type = VisitType(parameter.Type);
-            }
-            else if (targetFunction?.Parameters[targetParamIndex].Type is { } targetParamType)
-            {
-                type = targetParamType;
-                targetParamIndex++;
-            }
-            else
-            {
-                type = Type.Any;
-                Report(new Diagnostic.ImplicitAnyType(parameter.Range, parameter.Name.Value));
-            }
-
-            parameters.Add(type);
-
-            if (!source.TryGetTreeSymbol(parameter.Name, out var symbol))
-            {
-                throw new Exception("Parameter doesn't have symbol");
-            }
-
-            source.SetSymbolType(symbol, type);
-
-            paramNames.Add(parameter.Name.Value);
-        }
-
-        var parameterTypeList = new TypeList(parameters) { NameList = paramNames };
         // TODO handle rest parameter
 
-        TypeList? returnTypeList = null;
         if (function.Type.ReturnTypes != null)
         {
-            returnTypeList = VisitTypeList(function.Type.ReturnTypes);
+            VisitTypeList(function.Type.ReturnTypes);
         }
 
-        var functionType = new Type.Function(parameterTypeList, returnTypeList ?? TypeList.Unknown, typeParameters);
-
-        functionStack.Push(new(functionType, returnTypeList == null));
+        functionStack.Push(new(evaluator.GetTypeOfFunction(function), function.Type.ReturnTypes == null));
         VisitBlock(function.Body);
         functionStack.Pop();
-
-        return functionType;
     }
 
-    private TypeList VisitTypeList(List<Tree.Type> typeTrees)
+    private void VisitTypeList(List<Tree.Type> typeTrees)
     {
-        List<Type> types = [];
         foreach (var typeTree in typeTrees)
         {
-            types.Add(VisitType(typeTree));
+            VisitType(typeTree);
         }
-
-        return new TypeList(types);
-    }
-
-    private Type GetAccessType(Tree.Expression target, Tree.Expression key, bool isConstant)
-    {
-        var targetType = VisitExpression(target, isConstant);
-        // TODO handle __index
-        if (targetType is not Type.Table table)
-        {
-            Report(new Diagnostic.TypeNotIndexable(target.Range, targetType));
-            return Type.Unknown;
-        }
-
-        var keyType = VisitExpression(key, IsSimpleLiteral(key));
-
-        if (keyType == Type.Unknown)
-        {
-            return Type.Unknown;
-        }
-
-        // TODO use lookup
-        foreach (var pair in table.Pairs)
-        {
-            if (IsAssignableFrom(pair.Key, keyType))
-            {
-                return pair.Value;
-            }
-        }
-
-        Report(new Diagnostic.TypeDoesntHaveKey(key.Range, targetType, keyType));
-
-        return Type.Unknown;
     }
 
     private void VisitStatement(Tree.Statement stmt)
@@ -266,7 +139,7 @@ public class Checker
                 VisitStatement(localFunctionDeclaration);
                 break;
             case Tree.Statement.MethodCall methodCall:
-                VisitExpression(methodCall.CallExpr, false);
+                VisitExpression(methodCall.CallExpr);
                 break;
             case Tree.Statement.NumericalFor numericalFor:
                 VisitStatement(numericalFor);
@@ -283,57 +156,53 @@ public class Checker
         }
     }
 
-    private Type VisitExpression(Tree.Expression expr, bool isConstant)
+    private void VisitExpression(Tree.Expression expr)
     {
         switch (expr)
         {
             case Tree.Expression.Access access:
-                return VisitExpression(access, isConstant);
+                VisitExpression(access);
+                break;
             case Tree.Expression.Binary binary:
-                return VisitExpression(binary, isConstant);
+                VisitExpression(binary);
+                break;
             case Tree.Expression.Call call:
-                return VisitExpression(call, isConstant);
-            case Tree.Expression.Error error:
-                return VisitExpression(error, isConstant);
-            case Tree.Expression.False @false:
-                return VisitExpression(@false, isConstant);
+                VisitExpression(call);
+                break;
             case Tree.Expression.Function function:
-                return VisitExpression(function, isConstant);
+                VisitExpression(function);
+                break;
             case Tree.Expression.MethodCall methodCall:
-                return VisitExpression(methodCall, isConstant);
-            case Tree.Expression.Name name:
-                return VisitExpression(name, isConstant);
-            case Tree.Expression.Nil nil:
-                return VisitExpression(nil, isConstant);
-            case Tree.Expression.Number number:
-                return VisitExpression(number, isConstant);
-            case Tree.Expression.String s:
-                return VisitExpression(s, isConstant);
+                VisitExpression(methodCall);
+                break;
             case Tree.Expression.Table table:
-                return VisitExpression(table, isConstant);
-            case Tree.Expression.True @true:
-                return VisitExpression(@true, isConstant);
+                VisitExpression(table);
+                break;
             case Tree.Expression.Unary unary:
-                return VisitExpression(unary, isConstant);
+                VisitExpression(unary);
+                break;
         }
-
-        throw new ArgumentOutOfRangeException(nameof(expr));
     }
 
-    private Type VisitType(Tree.Type type)
+    private void VisitType(Tree.Type type)
     {
         switch (type)
         {
             case Tree.Type.Function function:
-                return VisitType(function);
+                VisitType(function);
+                break;
             case Tree.Type.Name name:
-                return VisitType(name);
+                VisitType(name);
+                break;
             case Tree.Type.Table table:
-                return VisitType(table);
+                VisitType(table);
+                break;
             case Tree.Type.StringLiteral stringLiteral:
-                return VisitType(stringLiteral);
+                VisitType(stringLiteral);
+                break;
             case Tree.Type.NumberLiteral numberLiteral:
-                return VisitType(numberLiteral);
+                VisitType(numberLiteral);
+                break;
         }
 
         throw new ArgumentOutOfRangeException(nameof(type));
@@ -346,13 +215,13 @@ public class Checker
 
     private void VisitStatement(Tree.Statement.NumericalFor numericalFor)
     {
-        var startType = VisitExpression(numericalFor.Start, false);
+        var startType = evaluator.GetTypeOfExpression(numericalFor.Start);
         if (!IsAssignableFrom(Type.NumberPrimitive, startType))
         {
             Report(new Diagnostic.ForLoopStartNotNumber(numericalFor.Start.Range, startType));
         }
 
-        var limitType = VisitExpression(numericalFor.Limit, false);
+        var limitType = evaluator.GetTypeOfExpression(numericalFor.Limit);
         if (!IsAssignableFrom(Type.NumberPrimitive, limitType))
         {
             Report(new Diagnostic.ForLoopLimitNotNumber(numericalFor.Limit.Range, limitType));
@@ -360,7 +229,7 @@ public class Checker
 
         if (numericalFor.Step != null)
         {
-            var stepType = VisitExpression(numericalFor.Step, false);
+            var stepType = evaluator.GetTypeOfExpression(numericalFor.Step);
             if (!IsAssignableFrom(Type.NumberPrimitive, stepType))
             {
                 Report(new Diagnostic.ForLoopStepNotNumber(numericalFor.Step.Range, stepType));
@@ -379,12 +248,12 @@ public class Checker
 
     private void VisitStatement(Tree.Statement.If ifStatement)
     {
-        VisitExpression(ifStatement.Primary.Condition, false);
+        VisitExpression(ifStatement.Primary.Condition);
         VisitBlock(ifStatement.Primary.Body);
 
         foreach (var branch in ifStatement.ElseIfs)
         {
-            VisitExpression(branch.Condition, false);
+            VisitExpression(branch.Condition);
             VisitBlock(branch.Body);
         }
 
@@ -398,12 +267,6 @@ public class Checker
     {
         public ITypeValueList.TypeValue this[int index] =>
             new() { Value = index < expressions.Count ? expressions[index] : null };
-    }
-
-    private class DeclarationValueList(List<Tree.Declaration> declarations) : ITypeValueList
-    {
-        public ITypeValueList.TypeValue this[int index] =>
-            new() { Value = index < declarations.Count ? declarations[index].Name : null };
     }
 
     private void VisitStatement(Tree.Statement.Assignment assignment)
@@ -434,7 +297,7 @@ public class Checker
             var (targetType, targetExpression, _) = targets[targetIndex];
             if (targetExpression != null)
             {
-                targetType = VisitExpression(targetExpression, false);
+                targetType = evaluator.GetTypeOfExpression(targetExpression);
                 errorRange = targetExpression.Range;
             }
 
@@ -465,13 +328,7 @@ public class Checker
 
             if (targetType != null && targetType != Type.Unknown && targetType != Type.Any)
             {
-                targetType = Dereference(targetType);
-                if (targetType is Type.Infer infer)
-                {
-                    sourceType ??= sourceExpression != null ? VisitExpression(sourceExpression, false) : Type.Nil;
-                    infer.OnInferred(sourceType);
-                }
-                else if (sourceType != null)
+                if (sourceType != null)
                 {
                     CheckTypeToType(targetType, sourceType, errorRange);
                 }
@@ -495,7 +352,7 @@ public class Checker
             }
             else if (sourceExpression != null)
             {
-                VisitExpression(sourceExpression, false);
+                VisitExpression(sourceExpression);
             }
             else
             {
@@ -510,12 +367,7 @@ public class Checker
     private void VisitStatement(Tree.Statement.Return returnStatement)
     {
         var (function, inferReturn) = functionStack.Peek();
-        if (inferReturn && function.Return == TypeList.Unknown)
-        {
-            // TODO make the function's return type a union of all possible returns, if they're different
-            function.Return = VisitExpressionList(returnStatement.Values);
-        }
-        else
+        if (!inferReturn)
         {
             CheckAssignment(function.Return, new ExpressionListValueList(returnStatement.Values),
                 TypeList.TypeListKind.Return,
@@ -525,13 +377,7 @@ public class Checker
 
     private void VisitStatement(Tree.Statement.LocalFunctionDeclaration declaration)
     {
-        var functionType = VisitFunction(declaration.Function, null);
-        if (!source.TryGetTreeSymbol(declaration.Name, out var symbol))
-        {
-            throw new Exception();
-        }
-
-        source.SetSymbolType(symbol, functionType);
+        VisitFunction(declaration.Function);
     }
 
     private void VisitStatement(Tree.Statement.GlobalDeclaration declaration)
@@ -544,14 +390,14 @@ public class Checker
         for (var i = 0; i < localDeclaration.Values.Count; i++)
         {
             var value = localDeclaration.Values[i];
-            VisitExpression(value, false);
+            VisitExpression(value);
             if (i < localDeclaration.Declarations.Count)
             {
                 var declaration = localDeclaration.Declarations[i];
                 if (declaration.Type != null)
                 {
                     var targetType = evaluator.GetTypeOfTypeAnnotation(declaration.Type);
-                    var sourceType = evaluator.GetTypeOfExpression(value, false);
+                    var sourceType = evaluator.GetTypeOfExpression(value);
                     CheckTypeToType(targetType, sourceType, declaration.Name.Range);
                 }
             }
@@ -573,127 +419,43 @@ public class Checker
         throw new NotImplementedException();
     }
 
-    private Type VisitExpression(Tree.Expression.Function function, bool isConstant)
+    private void VisitExpression(Tree.Expression.Function function)
     {
-        return VisitFunction(function, null);
+        VisitFunction(function);
     }
 
-    private Type VisitExpression(Tree.Expression.MethodCall methodCall, bool isConstant)
+    private void VisitExpression(Tree.Expression.MethodCall methodCall)
     {
         throw new NotImplementedException();
     }
 
-    private Type VisitExpression(Tree.Expression.Call call, bool isConstant)
+    private void VisitExpression(Tree.Expression.Call call)
     {
-        // TODO show warning if the call returns more than one value?
-        return VisitCall(call)[0].Type ?? Type.Nil;
+        VisitCall(call);
     }
 
-    private Type VisitExpression(Tree.Expression.Access access, bool isConstant)
-    {
-        return GetAccessType(access.Target, access.Key, isConstant);
-    }
-
-    private Type VisitExpression(Tree.Expression.Binary binary, bool isConstant)
+    private void VisitExpression(Tree.Expression.Access access)
     {
         throw new NotImplementedException();
     }
 
-    private Type VisitExpression(Tree.Expression.Unary unary, bool isConstant)
+    private void VisitExpression(Tree.Expression.Binary binary)
     {
-        var exprType = VisitExpression(unary.Expression, isConstant);
-
-        if (unary.Operator is Token.Not)
-        {
-            return Type.Boolean;
-        }
-
-        if (unary.Operator is Token.Length)
-        {
-            // TODO use __len metamethod
-            if (!IsAssignableFrom(Type.TablePrimitive, exprType) &&
-                !IsAssignableFrom(Type.StringPrimitive, exprType))
-            {
-                Report(new Diagnostic.CantGetLength(unary.Range, exprType));
-            }
-
-            return Type.NumberPrimitive;
-        }
-
-        if (unary.Operator is Token.Minus)
-        {
-            // TODO use __unm metamethod
-            if (!IsAssignableFrom(Type.NumberPrimitive, exprType))
-            {
-                Report(new Diagnostic.CantNegate(unary.Range, exprType));
-            }
-
-            return Type.NumberPrimitive;
-        }
-
-        throw new Exception(); // Unreachable.
+        throw new NotImplementedException();
     }
 
-    private Type VisitExpression(Tree.Expression.Name name, bool isConstant)
+    private void VisitExpression(Tree.Expression.Unary unary)
     {
-        if (!source.TryGetTreeSymbol(name, out var symbol))
-        {
-            // Unresolved names should be reported by the Binder.
-            return Type.Unknown;
-        }
-
-        if (!source.TryGetSymbolType(symbol, out var type))
-        {
-            // TODO detection of types should be deferred if needed.
-            throw new Exception();
-        }
-
-        return type;
+        VisitExpression(unary.Expression);
     }
 
-    private Type VisitExpression(Tree.Expression.Table table, bool isConstant)
+    private void VisitExpression(Tree.Expression.Table table)
     {
-        List<Type.Table.Pair> pairs = [];
-
         foreach (var field in table.Fields)
         {
-            pairs.Add(new Type.Table.Pair(
-                VisitExpression(field.Key, true),
-                // The value is visited as a non-constant — until we'll have const assertions like TypeScript's.
-                VisitExpression(field.Value, false)));
+            VisitExpression(field.Key);
+            VisitExpression(field.Value);
         }
-
-        return new Type.Table(pairs);
-    }
-
-    private Type VisitExpression(Tree.Expression.Number number, bool isConstant)
-    {
-        return isConstant ? new Type.NumberLiteral(number.NumberValue) : Type.NumberPrimitive;
-    }
-
-    private Type VisitExpression(Tree.Expression.String stringValue, bool isConstant)
-    {
-        return isConstant ? new Type.StringLiteral(stringValue.Value) : Type.StringPrimitive;
-    }
-
-    private Type VisitExpression(Tree.Expression.True trueValue, bool isConstant)
-    {
-        return isConstant ? Type.True : Type.Boolean;
-    }
-
-    private Type VisitExpression(Tree.Expression.False falseValue, bool isConstant)
-    {
-        return isConstant ? Type.False : Type.Boolean;
-    }
-
-    private Type VisitExpression(Tree.Expression.Nil nil, bool isConstant)
-    {
-        return Type.Nil;
-    }
-
-    private Type VisitExpression(Tree.Expression.Error error, bool isConstant)
-    {
-        return Type.Unknown;
     }
 
     private Checker(Source source)
@@ -702,78 +464,24 @@ public class Checker
         evaluator = new TypeEvaluator(source);
     }
 
-    private Type VisitType(Tree.Type.Name name)
+    private void VisitType(Tree.Type.Function functionType)
     {
-        if (source.TryGetTreeSymbol(name, out var symbol))
-        {
-            if (symbol is Symbol.IntrinsicType intrinsicType)
-            {
-                return intrinsicType.Type;
-            }
-
-            if (source.TryGetSymbolType(symbol, out var type))
-            {
-                return type;
-            }
-
-            return new Type.Reference(symbol, name.Value);
-        }
-
-        // TODO report error?
-        return Type.Unknown;
-    }
-
-    private Type VisitType(Tree.Type.Function functionType)
-    {
-        // TODO type parameters are stored in the function type, but currently we don't check them if they're not used
-        // in a function value.
-
-        // This code does a lot of the same things that VisitFunction does,
-        // perhaps the shared parts could be merged somehow?
-        List<Type> parameters = [];
-        List<string> paramNames = [];
         foreach (var parameter in functionType.Parameters)
         {
-            if (parameter.Type != null)
-            {
-                parameters.Add(VisitType(parameter.Type));
-            }
-            else
+            if (parameter.Type == null)
             {
                 Report(new Diagnostic.ImplicitAnyType(parameter.Range, parameter.Name.Value));
             }
-
-            paramNames.Add(parameter.Name.Value);
         }
-
-        var parameterTypeList = new TypeList(parameters) { NameList = paramNames };
-        // TODO handle rest parameter
-
-        var returnTypeList = functionType.ReturnTypes != null ? VisitTypeList(functionType.ReturnTypes) : TypeList.None;
-
-        return new Type.Function(parameterTypeList, returnTypeList, []);
     }
 
-    private Type VisitType(Tree.Type.Table table)
+    private void VisitType(Tree.Type.Table table)
     {
-        List<Type.Table.Pair> pairs = [];
-
         foreach (var (key, value) in table.Pairs)
         {
-            pairs.Add(new(VisitType(key), VisitType(value)));
+            VisitType(key);
+            VisitType(value);
         }
-
-        return new Type.Table(pairs);
-    }
-
-    private Type VisitType(Tree.Type.StringLiteral stringLiteral)
-    {
-        return new Type.StringLiteral(stringLiteral.Value);
-    }
-
-    private Type VisitType(Tree.Type.NumberLiteral numberLiteral)
-    {
-        return new Type.NumberLiteral(numberLiteral.Value);
     }
 
     /// <summary>
@@ -795,14 +503,15 @@ public class Checker
             var missingKeys = new HashSet<Type>(targetTable.Pairs.Select(p => p.Key));
             foreach (var sourceField in sourceTable.Fields)
             {
-                var sourceKeyType = VisitExpression(sourceField.Key, IsSimpleLiteral(sourceField.Key));
+                VisitExpression(sourceField.Key);
+                var sourceKeyType = evaluator.GetTypeOfExpression(sourceField.Key);
                 var targetKey = missingKeys.FirstOrDefault(targetKey => IsAssignableFrom(targetKey, sourceKeyType));
                 if (targetKey == null)
                 {
                     // TODO check for duplicate fields
                     Report(new Diagnostic.TableLiteralOnlyKnownKeys(sourceField.Key.Range, targetTable,
                         sourceKeyType));
-                    VisitExpression(sourceField.Value, false);
+                    VisitExpression(sourceField.Value);
                 }
                 else
                 {
@@ -815,19 +524,14 @@ public class Checker
             if (missingKeys.Count > 0)
             {
                 Report(new Diagnostic.MissingKeys(errorRange, targetType,
-                    VisitExpression(sourceValue, false),
+                    evaluator.GetTypeOfExpression(sourceValue),
                     missingKeys.ToList()));
             }
         }
-        else if (sourceValue is Tree.Expression.Function sourceFunction &&
-                 targetType is Type.Function targetFunction)
-        {
-            var sourceType = VisitFunction(sourceFunction, targetFunction);
-            CheckTypeToType(targetType, sourceType, errorRange);
-        }
         else
         {
-            var valueType = VisitExpression(sourceValue, false);
+            VisitExpression(sourceValue);
+            var valueType = evaluator.GetTypeOfExpression(sourceValue);
             CheckTypeToType(targetType, valueType, errorRange);
         }
     }

@@ -170,22 +170,6 @@ public abstract class Type
     }
 
     /// <summary>
-    /// A placeholder for a type that will be inferred from assignment.
-    /// </summary>
-    public class Infer(Action<Type> onInferred) : Type
-    {
-        /// <summary>
-        /// The action that will be performed once the type is inferred.
-        /// </summary>
-        public Action<Type> OnInferred { get; } = onInferred;
-
-        public override string Display()
-        {
-            return "unknown";
-        }
-    }
-
-    /// <summary>
     /// A reference to a symbol.
     /// </summary>
     public class Reference(Symbol symbol, string name) : Type

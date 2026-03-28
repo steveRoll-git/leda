@@ -14,28 +14,35 @@ public class TypeEvaluator(Source source)
 {
     private readonly Dictionary<Tree.Expression.Name, Type> typeOfVariableCache = [];
 
-    internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant)
+    internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
     {
         // TODO incomplete
         switch (expression)
         {
             case Tree.Expression.Name name:
                 return GetTypeOfVariable(name);
-            case Tree.Expression.Nil:
-                return Type.Nil;
             case Tree.Expression.Number number:
                 return isConstant ? new Type.NumberLiteral(number.NumberValue) : Type.NumberPrimitive;
             case Tree.Expression.String s:
                 return isConstant ? new Type.StringLiteral(s.Value) : Type.StringPrimitive;
+            case Tree.Expression.Function function:
+                return GetTypeOfFunction(function);
             case Tree.Expression.False:
                 return Type.False;
             case Tree.Expression.True:
                 return Type.True;
+            case Tree.Expression.Nil:
+                return Type.Nil;
             case Tree.Expression.Error:
                 return Type.Unknown;
         }
 
         throw new ArgumentOutOfRangeException(nameof(expression));
+    }
+
+    internal Type.Function GetTypeOfFunction(Tree.Expression.Function function)
+    {
+        throw new NotImplementedException();
     }
 
     private Type GetTypeOfVariableUncached(Tree.Expression.Name name)
