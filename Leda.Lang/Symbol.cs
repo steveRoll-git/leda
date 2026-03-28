@@ -25,6 +25,13 @@ public class Symbol(SymbolKind kind)
         public Type Type => type;
     }
 
+    public class LocalVariable(Tree.Statement.LocalDeclaration declaration, int index)
+        : Symbol(SymbolKind.LocalVariable)
+    {
+        public Tree.Statement.LocalDeclaration Declaration => declaration;
+        public int Index => index;
+    };
+
     /// <summary>
     /// The built-in any type.
     /// </summary>

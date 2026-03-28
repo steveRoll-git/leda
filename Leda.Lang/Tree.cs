@@ -154,8 +154,7 @@ public abstract class Tree
         /// <summary>
         /// Declarations of one or more local variables.
         /// </summary>
-        public class LocalDeclaration(List<Declaration> declarations, List<Expression> values)
-            : Statement
+        public class LocalDeclaration(List<Declaration> declarations, List<Expression> values) : Statement
         {
             public List<Declaration> Declarations => declarations;
             public List<Expression> Values => values;

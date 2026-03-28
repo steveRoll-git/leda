@@ -145,12 +145,17 @@ public class Binder
         source.AttachSymbol(node, symbol, true);
     }
 
+    private void AddSymbol(Tree.Expression.Name name, Symbol symbol)
+    {
+        AddSymbol(name, name.Value, Tree.NameContext.Value, symbol);
+    }
+
     /// <summary>
     /// Adds a value name's symbol to the current scope.
     /// </summary>
     private void AddSymbol(Tree.Expression.Name name, SymbolKind kind)
     {
-        AddSymbol(name, name.Value, Tree.NameContext.Value, new Symbol(kind));
+        AddSymbol(name, new Symbol(kind));
     }
 
     /// <summary>
@@ -456,10 +461,10 @@ public class Binder
     {
         Visit(localDeclaration.Values);
 
-        foreach (var declaration in localDeclaration.Declarations)
+        for (var i = 0; i < localDeclaration.Declarations.Count; i++)
         {
-            // TODO should the declaration node be the definition?
-            AddSymbol(declaration.Name, SymbolKind.LocalVariable);
+            var declaration = localDeclaration.Declarations[i];
+            AddSymbol(declaration.Name, new Symbol.LocalVariable(localDeclaration, i));
             if (declaration.Type != null)
             {
                 Visit(declaration.Type);

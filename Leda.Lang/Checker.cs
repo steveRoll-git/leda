@@ -11,6 +11,8 @@ public class Checker
 
     private readonly Stack<FunctionInfo> functionStack = [];
 
+    private readonly TypeEvaluator evaluator;
+
     private void Report(Diagnostic diagnostic)
     {
         Diagnostics.Add(diagnostic);
@@ -539,30 +541,21 @@ public class Checker
 
     private void VisitStatement(Tree.Statement.LocalDeclaration localDeclaration)
     {
-        foreach (var declaration in localDeclaration.Declarations)
+        for (var i = 0; i < localDeclaration.Values.Count; i++)
         {
-            Type variableType;
-
-            if (!source.TryGetTreeSymbol(declaration.Name, out var symbol))
+            var value = localDeclaration.Values[i];
+            VisitExpression(value, false);
+            if (i < localDeclaration.Declarations.Count)
             {
-                throw new Exception("Variable doesn't have a symbol");
+                var declaration = localDeclaration.Declarations[i];
+                if (declaration.Type != null)
+                {
+                    var targetType = evaluator.GetTypeOfTypeAnnotation(declaration.Type);
+                    var sourceType = evaluator.GetTypeOfExpression(value, false);
+                    CheckTypeToType(targetType, sourceType, declaration.Name.Range);
+                }
             }
-
-            if (declaration.Type != null)
-            {
-                variableType = VisitType(declaration.Type);
-            }
-            else
-            {
-                // The variable's type is inferred from the value.
-                variableType = new Type.Infer(inferred => source.SetSymbolType(symbol, inferred));
-            }
-
-            source.SetSymbolType(symbol, variableType);
         }
-
-        CheckAssignment(new DeclarationValueList(localDeclaration.Declarations),
-            new ExpressionListValueList(localDeclaration.Values), TypeList.TypeListKind.Value);
     }
 
     private void VisitStatement(Tree.Statement.RepeatUntil repeatUntil)
@@ -706,6 +699,7 @@ public class Checker
     private Checker(Source source)
     {
         this.source = source;
+        evaluator = new TypeEvaluator(source);
     }
 
     private Type VisitType(Tree.Type.Name name)
