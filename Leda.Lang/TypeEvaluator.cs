@@ -28,9 +28,9 @@ public class TypeEvaluator(Source source)
             case Tree.Expression.Function function:
                 return GetTypeOfFunction(function);
             case Tree.Expression.False:
-                return Type.False;
+                return isConstant ? Type.False : Type.Boolean;
             case Tree.Expression.True:
-                return Type.True;
+                return isConstant ? Type.True : Type.Boolean;
             case Tree.Expression.Nil:
                 return Type.Nil;
             case Tree.Expression.Error:
