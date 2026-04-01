@@ -45,6 +45,32 @@ public class TypeEvaluator(Source source)
         throw new NotImplementedException();
     }
 
+    private Type GetTypeOfLocalVariable(Symbol.LocalVariable localVariable)
+    {
+        var declaration = localVariable.Declaration.Declarations[localVariable.Index];
+
+        if (declaration.Type != null)
+        {
+            return GetTypeOfTypeAnnotation(declaration.Type);
+        }
+
+        return GetTypeOfExpressionInList(localVariable.Declaration.Values, localVariable.Index);
+    }
+
+    private Type GetTypeOfParameter(Symbol.Parameter parameter)
+    {
+        var declaration = parameter.Function.Type.Parameters[parameter.Index];
+
+        if (declaration.Type != null)
+        {
+            return GetTypeOfTypeAnnotation(declaration.Type);
+        }
+
+        // TODO infer parameter type
+
+        return Type.Unknown;
+    }
+
     private Type GetTypeOfVariableUncached(Tree.Expression.Name name)
     {
         if (!source.TryGetTreeSymbol(name, out var symbol))
@@ -52,26 +78,19 @@ public class TypeEvaluator(Source source)
             return Type.Unknown;
         }
 
-        if (symbol is Symbol.LocalVariable localVariable)
+        return symbol switch
         {
-            var declaration = localVariable.Declaration.Declarations[localVariable.Index];
-
-            if (declaration.Type != null)
-            {
-                return GetTypeOfTypeAnnotation(declaration.Type);
-            }
-
-            return GetTypeOfExpressionInList(localVariable.Declaration.Values, localVariable.Index);
-        }
-
-        return Type.Unknown;
+            Symbol.LocalVariable localVariable => GetTypeOfLocalVariable(localVariable),
+            Symbol.Parameter parameter => GetTypeOfParameter(parameter),
+            _ => Type.Unknown
+        };
     }
 
     private Type GetTypeOfExpressionInList(List<Tree.Expression> expressions, int index)
     {
         if (index < expressions.Count)
         {
-            return GetTypeOfExpression(expressions[index], false);
+            return GetTypeOfExpression(expressions[index]);
         }
 
         // TODO

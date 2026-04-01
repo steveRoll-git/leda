@@ -32,6 +32,12 @@ public class Symbol(SymbolKind kind)
         public int Index => index;
     };
 
+    public class Parameter(Tree.Expression.Function function, int index) : Symbol(SymbolKind.Parameter)
+    {
+        public Tree.Expression.Function Function => function;
+        public int Index => index;
+    }
+
     /// <summary>
     /// The built-in any type.
     /// </summary>

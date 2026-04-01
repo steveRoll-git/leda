@@ -396,9 +396,10 @@ public class Binder
     {
         Visit(function.Type);
 
-        foreach (var parameter in function.Type.Parameters)
+        for (var i = 0; i < function.Type.Parameters.Count; i++)
         {
-            AddSymbol(parameter.Name, SymbolKind.Parameter);
+            var parameter = function.Type.Parameters[i];
+            AddSymbol(parameter.Name, new Symbol.Parameter(function, i));
         }
 
         VisitBlock(function.Body);
