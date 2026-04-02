@@ -499,33 +499,42 @@ public class Checker
 
         if (sourceValue is Tree.Expression.Table sourceTable && targetType is Type.Table targetTable)
         {
-            // TODO use lookup
-            var missingKeys = new HashSet<Type>(targetTable.Pairs.Select(p => p.Key));
+            var missingStrings = new HashSet<string>(targetTable.StringLiterals.Select(p => p.Key));
+            // TODO check number literals too
             foreach (var sourceField in sourceTable.Fields)
             {
                 VisitExpression(sourceField.Key);
                 var sourceKeyType = evaluator.GetTypeOfExpression(sourceField.Key);
-                var targetKey = missingKeys.FirstOrDefault(targetKey => IsAssignableFrom(targetKey, sourceKeyType));
-                if (targetKey == null)
+                Type? targetValueType;
+                if (sourceKeyType is Type.StringLiteral stringLiteral)
                 {
-                    // TODO check for duplicate fields
+                    targetValueType = targetTable.StringLiterals.GetValueOrDefault(stringLiteral.Literal);
+                    missingStrings.Remove(stringLiteral.Literal);
+                }
+                else
+                {
+                    targetValueType = targetTable.Indexers.FirstOrDefault(p => IsAssignableFrom(p.Key, sourceKeyType))
+                        .Value;
+                }
+
+                if (targetValueType == null)
+                {
                     Report(new Diagnostic.TableLiteralOnlyKnownKeys(sourceField.Key.Range, targetTable,
                         sourceKeyType));
                     VisitExpression(sourceField.Value);
                 }
                 else
                 {
-                    missingKeys.Remove(targetKey);
-                    var targetPair = targetTable.Pairs.Find(p => p.Key == targetKey);
-                    CheckValueToType(targetPair.Value, sourceField.Value, sourceField.Key);
+                    // TODO check for duplicate fields
+                    CheckValueToType(targetValueType, sourceField.Value, sourceField.Key);
                 }
             }
 
-            if (missingKeys.Count > 0)
+            if (missingStrings.Count > 0)
             {
-                Report(new Diagnostic.MissingKeys(errorRange, targetType,
+                Report(new Diagnostic.MissingStringKeys(errorRange, targetType,
                     evaluator.GetTypeOfExpression(sourceValue),
-                    missingKeys.ToList()));
+                    missingStrings.ToList()));
             }
         }
         else
@@ -653,22 +662,23 @@ public class Checker
     {
         List<TypeMismatch> reasons = [];
 
-        foreach (var targetPair in targetTable.Pairs)
+        foreach (var (targetKey, targetValue) in targetTable.StringLiterals)
         {
-            // TODO use lookup
-            var sourcePair =
-                sourceTable.Pairs.FirstOrDefault(sourcePair => IsAssignableFrom(targetPair.Key, sourcePair.Key));
-            if (sourcePair.Key == null)
+            var sourceValue = sourceTable.StringLiterals.GetValueOrDefault(targetKey);
+            if (sourceValue == null)
             {
-                reasons.Add(new TypeMismatch.SourceMissingKey(targetTable, sourceTable, targetPair.Key));
+                reasons.Add(new TypeMismatch.SourceMissingKey(targetTable, sourceTable,
+                    new Type.StringLiteral(targetKey)));
                 continue;
             }
 
-            if (!IsAssignableFrom(targetPair.Value, sourcePair.Value, out var valueReason))
+            if (!IsAssignableFrom(targetValue, sourceValue, out var valueReason))
             {
-                reasons.Add(new TypeMismatch.TableKeyIncompatible(targetPair.Key) { Children = [valueReason] });
+                reasons.Add(new TypeMismatch.TableKeyIncompatible(new Type.StringLiteral(targetKey))
+                    { Children = [valueReason] });
             }
         }
+        // TODO check number literals too
 
         if (reasons.Count > 0)
         {

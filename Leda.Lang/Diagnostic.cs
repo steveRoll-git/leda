@@ -193,13 +193,13 @@ public abstract record Diagnostic(Range Range)
             $"Table literal may only specify known keys, and '{Key}' does not exist in type '{Target}'.";
     }
 
-    public record MissingKeys(Range Range, Type Target, Type Source, List<Type> Keys) : Diagnostic(Range)
+    public record MissingStringKeys(Range Range, Type Target, Type Source, List<string> Keys) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
 
         public override string Message => Keys.Count == 1
-            ? $"Key '{Keys[0]}' is missing in type '{Source}' but required in type '{Target}'."
-            : $"Type '{Source}' is missing the following keys from type '{Target}': {string.Join(", ", Keys)}";
+            ? $"Key \"{Keys[0]}\" is missing in type '{Source}' but required in type '{Target}'."
+            : $"Type '{Source}' is missing the following keys from type '{Target}': {string.Join(", ", Keys.Select(k => $"\"{k}\""))}";
     }
 
     public record ImplicitAnyType(Range Range, string Name) : Diagnostic(Range)

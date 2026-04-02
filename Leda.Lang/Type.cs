@@ -2,14 +2,12 @@ using System.Globalization;
 
 namespace Leda.Lang;
 
+/// <summary>
+/// Represents a type in the type system.
+/// </summary>
 public abstract class Type
 {
     public string? Name { get; set; }
-
-    /// <summary>
-    /// Whether the user can give a custom name to this type.
-    /// </summary>
-    public virtual bool UserNameable => false;
 
     /// <summary>
     /// A type that doesn't require much checking logic other than checking that the source
@@ -99,8 +97,6 @@ public abstract class Type
 
     public class Function(TypeList parameters, TypeList returns, List<TypeParameter> typeParameters) : Type
     {
-        public override bool UserNameable => true;
-
         /// <summary>
         /// The types of this function's parameters.
         /// </summary>
@@ -126,46 +122,31 @@ public abstract class Type
     public static readonly Type
         TablePrimitive = new PrimitiveType(other => other == TablePrimitive || other is Table) { Name = "table" };
 
-    public class Table(List<Table.Pair> pairs) : Type
+    public class Table : Type
     {
-        // TODO use a more efficient lookup structure for this
+        public readonly record struct Pair(Type Key, Type Value);
 
-        public override bool UserNameable => true;
+        /// <summary>
+        /// Cached values of pairs whose keys are string literals.
+        /// </summary>
+        public Dictionary<string, Type> StringLiterals { get; } = [];
 
-        public struct Pair(Type key, Type value)
-        {
-            public Type Key => key;
-            public Type Value => value;
-        }
+        /// <summary>
+        /// Cached values of pairs whose keys are number literals.
+        /// </summary>
+        public Dictionary<double, Type> NumberLiterals { get; } = [];
 
-        public List<Pair> Pairs => pairs;
+        // TODO also store `true` and `false` literals
+
+        /// <summary>
+        /// Cached values of pairs whose key is not a string or number literal.
+        /// </summary>
+        public List<Pair> Indexers { get; } = [];
 
         public override string Display()
         {
-            var s = "{";
-
-            if (Pairs.Count > 0)
-            {
-                s += "\n";
-            }
-
-            foreach (var pair in Pairs)
-            {
-                string keyString;
-                // TODO show key without quotes only if it's also a valid identifier
-                if (pair.Key is StringLiteral c)
-                {
-                    keyString = c.Literal;
-                }
-                else
-                {
-                    keyString = $"[{pair.Key}]";
-                }
-
-                s += $"  {keyString}: {pair.Value},\n";
-            }
-
-            return s + "}";
+            // TODO the checker should be the one doing displays
+            return "TODO";
         }
     }
 
