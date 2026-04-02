@@ -436,7 +436,21 @@ public class Checker
 
     private void VisitExpression(Tree.Expression.Access access)
     {
-        throw new NotImplementedException();
+        VisitExpression(access.Target);
+        VisitExpression(access.Key);
+
+        var targetType = evaluator.GetTypeOfExpression(access.Target);
+        if (targetType is not Type.Table)
+        {
+            Report(new Diagnostic.TypeNotIndexable(access.Target.Range, targetType));
+            return;
+        }
+
+        if (evaluator.GetTypeOfAccess(access) == null)
+        {
+            Report(new Diagnostic.TypeDoesntHaveKey(access.Key.Range, targetType,
+                evaluator.GetTypeOfExpression(access.Key, true)));
+        }
     }
 
     private void VisitExpression(Tree.Expression.Binary binary)

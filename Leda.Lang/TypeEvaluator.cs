@@ -13,6 +13,7 @@ that specific query.
 public class TypeEvaluator(Source source)
 {
     private readonly Dictionary<Tree.Expression.Name, Type> typeOfVariableCache = [];
+    private readonly Dictionary<Tree.Expression.Table, Type.Table> typeOfTableCache = [];
 
     internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
     {
@@ -27,6 +28,10 @@ public class TypeEvaluator(Source source)
                 return isConstant ? new Type.StringLiteral(s.Value) : Type.StringPrimitive;
             case Tree.Expression.Function function:
                 return GetTypeOfFunction(function);
+            case Tree.Expression.Table table:
+                return GetTypeOfTable(table);
+            case Tree.Expression.Access access:
+                return GetTypeOfAccess(access) ?? Type.Unknown;
             case Tree.Expression.False:
                 return isConstant ? Type.False : Type.Boolean;
             case Tree.Expression.True:
@@ -43,6 +48,71 @@ public class TypeEvaluator(Source source)
     internal Type.Function GetTypeOfFunction(Tree.Expression.Function function)
     {
         throw new NotImplementedException();
+    }
+
+    private Type.Table GetTypeOfTableUncached(Tree.Expression.Table table)
+    {
+        return new Type.Table(table);
+    }
+
+    private Type.Table GetTypeOfTable(Tree.Expression.Table table)
+    {
+        return GetQueryOrCached(GetTypeOfTableUncached, table, typeOfTableCache);
+    }
+
+    private Type? GetTypeOfStringKeyInTable(Type.Table table, string key)
+    {
+        if (table.StringLiterals.TryGetValue(key, out var type))
+        {
+            return type;
+        }
+
+        Type? value = null;
+        if (table.IsInferred(out var inferTree, out var typeTree))
+        {
+            foreach (var field in inferTree.Fields)
+            {
+                if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral stringLiteral &&
+                    stringLiteral.Literal == key)
+                {
+                    value = GetTypeOfExpression(field.Value);
+                    break;
+                }
+            }
+        }
+        else
+        {
+            foreach (var pair in typeTree.Pairs)
+            {
+                if (GetTypeOfTypeAnnotation(pair.Key) is Type.StringLiteral stringLiteral &&
+                    stringLiteral.Literal == key)
+                {
+                    value = GetTypeOfTypeAnnotation(pair.Value);
+                    break;
+                }
+            }
+        }
+
+        table.StringLiterals.Add(key, value);
+        return value;
+    }
+
+    internal Type? GetTypeOfAccess(Tree.Expression.Access access)
+    {
+        var targetType = GetTypeOfExpression(access.Target);
+        if (targetType is not Type.Table tableType)
+        {
+            return Type.Unknown;
+        }
+
+        var keyType = GetTypeOfExpression(access.Key, true);
+        if (keyType is Type.StringLiteral stringLiteral)
+        {
+            return GetTypeOfStringKeyInTable(tableType, stringLiteral.Literal);
+        }
+
+        // TODO check number literals, indexers
+        return null;
     }
 
     private Type GetTypeOfLocalVariable(Symbol.LocalVariable localVariable)
