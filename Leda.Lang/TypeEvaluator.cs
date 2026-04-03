@@ -12,7 +12,7 @@ that specific query.
 /// </summary>
 public class TypeEvaluator(Source source)
 {
-    private readonly Dictionary<Tree.Expression.Name, Type> typeOfVariableCache = [];
+    private readonly Dictionary<Symbol, Type> typeOfSymbolCache = [];
     private readonly Dictionary<Tree.Expression.Table, Type.Table> typeOfTableCache = [];
 
     internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
@@ -141,19 +141,29 @@ public class TypeEvaluator(Source source)
         return Type.Unknown;
     }
 
-    private Type GetTypeOfVariableUncached(Tree.Expression.Name name)
+    private Type GetTypeOfSymbolUncached(Symbol symbol)
     {
-        if (!source.TryGetTreeSymbol(name, out var symbol))
-        {
-            return Type.Unknown;
-        }
-
         return symbol switch
         {
             Symbol.LocalVariable localVariable => GetTypeOfLocalVariable(localVariable),
             Symbol.Parameter parameter => GetTypeOfParameter(parameter),
             _ => Type.Unknown
         };
+    }
+
+    private Type GetTypeOfSymbol(Symbol symbol)
+    {
+        return GetQueryOrCached(GetTypeOfSymbolUncached, symbol, typeOfSymbolCache);
+    }
+
+    private Type GetTypeOfVariable(Tree.Expression.Name name)
+    {
+        if (!source.TryGetTreeSymbol(name, out var symbol))
+        {
+            return Type.Unknown;
+        }
+
+        return GetTypeOfSymbol(symbol);
     }
 
     private Type GetTypeOfExpressionInList(List<Tree.Expression> expressions, int index)
@@ -212,10 +222,5 @@ public class TypeEvaluator(Source source)
         var result = function(parameter);
         cache[parameter] = result;
         return result;
-    }
-
-    internal Type GetTypeOfVariable(Tree.Expression.Name name)
-    {
-        return GetQueryOrCached(GetTypeOfVariableUncached, name, typeOfVariableCache);
     }
 }
