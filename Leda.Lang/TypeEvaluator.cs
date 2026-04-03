@@ -271,40 +271,51 @@ public class TypeEvaluator(Source source)
         return result;
     }
 
-    private string TableToString(Type.Table table, string indent)
+    private string TableToString(Type.Table table, bool multiline, string indent)
     {
         CompleteTableType(table);
 
         var s = "{";
         var newIndent = indent + "  ";
+        var separator = multiline ? "\n" : " ";
 
         if (table.StringLiterals.Count > 0)
         {
-            s += "\n";
+            s += separator;
         }
 
         foreach (var pair in table.StringLiterals)
         {
             if (pair.Value != null)
             {
-                s += $"{newIndent}{pair.Key}: {TypeToString(pair.Value, newIndent)},\n";
+                if (multiline)
+                {
+                    s += newIndent;
+                }
+
+                s += $"{pair.Key}: {TypeToString(pair.Value, multiline, newIndent)},{separator}";
             }
         }
 
-        return s + indent + "}";
+        if (multiline)
+        {
+            s += indent;
+        }
+
+        return s + "}";
     }
 
     /// <summary>
     /// Returns a string representation of the type.
     /// </summary>
-    public string TypeToString(Type type, string indent = "")
+    public string TypeToString(Type type, bool multiline = false, string indent = "")
     {
         return type switch
         {
             Type.NumberLiteral numberLiteral => numberLiteral.Literal.ToString(CultureInfo.InvariantCulture),
             Type.StringLiteral stringLiteral => '"' + stringLiteral.Literal + '"',
             Type.PrimitiveType or Type.Reference or Type.TypeParameter => type.Name!,
-            Type.Table table => TableToString(table, indent),
+            Type.Table table => TableToString(table, multiline, indent),
             Type.Function function => throw new NotImplementedException(),
             _ => throw new ArgumentOutOfRangeException(nameof(type))
         };
