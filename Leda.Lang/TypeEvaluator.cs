@@ -62,7 +62,7 @@ public class TypeEvaluator(Source source)
         return GetQueryOrCached(GetTypeOfTableUncached, table, typeOfTableCache);
     }
 
-    private Type? GetTypeOfStringKeyInTable(Type.Table table, string key)
+    internal Type? GetTypeOfStringKeyInTable(Type.Table table, string key)
     {
         if (table.StringLiterals.TryGetValue(key, out var type))
         {
@@ -102,7 +102,7 @@ public class TypeEvaluator(Source source)
     /// <summary>
     /// Evaluates all the table's field types that weren't lazily evaluated before.
     /// </summary>
-    private void CompleteTableType(Type.Table table)
+    internal void CompleteTableType(Type.Table table)
     {
         // TODO number literals and indexers
         if (table.IsInferred(out var inferTree, out var typeTree))

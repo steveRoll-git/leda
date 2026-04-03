@@ -671,9 +671,16 @@ public class Checker
     {
         List<TypeMismatch> reasons = [];
 
+        evaluator.CompleteTableType(targetTable);
+
         foreach (var (targetKey, targetValue) in targetTable.StringLiterals)
         {
-            var sourceValue = sourceTable.StringLiterals.GetValueOrDefault(targetKey);
+            if (targetValue == null)
+            {
+                continue;
+            }
+
+            var sourceValue = evaluator.GetTypeOfStringKeyInTable(sourceTable, targetKey);
             if (sourceValue == null)
             {
                 reasons.Add(new TypeMismatch.SourceMissingKey(evaluator.TypeToString(targetTable),
