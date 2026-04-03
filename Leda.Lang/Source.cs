@@ -33,14 +33,11 @@ public class Source
     private Dictionary<Tree, Symbol> treeSymbolMap = [];
 
     /// <summary>
-    /// Maps Symbols to their types.
-    /// </summary>
-    private Dictionary<Symbol, Type> symbolTypeMap = [];
-
-    /// <summary>
     /// A dictionary of where symbols are references in this source. (Symbols from other sources may be referenced too?)
     /// </summary>
     public Dictionary<Symbol, List<Location>> SymbolReferences { get; private set; } = [];
+
+    public TypeEvaluator Evaluator { get; private set; }
 
     /// <summary>
     /// A list of any symbols referenced in this Source that are defined in other Sources.
@@ -62,8 +59,11 @@ public class Source
     {
         Path = path;
         Code = code;
+        Tree = new Tree.Block([], []);
+        Evaluator = new TypeEvaluator(this);
 
         // Map all newline numbers to the indices they appear at.
+        // TODO the newline map is currently only used by ConsoleReporter. generating it should be done only in that case
         var currentLine = 1;
         for (var i = 0; i < code.Length; i++)
         {
@@ -118,8 +118,8 @@ public class Source
     /// </summary>
     public List<Diagnostic> Check()
     {
-        symbolTypeMap = [];
-        return Checker.Check(this);
+        Evaluator = new TypeEvaluator(this);
+        return Checker.Check(this, Evaluator);
     }
 
     /// <summary>
@@ -148,21 +148,5 @@ public class Source
     public bool TryGetTreeSymbol(Tree tree, [NotNullWhen(true)] out Symbol? symbol)
     {
         return treeSymbolMap.TryGetValue(tree, out symbol);
-    }
-
-    /// <summary>
-    /// Sets this value symbol's type.
-    /// </summary>
-    internal void SetSymbolType(Symbol symbol, Type type)
-    {
-        symbolTypeMap[symbol] = type;
-    }
-
-    /// <summary>
-    /// Tries getting the type of this value symbol, if it exists.
-    /// </summary>
-    public bool TryGetSymbolType(Symbol symbol, [NotNullWhen(true)] out Type? type)
-    {
-        return symbolTypeMap.TryGetValue(symbol, out type);
     }
 }

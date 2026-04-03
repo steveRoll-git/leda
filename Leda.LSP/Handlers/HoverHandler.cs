@@ -18,19 +18,19 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
         if (name is not null && source.TryGetTreeSymbol(name, out var symbol))
         {
             string? content = null;
+            var type = source.Evaluator.GetTypeOfSymbol(symbol);
             if (name is Tree.Expression.Name valueName)
             {
-                source.TryGetSymbolType(symbol, out var type);
                 content = $"""
                            ```leda
-                           local {valueName.Value}: {type?.ToString() ?? "unknown"}
+                           local {valueName.Value}: {type}
                            ```
                            """;
             }
             else if (name is Tree.Type.Name typeName)
             {
                 var typeValue = symbol is not Symbol.IntrinsicType && symbol.Kind != SymbolKind.TypeParameter
-                    ? " = " + (source.TryGetSymbolType(symbol, out var type) ? type.Display() : "???")
+                    ? " = " + type
                     : "";
                 content = $"""
                            ```leda

@@ -151,7 +151,7 @@ public class TypeEvaluator(Source source)
         };
     }
 
-    private Type GetTypeOfSymbol(Symbol symbol)
+    public Type GetTypeOfSymbol(Symbol symbol)
     {
         return GetQueryOrCached(GetTypeOfSymbolUncached, symbol, typeOfSymbolCache);
     }

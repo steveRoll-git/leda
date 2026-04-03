@@ -241,8 +241,6 @@ public class Checker
             throw new Exception("No symbol for `for` loop counter");
         }
 
-        source.SetSymbolType(counterSymbol, Type.NumberPrimitive);
-
         VisitBlock(numericalFor.Body);
     }
 
@@ -472,10 +470,10 @@ public class Checker
         }
     }
 
-    private Checker(Source source)
+    private Checker(Source source, TypeEvaluator evaluator)
     {
         this.source = source;
-        evaluator = new TypeEvaluator(source);
+        this.evaluator = evaluator;
     }
 
     private void VisitType(Tree.Type.Function functionType)
@@ -580,12 +578,8 @@ public class Checker
     {
         if (type is Type.Reference reference)
         {
-            if (source.TryGetSymbolType(reference.Symbol, out var dereferenced))
-            {
-                return Dereference(dereferenced);
-            }
-
-            return Type.Unknown;
+            // TODO this should be done in the evaluator
+            return Dereference(evaluator.GetTypeOfSymbol(reference.Symbol));
         }
 
         return type;
@@ -787,9 +781,9 @@ public class Checker
         return true;
     }
 
-    public static List<Diagnostic> Check(Source source)
+    public static List<Diagnostic> Check(Source source, TypeEvaluator evaluator)
     {
-        var checker = new Checker(source);
+        var checker = new Checker(source, evaluator);
         checker.functionStack.Push(new(new Type.Function(TypeList.Any, TypeList.Any, []), false)); // TODO
         checker.VisitBlock(source.Tree);
         return checker.Diagnostics;
