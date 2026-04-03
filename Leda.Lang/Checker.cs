@@ -511,12 +511,14 @@ public class Checker
 
         if (sourceValue is Tree.Expression.Table sourceTable && targetType is Type.Table targetTable)
         {
+            evaluator.CompleteTableType(targetTable);
+
             var missingStrings = new HashSet<string>(targetTable.StringLiterals.Select(p => p.Key));
             // TODO check number literals too
             foreach (var sourceField in sourceTable.Fields)
             {
                 VisitExpression(sourceField.Key);
-                var sourceKeyType = evaluator.GetTypeOfExpression(sourceField.Key);
+                var sourceKeyType = evaluator.GetTypeOfExpression(sourceField.Key, true);
                 Type? targetValueType;
                 if (sourceKeyType is Type.StringLiteral stringLiteral)
                 {
