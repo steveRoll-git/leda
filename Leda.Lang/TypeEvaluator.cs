@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Leda.Lang;
 
 /*
@@ -95,6 +97,51 @@ public class TypeEvaluator(Source source)
 
         table.StringLiterals.Add(key, value);
         return value;
+    }
+
+    /// <summary>
+    /// Evaluates all the table's field types that weren't lazily evaluated before.
+    /// </summary>
+    private void CompleteTableType(Type.Table table)
+    {
+        // TODO number literals and indexers
+        if (table.IsInferred(out var inferTree, out var typeTree))
+        {
+            foreach (var field in inferTree.Fields)
+            {
+                if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral stringLiteral &&
+                    !table.StringLiterals.ContainsKey(stringLiteral.Literal))
+                {
+                    var value = GetTypeOfExpression(field.Value);
+                    table.StringLiterals.Add(stringLiteral.Literal, value);
+                }
+            }
+        }
+        else
+        {
+            foreach (var pair in typeTree.Pairs)
+            {
+                if (GetTypeOfTypeAnnotation(pair.Key) is Type.StringLiteral stringLiteral &&
+                    !table.StringLiterals.ContainsKey(stringLiteral.Literal))
+                {
+                    var value = GetTypeOfTypeAnnotation(pair.Value);
+                    table.StringLiterals.Add(stringLiteral.Literal, value);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Evaluates all the type's inner information that wasn't lazily evaluated before.
+    /// </summary>
+    private void CompleteType(Type type)
+    {
+        switch (type)
+        {
+            case Type.Table table:
+                CompleteTableType(table);
+                break;
+        }
     }
 
     internal Type? GetTypeOfAccess(Tree.Expression.Access access)
@@ -222,5 +269,44 @@ public class TypeEvaluator(Source source)
         var result = function(parameter);
         cache[parameter] = result;
         return result;
+    }
+
+    private string TableToString(Type.Table table, string indent)
+    {
+        CompleteTableType(table);
+
+        var s = "{";
+        var newIndent = indent + "  ";
+
+        if (table.StringLiterals.Count > 0)
+        {
+            s += "\n";
+        }
+
+        foreach (var pair in table.StringLiterals)
+        {
+            if (pair.Value != null)
+            {
+                s += $"{newIndent}{pair.Key}: {TypeToString(pair.Value, newIndent)},\n";
+            }
+        }
+
+        return s + indent + "}";
+    }
+
+    /// <summary>
+    /// Returns a string representation of the type.
+    /// </summary>
+    public string TypeToString(Type type, string indent = "")
+    {
+        return type switch
+        {
+            Type.NumberLiteral numberLiteral => numberLiteral.Literal.ToString(CultureInfo.InvariantCulture),
+            Type.StringLiteral stringLiteral => '"' + stringLiteral.Literal + '"',
+            Type.PrimitiveType or Type.Reference or Type.TypeParameter => type.Name!,
+            Type.Table table => TableToString(table, indent),
+            Type.Function function => throw new NotImplementedException(),
+            _ => throw new ArgumentOutOfRangeException(nameof(type))
+        };
     }
 }

@@ -20,7 +20,7 @@ public abstract record TypeMismatch
     /// </summary>
     public List<TypeMismatch> Children = [];
 
-    public record Primitive(Type Target, Type Source) : TypeMismatch
+    public record Primitive(string Target, string Source) : TypeMismatch
     {
         public override string Message => $"Type '{Source}' is not assignable to type '{Target}'.";
     }
@@ -41,13 +41,13 @@ public abstract record TypeMismatch
         public override string Message => $"Type of {TypeListItemNoun(Kind)} #{Index + 1} is incompatible:";
     }
 
-    public record SourceMissingKey(Type Target, Type Source, Type Key) : TypeMismatch
+    public record SourceMissingKey(string Target, string Source, string Key) : TypeMismatch
     {
         public override string Message =>
             $"Type '{Source}' does not have a key of type '{Key}' required by type '{Target}'.";
     }
 
-    public record TableKeyIncompatible(Type Key) : TypeMismatch
+    public record TableKeyIncompatible(string Key) : TypeMismatch
     {
         public override string Message => $"Values at key '{Key}' are incompatible.";
     }

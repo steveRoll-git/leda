@@ -440,14 +440,14 @@ public class Checker
         var targetType = evaluator.GetTypeOfExpression(access.Target);
         if (targetType is not Type.Table)
         {
-            Report(new Diagnostic.TypeNotIndexable(access.Target.Range, targetType));
+            Report(new Diagnostic.TypeNotIndexable(access.Target.Range, evaluator.TypeToString(targetType)));
             return;
         }
 
         if (evaluator.GetTypeOfAccess(access) == null)
         {
-            Report(new Diagnostic.TypeDoesntHaveKey(access.Key.Range, targetType,
-                evaluator.GetTypeOfExpression(access.Key, true)));
+            Report(new Diagnostic.TypeDoesntHaveKey(access.Key.Range, evaluator.TypeToString(targetType),
+                evaluator.TypeToString(evaluator.GetTypeOfExpression(access.Key, true))));
         }
     }
 
@@ -531,8 +531,9 @@ public class Checker
 
                 if (targetValueType == null)
                 {
-                    Report(new Diagnostic.TableLiteralOnlyKnownKeys(sourceField.Key.Range, targetTable,
-                        sourceKeyType));
+                    Report(new Diagnostic.TableLiteralOnlyKnownKeys(sourceField.Key.Range,
+                        evaluator.TypeToString(targetTable),
+                        evaluator.TypeToString(sourceKeyType)));
                     VisitExpression(sourceField.Value);
                 }
                 else
@@ -544,8 +545,8 @@ public class Checker
 
             if (missingStrings.Count > 0)
             {
-                Report(new Diagnostic.MissingStringKeys(errorRange, targetType,
-                    evaluator.GetTypeOfExpression(sourceValue),
+                Report(new Diagnostic.MissingStringKeys(errorRange, evaluator.TypeToString(targetType),
+                    evaluator.TypeToString(evaluator.GetTypeOfExpression(sourceValue)),
                     missingStrings.ToList()));
             }
         }
@@ -617,7 +618,7 @@ public class Checker
                 return true;
             }
 
-            reason = new TypeMismatch.Primitive(targetType, sourceType);
+            reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetType), evaluator.TypeToString(sourceType));
             return false;
         }
 
@@ -630,7 +631,7 @@ public class Checker
                 return true;
             }
 
-            reason = new TypeMismatch.Primitive(targetType, sourceType);
+            reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetType), evaluator.TypeToString(sourceType));
             return false;
         }
 
@@ -642,7 +643,7 @@ public class Checker
                 return true;
             }
 
-            reason = new TypeMismatch.Primitive(targetType, sourceType);
+            reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetType), evaluator.TypeToString(sourceType));
             return false;
         }
 
@@ -656,7 +657,7 @@ public class Checker
             return IsAssignableFrom(targetFunction, sourceFunction, out reason);
         }
 
-        reason = new TypeMismatch.Primitive(targetType, sourceType);
+        reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetType), evaluator.TypeToString(sourceType));
         return false;
     }
 
@@ -675,14 +676,15 @@ public class Checker
             var sourceValue = sourceTable.StringLiterals.GetValueOrDefault(targetKey);
             if (sourceValue == null)
             {
-                reasons.Add(new TypeMismatch.SourceMissingKey(targetTable, sourceTable,
-                    new Type.StringLiteral(targetKey)));
+                reasons.Add(new TypeMismatch.SourceMissingKey(evaluator.TypeToString(targetTable),
+                    evaluator.TypeToString(sourceTable),
+                    '"' + targetKey + '"'));
                 continue;
             }
 
             if (!IsAssignableFrom(targetValue, sourceValue, out var valueReason))
             {
-                reasons.Add(new TypeMismatch.TableKeyIncompatible(new Type.StringLiteral(targetKey))
+                reasons.Add(new TypeMismatch.TableKeyIncompatible('"' + targetKey + '"')
                     { Children = [valueReason] });
             }
         }
@@ -690,7 +692,8 @@ public class Checker
 
         if (reasons.Count > 0)
         {
-            reason = new TypeMismatch.Primitive(targetTable, sourceTable) { Children = reasons };
+            reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetTable),
+                evaluator.TypeToString(sourceTable)) { Children = reasons };
             return false;
         }
 
@@ -716,7 +719,8 @@ public class Checker
 
         if (reasons.Count > 0)
         {
-            reason = new TypeMismatch.Primitive(targetFunction, sourceFunction) { Children = reasons };
+            reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetFunction),
+                evaluator.TypeToString(sourceFunction)) { Children = reasons };
             return false;
         }
 

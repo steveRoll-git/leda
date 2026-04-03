@@ -173,19 +173,19 @@ public abstract record Diagnostic(Range Range)
         public override string Message => $"Expected {Expected} arguments, but got {Got}.";
     }
 
-    public record TypeNotIndexable(Range Range, Type Type) : Diagnostic(Range)
+    public record TypeNotIndexable(Range Range, string Type) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Type '{Type}' cannot be indexed.";
     }
 
-    public record TypeDoesntHaveKey(Range Range, Type Target, Type Key) : Diagnostic(Range)
+    public record TypeDoesntHaveKey(Range Range, string Target, string Key) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Type '{Target}' doesn't have key of type '{Key}'.";
     }
 
-    public record TableLiteralOnlyKnownKeys(Range Range, Type Target, Type Key) : Diagnostic(Range)
+    public record TableLiteralOnlyKnownKeys(Range Range, string Target, string Key) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
 
@@ -193,7 +193,7 @@ public abstract record Diagnostic(Range Range)
             $"Table literal may only specify known keys, and '{Key}' does not exist in type '{Target}'.";
     }
 
-    public record MissingStringKeys(Range Range, Type Target, Type Source, List<string> Keys) : Diagnostic(Range)
+    public record MissingStringKeys(Range Range, string Target, string Source, List<string> Keys) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
 

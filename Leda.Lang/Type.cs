@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 
 namespace Leda.Lang;
 
@@ -17,11 +16,6 @@ public abstract class Type
     public class PrimitiveType(Func<Type, bool> assignableFunc) : Type
     {
         public Func<Type, bool> AssignableFunc => assignableFunc;
-
-        public override string Display()
-        {
-            return Name!;
-        }
     }
 
     /// <summary>
@@ -64,11 +58,6 @@ public abstract class Type
     public class NumberLiteral(double literal) : Type
     {
         public double Literal => literal;
-
-        public override string Display()
-        {
-            return Literal.ToString(CultureInfo.InvariantCulture);
-        }
     }
 
     /// <summary>
@@ -83,11 +72,6 @@ public abstract class Type
     public class StringLiteral(string literal) : Type
     {
         public string Literal => literal;
-
-        public override string Display()
-        {
-            return '"' + Literal + '"';
-        }
     }
 
     /// <summary>
@@ -109,12 +93,6 @@ public abstract class Type
         public TypeList Return { get; set; } = returns;
 
         public List<TypeParameter> TypeParameters { get; } = typeParameters;
-
-        public override string Display()
-        {
-            return
-                $"function{(TypeParameters.Count > 0 ? $"<{string.Join(", ", TypeParameters)}>" : "")}({Parameters}){(Return.Empty ? "" : ": " + Return)}";
-        }
     }
 
     /// <summary>
@@ -177,42 +155,36 @@ public abstract class Type
             typeTree = TypeTree;
             return inferTree != null;
         }
-
-        public override string Display()
-        {
-            // TODO the checker should be the one doing displays
-            return "TODO";
-        }
     }
 
     /// <summary>
     /// A reference to a symbol.
     /// </summary>
-    public class Reference(Symbol symbol, string name) : Type
+    public class Reference : Type
     {
-        public Symbol Symbol => symbol;
+        public Symbol Symbol { get; }
 
-        public override string Display()
+        /// <summary>
+        /// A reference to a symbol.
+        /// </summary>
+        public Reference(Symbol symbol, string name)
         {
-            return name;
+            Symbol = symbol;
+            Name = name;
         }
     }
 
     /// <summary>
     /// A generic type parameter.
     /// </summary>
-    public class TypeParameter(string name) : Type
+    public class TypeParameter : Type
     {
-        public override string Display()
+        /// <summary>
+        /// A generic type parameter.
+        /// </summary>
+        public TypeParameter(string name)
         {
-            return name;
+            Name = name;
         }
     }
-
-    /// <summary>
-    /// Returns a string representation of the type's contents.
-    /// </summary>
-    public abstract string Display();
-
-    public override string ToString() => Name ?? Display();
 }
