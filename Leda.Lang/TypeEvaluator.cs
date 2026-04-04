@@ -317,7 +317,8 @@ public class TypeEvaluator(Source source)
                     s += newIndent;
                 }
 
-                s += $"{pair.Key}: {TypeToString(pair.Value, multiline, newIndent)},{separator}";
+                s +=
+                    $"{pair.Key}: {TypeToStringIndent(pair.Value, multiline: multiline, indent: newIndent)},{separator}";
             }
         }
 
@@ -332,8 +333,21 @@ public class TypeEvaluator(Source source)
     /// <summary>
     /// Returns a string representation of the type.
     /// </summary>
-    public string TypeToString(Type type, bool multiline = false, string indent = "")
+    /// <param name="type">The type to convert to a string.</param>
+    /// <param name="typeContents">Whether to display the type's contents as a string, even if it's behind an alias.</param>
+    /// <param name="multiline">Whether the string should be spread across multiple lines.</param>
+    public string TypeToString(Type type, bool typeContents = false, bool multiline = false)
     {
+        return TypeToStringIndent(type, typeContents, multiline);
+    }
+
+    private string TypeToStringIndent(Type type, bool typeContents = false, bool multiline = false, string indent = "")
+    {
+        if (!typeContents && type.Name != null)
+        {
+            return type.Name;
+        }
+
         return type switch
         {
             Type.NumberLiteral numberLiteral => numberLiteral.Literal.ToString(CultureInfo.InvariantCulture),

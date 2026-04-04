@@ -29,7 +29,8 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
             }
             else if (name is Tree.Type.Name typeName)
             {
-                var type = source.Evaluator.TypeToString(source.Evaluator.GetTypeOfTypeName(typeName), multiline: true);
+                var type = source.Evaluator.TypeToString(source.Evaluator.GetTypeOfTypeName(typeName),
+                    typeContents: true, multiline: true);
                 var typeValue = symbol is not Symbol.IntrinsicType and not Symbol.TypeParameter
                     ? " = " + type
                     : "";
