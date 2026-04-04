@@ -125,31 +125,31 @@ public abstract record Diagnostic(Range Range)
         public override string Message => $"A type named '{Name}' has already been declared.";
     }
 
-    public record CantGetLength(Range Range, Type Got) : Diagnostic(Range)
+    public record CantGetLength(Range Range, string Got) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Cannot get the length of a '{Got}' value.";
     }
 
-    public record CantNegate(Range Range, Type Got) : Diagnostic(Range)
+    public record CantNegate(Range Range, string Got) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Cannot negate a '{Got}' value.";
     }
 
-    public record ForLoopStartNotNumber(Range Range, Type Got) : Diagnostic(Range)
+    public record ForLoopStartNotNumber(Range Range, string Got) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Starting value of `for` loop must be 'number', but is '{Got}'.";
     }
 
-    public record ForLoopLimitNotNumber(Range Range, Type Got) : Diagnostic(Range)
+    public record ForLoopLimitNotNumber(Range Range, string Got) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Limit value of `for` loop must be 'number', but is '{Got}'.";
     }
 
-    public record ForLoopStepNotNumber(Range Range, Type Got) : Diagnostic(Range)
+    public record ForLoopStepNotNumber(Range Range, string Got) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Step value of `for` loop must be 'number', but is '{Got}'.";

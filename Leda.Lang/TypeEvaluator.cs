@@ -194,6 +194,7 @@ public class TypeEvaluator(Source source)
         {
             Symbol.LocalVariable localVariable => GetTypeOfLocalVariable(localVariable),
             Symbol.Parameter parameter => GetTypeOfParameter(parameter),
+            Symbol.NumericForCounter => Type.NumberPrimitive,
             _ => Type.Unknown
         };
     }

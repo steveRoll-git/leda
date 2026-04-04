@@ -218,13 +218,13 @@ public class Checker
         var startType = evaluator.GetTypeOfExpression(numericalFor.Start);
         if (!IsAssignableFrom(Type.NumberPrimitive, startType))
         {
-            Report(new Diagnostic.ForLoopStartNotNumber(numericalFor.Start.Range, startType));
+            Report(new Diagnostic.ForLoopStartNotNumber(numericalFor.Start.Range, evaluator.TypeToString(startType)));
         }
 
         var limitType = evaluator.GetTypeOfExpression(numericalFor.Limit);
         if (!IsAssignableFrom(Type.NumberPrimitive, limitType))
         {
-            Report(new Diagnostic.ForLoopLimitNotNumber(numericalFor.Limit.Range, limitType));
+            Report(new Diagnostic.ForLoopLimitNotNumber(numericalFor.Limit.Range, evaluator.TypeToString(limitType)));
         }
 
         if (numericalFor.Step != null)
@@ -232,13 +232,8 @@ public class Checker
             var stepType = evaluator.GetTypeOfExpression(numericalFor.Step);
             if (!IsAssignableFrom(Type.NumberPrimitive, stepType))
             {
-                Report(new Diagnostic.ForLoopStepNotNumber(numericalFor.Step.Range, stepType));
+                Report(new Diagnostic.ForLoopStepNotNumber(numericalFor.Step.Range, evaluator.TypeToString(stepType)));
             }
-        }
-
-        if (!source.TryGetTreeSymbol(numericalFor.Counter, out var counterSymbol))
-        {
-            throw new Exception("No symbol for `for` loop counter");
         }
 
         VisitBlock(numericalFor.Body);
