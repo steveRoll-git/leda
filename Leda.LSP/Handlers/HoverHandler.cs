@@ -18,9 +18,9 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
         if (name is not null && source.TryGetTreeSymbol(name, out var symbol))
         {
             string? content = null;
-            var type = source.Evaluator.TypeToString(source.Evaluator.GetTypeOfSymbol(symbol), multiline: true);
             if (name is Tree.Expression.Name valueName)
             {
+                var type = source.Evaluator.TypeToString(source.Evaluator.GetTypeOfSymbol(symbol), multiline: true);
                 content = $"""
                            ```leda
                            local {valueName.Value}: {type}
@@ -29,6 +29,7 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
             }
             else if (name is Tree.Type.Name typeName)
             {
+                var type = source.Evaluator.TypeToString(source.Evaluator.GetTypeOfTypeName(typeName), multiline: true);
                 var typeValue = symbol is not Symbol.IntrinsicType and not Symbol.TypeParameter
                     ? " = " + type
                     : "";

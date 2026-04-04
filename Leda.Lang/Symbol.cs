@@ -62,7 +62,10 @@ public abstract class Symbol
     /// <summary>
     /// A type alias.
     /// </summary>
-    public class TypeAlias : Symbol;
+    public class TypeAlias(Tree.TypeAliasDeclaration declaration) : Symbol
+    {
+        public Tree.TypeAliasDeclaration Declaration => declaration;
+    }
 
     /// <summary>
     /// A generic type parameter.

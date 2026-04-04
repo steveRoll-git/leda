@@ -16,6 +16,7 @@ public class TypeEvaluator(Source source)
 {
     private readonly Dictionary<Symbol, Type> typeOfSymbolCache = [];
     private readonly Dictionary<Tree.Expression.Table, Type.Table> typeOfTableCache = [];
+    private readonly Dictionary<Symbol.TypeAlias, Type> typeAliasCache = [];
 
     internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
     {
@@ -225,13 +226,34 @@ public class TypeEvaluator(Source source)
         return Type.Unknown;
     }
 
-    private Type GetTypeOfTypeName(Tree.Type.Name name)
+    private Type GetTypeOfTypeAliasUncached(Symbol.TypeAlias typeAlias)
+    {
+        var type = GetTypeOfTypeAnnotation(typeAlias.Declaration.Type);
+        if (type is Type.Table)
+        {
+            type.Name = typeAlias.Declaration.Name.Value;
+        }
+
+        return type;
+    }
+
+    private Type GetTypeOfTypeAlias(Symbol.TypeAlias typeAlias)
+    {
+        return GetQueryOrCached(GetTypeOfTypeAliasUncached, typeAlias, typeAliasCache);
+    }
+
+    public Type GetTypeOfTypeName(Tree.Type.Name name)
     {
         if (source.TryGetTreeSymbol(name, out var symbol))
         {
             if (symbol is Symbol.IntrinsicType intrinsicType)
             {
                 return intrinsicType.Type;
+            }
+
+            if (symbol is Symbol.TypeAlias typeAlias)
+            {
+                return GetTypeOfTypeAlias(typeAlias);
             }
         }
 
@@ -240,13 +262,14 @@ public class TypeEvaluator(Source source)
 
     internal Type GetTypeOfTypeAnnotation(Tree.Type typeAnnotation)
     {
-        if (typeAnnotation is Tree.Type.Name name)
+        return typeAnnotation switch
         {
-            return GetTypeOfTypeName(name);
-        }
-
-        // TODO incomplete
-        return Type.Unknown;
+            Tree.Type.StringLiteral stringLiteral => new Type.StringLiteral(stringLiteral.Value),
+            Tree.Type.NumberLiteral numberLiteral => new Type.NumberLiteral(numberLiteral.Value),
+            Tree.Type.Name name => GetTypeOfTypeName(name),
+            Tree.Type.Table table => new Type.Table(table),
+            _ => Type.Unknown
+        };
     }
 
     /// <summary>

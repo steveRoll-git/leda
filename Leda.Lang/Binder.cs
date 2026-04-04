@@ -164,7 +164,7 @@ public class Binder
         // for `typeof` to work correctly.
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
-            AddSymbol(typeDeclaration.Name, new Symbol.TypeAlias());
+            AddSymbol(typeDeclaration.Name, new Symbol.TypeAlias(typeDeclaration));
         }
 
         foreach (var typeDeclaration in block.TypeDeclarations)
