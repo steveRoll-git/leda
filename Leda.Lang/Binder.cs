@@ -150,20 +150,9 @@ public class Binder
         AddSymbol(name, name.Value, Tree.NameContext.Value, symbol);
     }
 
-    /// <summary>
-    /// Adds a value name's symbol to the current scope.
-    /// </summary>
-    private void AddSymbol(Tree.Expression.Name name, SymbolKind kind)
+    private void AddSymbol(Tree.Type.Name name, Symbol symbol)
     {
-        AddSymbol(name, new Symbol(kind));
-    }
-
-    /// <summary>
-    /// Adds a type name's symbol to the current scope.
-    /// </summary>
-    private void AddTypeSymbol(Tree.Type.Name name, SymbolKind kind)
-    {
-        AddSymbol(name, name.Value, Tree.NameContext.Type, new Symbol(kind));
+        AddSymbol(name, name.Value, Tree.NameContext.Type, symbol);
     }
 
     /// <summary>
@@ -175,7 +164,7 @@ public class Binder
         // for `typeof` to work correctly.
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
-            AddTypeSymbol(typeDeclaration.Name, SymbolKind.Type);
+            AddSymbol(typeDeclaration.Name, new Symbol.TypeAlias());
         }
 
         foreach (var typeDeclaration in block.TypeDeclarations)
@@ -317,7 +306,7 @@ public class Binder
             Visit(numericalFor.Step);
         }
 
-        AddSymbol(numericalFor.Counter, SymbolKind.LocalVariable);
+        AddSymbol(numericalFor.Counter, new Symbol.NumericForCounter());
         VisitBlock(numericalFor.Body);
         PopScope();
     }
@@ -447,7 +436,7 @@ public class Binder
 
     private void Visit(Tree.Statement.LocalFunctionDeclaration declaration)
     {
-        AddSymbol(declaration.Name, SymbolKind.LocalVariable);
+        AddSymbol(declaration.Name, new Symbol.LocalFunction(declaration));
         PushScope();
         VisitFunction(declaration.Function);
         PopScope();
@@ -495,9 +484,10 @@ public class Binder
 
         PushScope();
 
-        foreach (var declaration in forLoop.Declarations)
+        for (var i = 0; i < forLoop.Declarations.Count; i++)
         {
-            AddSymbol(declaration.Name, SymbolKind.LocalVariable);
+            var declaration = forLoop.Declarations[i];
+            AddSymbol(declaration.Name, new Symbol.ForVariable(forLoop, i));
         }
 
         VisitBlock(forLoop.Body);
@@ -509,7 +499,7 @@ public class Binder
     {
         foreach (var typeParameter in typeParameters)
         {
-            AddTypeSymbol(typeParameter, SymbolKind.TypeParameter);
+            AddSymbol(typeParameter, new Symbol.TypeParameter());
         }
     }
 

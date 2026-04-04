@@ -1,42 +1,73 @@
 namespace Leda.Lang;
 
-public enum SymbolKind
-{
-    LocalVariable,
-    Parameter,
-    Type,
-    TypeParameter
-}
-
 /// <summary>
 /// A value or type that has some origin in the source code, that may be referenced in multiple places.
 /// </summary>
-public class Symbol(SymbolKind kind)
+public abstract class Symbol
 {
     /// <summary>
     /// The location where this symbol was defined.
     /// </summary>
     public Location Definition { get; internal set; }
 
-    public SymbolKind Kind => kind;
-
-    public class IntrinsicType(Type type) : Symbol(SymbolKind.Type)
-    {
-        public Type Type => type;
-    }
-
+    /// <summary>
+    /// A local variable.
+    /// </summary>
     public class LocalVariable(Tree.Statement.LocalDeclaration declaration, int index)
-        : Symbol(SymbolKind.LocalVariable)
+        : Symbol
     {
         public Tree.Statement.LocalDeclaration Declaration => declaration;
         public int Index => index;
-    };
+    }
 
-    public class Parameter(Tree.Expression.Function function, int index) : Symbol(SymbolKind.Parameter)
+    /// <summary>
+    /// A function defined with `local function`.
+    /// </summary>
+    public class LocalFunction(Tree.Statement.LocalFunctionDeclaration declaration) : Symbol
+    {
+        public Tree.Statement.LocalFunctionDeclaration Declaration => declaration;
+    }
+
+    /// <summary>
+    /// A parameter in a function.
+    /// </summary>
+    public class Parameter(Tree.Expression.Function function, int index) : Symbol
     {
         public Tree.Expression.Function Function => function;
         public int Index => index;
     }
+
+    /// <summary>
+    /// The counter variable of a numeric `for` loop.
+    /// </summary>
+    public class NumericForCounter : Symbol;
+
+    /// <summary>
+    /// An iteration variable in a generic `for` loop.
+    /// </summary>
+    public class ForVariable(Tree.Statement.IteratorFor forLoop, int index) : Symbol
+    {
+        public Tree.Statement.IteratorFor ForLoop => forLoop;
+        public int Index => index;
+    }
+
+    /// <summary>
+    /// A language-defined type that is known ahead of time.
+    /// </summary>
+    public class IntrinsicType(Type type) : Symbol
+    {
+        public Type Type => type;
+    }
+
+    /// <summary>
+    /// A type alias.
+    /// </summary>
+    public class TypeAlias : Symbol;
+
+    /// <summary>
+    /// A generic type parameter.
+    /// </summary>
+    public class TypeParameter : Symbol;
 
     /// <summary>
     /// The built-in any type.
