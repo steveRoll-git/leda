@@ -5,11 +5,11 @@ namespace Leda.Lang;
 /// </summary>
 public abstract record TypeMismatch
 {
-    private static string TypeListItemNoun(TypeList.TypeListKind kind) => kind switch
+    private static string TypeListItemNoun(TypeListKind kind) => kind switch
     {
-        TypeList.TypeListKind.Parameter or TypeList.TypeListKind.FunctionTypeParameter => "parameter",
-        TypeList.TypeListKind.Return or TypeList.TypeListKind.FunctionTypeReturn => "return value",
-        TypeList.TypeListKind.Value => "value",
+        TypeListKind.Parameter or TypeListKind.FunctionTypeParameter => "parameter",
+        TypeListKind.Return or TypeListKind.FunctionTypeReturn => "return value",
+        TypeListKind.Value => "value",
         _ => throw new Exception()
     };
 
@@ -25,18 +25,18 @@ public abstract record TypeMismatch
         public override string Message => $"Type '{Source}' is not assignable to type '{Target}'.";
     }
 
-    public record NotEnoughValues(int Expected, int Got, TypeList.TypeListKind Kind) : TypeMismatch
+    public record NotEnoughValues(int Expected, int Got, TypeListKind Kind) : TypeMismatch
     {
         public override string Message =>
             Kind switch
             {
-                TypeList.TypeListKind.FunctionTypeParameter =>
+                TypeListKind.FunctionTypeParameter =>
                     $"Target type doesn't provide enough parameters. Expected at least {Expected}, got {Got}.",
                 _ => $"Not enough {TypeListItemNoun(Kind)}(s) are given. Expected at least {Expected} but got {Got}."
             };
     }
 
-    public record ValueInListIncompatible(int Index, TypeList.TypeListKind Kind) : TypeMismatch
+    public record ValueInListIncompatible(int Index, TypeListKind Kind) : TypeMismatch
     {
         public override string Message => $"Type of {TypeListItemNoun(Kind)} #{Index + 1} is incompatible:";
     }

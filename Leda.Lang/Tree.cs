@@ -364,6 +364,11 @@ public abstract class Tree
             public String FuncName => funcName;
             public List<Expression> Parameters => parameters;
         }
+
+        /// <summary>
+        /// Whether this expression is one that may return multiple values.
+        /// </summary>
+        public bool MayReturnMultiple => this is Call or Vararg;
     }
 
     /// <summary>
@@ -408,4 +413,13 @@ public abstract class Tree
         public Type.Name Name => name;
         public Type Type => type;
     }
+}
+
+public static class ExpressionListExtensions
+{
+    /// <summary>
+    /// Returns whether the last value in a list of expressions may return multiple values.
+    /// </summary>
+    public static bool MayReturnTrailingValues(this List<Tree.Expression> expressions) =>
+        expressions.Count >= 1 && expressions[^1].MayReturnMultiple;
 }

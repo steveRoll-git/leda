@@ -51,7 +51,7 @@ public class TypeEvaluator(Source source)
 
     internal Type.Function GetTypeOfFunction(Tree.Expression.Function function)
     {
-        throw new NotImplementedException();
+        return new Type.Function(function);
     }
 
     private static Type.Table GetTypeOfTableValueUncached(Tree.Expression.Table table)
@@ -186,9 +186,15 @@ public class TypeEvaluator(Source source)
         return GetTypeOfExpressionInList(localVariable.Declaration.Values, localVariable.Index);
     }
 
-    private Type GetTypeOfParameter(Symbol.Parameter parameter)
+    private Type? GetTypeOfParameter(Tree.Expression.Function function, int index)
     {
-        var declaration = parameter.Function.Type.Parameters[parameter.Index];
+        if (index >= function.Type.Parameters.Count)
+        {
+            // TODO check rest
+            return null;
+        }
+
+        var declaration = function.Type.Parameters[index];
 
         if (declaration.Type != null)
         {
@@ -205,7 +211,8 @@ public class TypeEvaluator(Source source)
         return symbol switch
         {
             Symbol.LocalVariable localVariable => GetTypeOfLocalVariable(localVariable),
-            Symbol.Parameter parameter => GetTypeOfParameter(parameter),
+            // A parameter symbol will always reference an existent function parameter.
+            Symbol.Parameter parameter => GetTypeOfParameter(parameter.Function, parameter.Index)!,
             Symbol.NumericForCounter => Type.NumberPrimitive,
             _ => Type.Unknown
         };
@@ -281,6 +288,32 @@ public class TypeEvaluator(Source source)
             Tree.Type.Table table => GetTypeOfTableAnnotation(table),
             _ => Type.Unknown
         };
+    }
+
+    internal (Type? Type, bool IsRest) GetTypeInTypeList(TypeList typeList, int index)
+    {
+        if (typeList == TypeList.Empty)
+        {
+            return (Type.Nil, true);
+        }
+
+        if (typeList == TypeList.Any)
+        {
+            return (Type.Any, true);
+        }
+
+        if (typeList == TypeList.Unknown)
+        {
+            return (Type.Unknown, true);
+        }
+
+        if (typeList is TypeList.Parameters { Function: var function })
+        {
+            // TODO check rest properly
+            return (GetTypeOfParameter(function, index), false);
+        }
+
+        return (Type.Unknown, true);
     }
 
     /// <summary>
