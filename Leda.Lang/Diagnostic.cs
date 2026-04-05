@@ -213,6 +213,12 @@ public abstract record Diagnostic(Range Range)
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => "Type parameter list cannot be empty.";
     }
+
+    public record ValueNotAssigned(Range Range) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Warning;
+        public override string Message => "This value is not assigned to any variable.";
+    }
 }
 
 public enum DiagnosticSeverity

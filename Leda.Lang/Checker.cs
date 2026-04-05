@@ -384,14 +384,27 @@ public class Checker
         {
             var value = localDeclaration.Values[i];
             VisitExpression(value);
-            if (i < localDeclaration.Declarations.Count)
+            if (i >= localDeclaration.Declarations.Count)
             {
-                var declaration = localDeclaration.Declarations[i];
-                if (declaration.Type != null)
+                Report(new Diagnostic.ValueNotAssigned(value.Range));
+            }
+        }
+
+        // For each local variable with a type annotation and a value assigned to it, we check the value with the type.
+        for (var i = 0; i < localDeclaration.Declarations.Count; i++)
+        {
+            var declaration = localDeclaration.Declarations[i];
+            if (declaration.Type != null)
+            {
+                if (i < localDeclaration.Values.Count)
                 {
                     var targetType = evaluator.GetTypeOfTypeAnnotation(declaration.Type);
-                    var sourceType = evaluator.GetTypeOfExpression(value);
-                    CheckTypeToType(targetType, sourceType, declaration.Name.Range);
+                    var value = localDeclaration.Values[i];
+                    CheckValueToType(targetType, value, declaration.Name);
+                }
+                else
+                {
+                    // TODO check extra values
                 }
             }
         }
@@ -492,8 +505,7 @@ public class Checker
     }
 
     /// <summary>
-    /// Checks an assignment of a single value to a target type. If applicable, errors in the source value will be shown,
-    /// and types of function parameters will be inferred.
+    /// Checks an assignment of a single value to a target type. If applicable, errors in the source value will be shown.
     /// </summary>
     /// <param name="targetType">The type of the target being assigned to.</param>
     /// <param name="sourceValue">The value being assigned.</param>
@@ -512,7 +524,6 @@ public class Checker
             // TODO check number literals too
             foreach (var sourceField in sourceTable.Fields)
             {
-                VisitExpression(sourceField.Key);
                 var sourceKeyType = evaluator.GetTypeOfExpression(sourceField.Key, true);
                 Type? targetValueType;
                 if (sourceKeyType is Type.StringLiteral stringLiteral)
@@ -531,7 +542,6 @@ public class Checker
                     Report(new Diagnostic.TableLiteralOnlyKnownKeys(sourceField.Key.Range,
                         evaluator.TypeToString(targetTable),
                         evaluator.TypeToString(sourceKeyType)));
-                    VisitExpression(sourceField.Value);
                 }
                 else
                 {
@@ -549,7 +559,6 @@ public class Checker
         }
         else
         {
-            VisitExpression(sourceValue);
             var valueType = evaluator.GetTypeOfExpression(sourceValue);
             CheckTypeToType(targetType, valueType, errorRange);
         }
