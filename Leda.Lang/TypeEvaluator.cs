@@ -15,7 +15,8 @@ that specific query.
 public class TypeEvaluator(Source source)
 {
     private readonly Dictionary<Symbol, Type> typeOfSymbolCache = [];
-    private readonly Dictionary<Tree.Expression.Table, Type.Table> typeOfTableCache = [];
+    private readonly Dictionary<Tree.Expression.Table, Type.Table> inferredTableCache = [];
+    private readonly Dictionary<Tree.Type.Table, Type.Table> tableAnnotationCache = [];
     private readonly Dictionary<Symbol.TypeAlias, Type> typeAliasCache = [];
 
     internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
@@ -32,7 +33,7 @@ public class TypeEvaluator(Source source)
             case Tree.Expression.Function function:
                 return GetTypeOfFunction(function);
             case Tree.Expression.Table table:
-                return GetTypeOfTable(table);
+                return GetTypeOfTableValue(table);
             case Tree.Expression.Access access:
                 return GetTypeOfAccess(access) ?? Type.Unknown;
             case Tree.Expression.False:
@@ -53,14 +54,24 @@ public class TypeEvaluator(Source source)
         throw new NotImplementedException();
     }
 
-    private Type.Table GetTypeOfTableUncached(Tree.Expression.Table table)
+    private static Type.Table GetTypeOfTableValueUncached(Tree.Expression.Table table)
     {
         return new Type.Table(table);
     }
 
-    private Type.Table GetTypeOfTable(Tree.Expression.Table table)
+    private Type.Table GetTypeOfTableValue(Tree.Expression.Table table)
     {
-        return GetQueryOrCached(GetTypeOfTableUncached, table, typeOfTableCache);
+        return GetQueryOrCached(GetTypeOfTableValueUncached, table, inferredTableCache);
+    }
+
+    private static Type.Table GetTypeOfTableAnnotationUncached(Tree.Type.Table table)
+    {
+        return new Type.Table(table);
+    }
+
+    private Type.Table GetTypeOfTableAnnotation(Tree.Type.Table table)
+    {
+        return GetQueryOrCached(GetTypeOfTableAnnotationUncached, table, tableAnnotationCache);
     }
 
     internal Type? GetTypeOfStringKeyInTable(Type.Table table, string key)
@@ -267,7 +278,7 @@ public class TypeEvaluator(Source source)
             Tree.Type.StringLiteral stringLiteral => new Type.StringLiteral(stringLiteral.Value),
             Tree.Type.NumberLiteral numberLiteral => new Type.NumberLiteral(numberLiteral.Value),
             Tree.Type.Name name => GetTypeOfTypeName(name),
-            Tree.Type.Table table => new Type.Table(table),
+            Tree.Type.Table table => GetTypeOfTableAnnotation(table),
             _ => Type.Unknown
         };
     }
