@@ -219,6 +219,12 @@ public abstract record Diagnostic(Range Range)
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Warning;
         public override string Message => "This value is not assigned to any variable.";
     }
+
+    public record TargetNotAssigned(Range Range) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Warning;
+        public override string Message => "This variable will have `nil` assigned to it. This may not be intentional.";
+    }
 }
 
 public enum DiagnosticSeverity

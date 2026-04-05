@@ -264,8 +264,32 @@ public class Checker
 
     private void VisitStatement(Tree.Statement.Assignment assignment)
     {
-        CheckAssignment(new ExpressionListValueList(assignment.Targets),
-            new ExpressionListValueList(assignment.Values), TypeList.TypeListKind.Value);
+        for (var i = 0; i < assignment.Values.Count; i++)
+        {
+            var value = assignment.Values[i];
+            VisitExpression(value);
+            if (i >= assignment.Targets.Count)
+            {
+                Report(new Diagnostic.ValueNotAssigned(value.Range));
+            }
+        }
+
+        for (var i = 0; i < assignment.Targets.Count; i++)
+        {
+            var target = assignment.Targets[i];
+            var targetType = evaluator.GetTypeOfExpression(target);
+            if (i < assignment.Values.Count)
+            {
+                var value = assignment.Values[i];
+                CheckValueToType(targetType, value, target);
+            }
+            else
+            {
+                // TODO check trailing values
+                CheckTypeToType(targetType, Type.Nil, target.Range);
+                Report(new Diagnostic.TargetNotAssigned(target.Range));
+            }
+        }
     }
 
     /// <summary>
@@ -404,7 +428,7 @@ public class Checker
                 }
                 else
                 {
-                    // TODO check extra values
+                    // TODO check trailing values
                 }
             }
         }
