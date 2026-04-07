@@ -62,6 +62,10 @@ public class Parser
     /// </summary>
     private readonly Stack<Position> startPositions = new();
 
+    private record ChunkInfo(List<Tree.Statement.Return> ReturnStatements);
+
+    private readonly Stack<ChunkInfo> chunkStack = new();
+
     private static bool IsAssignableTo(Tree.Expression tree) => tree is Tree.Expression.Name or Tree.Expression.Access;
 
     public Parser(Source source)
@@ -258,6 +262,17 @@ public class Parser
         return new Tree.Block(statements, typeDeclarations);
     }
 
+    private Tree.Chunk ParseChunk()
+    {
+        var functionInfo = new ChunkInfo([]);
+
+        chunkStack.Push(functionInfo);
+        var block = ParseBlock();
+        chunkStack.Pop();
+
+        return new Tree.Chunk(block.Statements, block.TypeDeclarations, functionInfo.ReturnStatements);
+    }
+
     /// <summary>
     /// Parse a statement.
     /// </summary>
@@ -268,12 +283,9 @@ public class Parser
         {
             StartTree();
             NextToken(); // skip 'return'
-            return EndTree(
-                new Tree.Statement.Return(
-                    IsStatementEndingToken(token)
-                        ? []
-                        : ParseExpressionList())
-            );
+            var returnStatement = new Tree.Statement.Return(IsStatementEndingToken(token) ? [] : ParseExpressionList());
+            chunkStack.Peek().ReturnStatements.Add(returnStatement);
+            return EndTree(returnStatement);
         }
 
         if (token is Token.Break)
@@ -723,10 +735,10 @@ public class Parser
         // functiontype block 'end'
         var functionType = ParseFunctionType(isMethod);
 
-        var body = ParseBlock();
+        var chunk = ParseChunk();
         Expect(End);
 
-        return EndTree(new Tree.Expression.Function(functionType, body, isMethod));
+        return EndTree(new Tree.Expression.Function(functionType, chunk, isMethod));
     }
 
     /// <summary>
@@ -1034,10 +1046,10 @@ public class Parser
     /// <summary>
     /// Parse this source's contents and return the file's syntax tree.
     /// </summary>
-    public static (Tree.Block block, List<Diagnostic> diagnostics) ParseFile(Source source)
+    public static (Tree.Chunk chunk, List<Diagnostic> diagnostics) ParseFile(Source source)
     {
         var parser = new Parser(source);
-        var block = parser.ParseBlock();
-        return (block, parser.Diagnostics);
+        var chunk = parser.ParseChunk();
+        return (chunk, parser.Diagnostics);
     }
 }

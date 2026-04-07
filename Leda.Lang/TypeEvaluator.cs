@@ -17,6 +17,7 @@ public class TypeEvaluator(Source source)
     private readonly Dictionary<Symbol, Type> typeOfSymbolCache = [];
     private readonly Dictionary<Tree.Expression.Table, Type.Table> inferredTableCache = [];
     private readonly Dictionary<Tree.Type.Table, Type.Table> tableAnnotationCache = [];
+    private readonly Dictionary<Tree.Expression.Function, Type.Function> functionTypeCache = [];
     private readonly Dictionary<Symbol.TypeAlias, Type> typeAliasCache = [];
 
     internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
@@ -49,9 +50,31 @@ public class TypeEvaluator(Source source)
         throw new ArgumentOutOfRangeException(nameof(expression));
     }
 
+    private static Type.Function GetTypeOfFunctionUncached(Tree.Expression.Function function)
+    {
+        var parameters = new TypeList.Parameters(function);
+
+        TypeList returns;
+        if (function.Type.ReturnTypes != null)
+        {
+            returns = new TypeList.FromTypes(function.Type.ReturnTypes);
+        }
+        else if (function.Chunk.ReturnStatements.Count > 0)
+        {
+            // TODO make union of all return statements
+            returns = new TypeList.FromValues(function.Chunk.ReturnStatements[0].Values);
+        }
+        else
+        {
+            returns = TypeList.Empty;
+        }
+
+        return new Type.Function(parameters, returns, []);
+    }
+
     internal Type.Function GetTypeOfFunction(Tree.Expression.Function function)
     {
-        return new Type.Function(function);
+        return GetQueryOrCached(GetTypeOfFunctionUncached, function, functionTypeCache);
     }
 
     private static Type.Table GetTypeOfTableValueUncached(Tree.Expression.Table table)
@@ -353,6 +376,23 @@ public class TypeEvaluator(Source source)
         {
             // TODO check rest properly
             return (GetTypeOfParameter(function, index), false);
+        }
+
+        if (typeList is TypeList.FromTypes { Types: var types })
+        {
+            // TODO check rest
+            if (index < types.Count)
+            {
+                return (GetTypeOfTypeAnnotation(types[index]), false);
+            }
+
+            return (Type.Unknown, true);
+        }
+
+        if (typeList is TypeList.FromValues { Values: var values })
+        {
+            // TODO check rest
+            return (GetTypeOfExpressionInList(values, index), false);
         }
 
         return (Type.Unknown, true);

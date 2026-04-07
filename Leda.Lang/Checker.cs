@@ -88,7 +88,7 @@ public class Checker
         }
 
         functionStack.Push(new(evaluator.GetTypeOfFunction(function), function.Type.ReturnTypes == null));
-        VisitBlock(function.Body);
+        VisitBlock(function.Chunk);
         functionStack.Pop();
     }
 
@@ -181,21 +181,10 @@ public class Checker
             case Tree.Type.Function function:
                 VisitType(function);
                 break;
-            case Tree.Type.Name name:
-                VisitType(name);
-                break;
             case Tree.Type.Table table:
                 VisitType(table);
                 break;
-            case Tree.Type.StringLiteral stringLiteral:
-                VisitType(stringLiteral);
-                break;
-            case Tree.Type.NumberLiteral numberLiteral:
-                VisitType(numberLiteral);
-                break;
         }
-
-        throw new ArgumentOutOfRangeException(nameof(type));
     }
 
     private void VisitStatement(Tree.Statement.Do block)
@@ -323,8 +312,7 @@ public class Checker
         var (function, inferReturn) = functionStack.Peek();
         if (!inferReturn)
         {
-            CheckAssignment(function.Return, returnStatement.Values, TypeListKind.Return,
-                returnStatement.Range);
+            CheckAssignment(function.Return, returnStatement.Values, TypeListKind.Return, returnStatement.Range);
         }
     }
 
@@ -436,12 +424,6 @@ public class Checker
             VisitExpression(field.Key);
             VisitExpression(field.Value);
         }
-    }
-
-    private Checker(Source source, TypeEvaluator evaluator)
-    {
-        this.source = source;
-        this.evaluator = evaluator;
     }
 
     private void VisitType(Tree.Type.Function functionType)
@@ -750,6 +732,12 @@ public class Checker
 
         reasons = null;
         return true;
+    }
+
+    private Checker(Source source, TypeEvaluator evaluator)
+    {
+        this.source = source;
+        this.evaluator = evaluator;
     }
 
     public static List<Diagnostic> Check(Source source, TypeEvaluator evaluator)

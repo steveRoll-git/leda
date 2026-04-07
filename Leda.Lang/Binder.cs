@@ -391,7 +391,7 @@ public class Binder
             AddSymbol(parameter.Name, new Symbol.Parameter(function, i));
         }
 
-        VisitBlock(function.Body);
+        VisitBlock(function.Chunk);
     }
 
     private void Visit(Tree.Expression.Name name)

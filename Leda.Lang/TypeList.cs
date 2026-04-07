@@ -8,12 +8,15 @@ public abstract class TypeList
     /// <summary>
     /// The number of elements in this TypeList, excluding the `rest` part.
     /// </summary>
-    public virtual int Count => 0;
+    public abstract int Count { get; }
 
     /// <summary>
     /// A TypeList that doesn't depend on any information from the source code.
     /// </summary>
-    public class Builtin : TypeList;
+    public class Builtin : TypeList
+    {
+        public override int Count => 0;
+    }
 
     /// <summary>
     /// A TypeList that contains no values.
@@ -40,12 +43,21 @@ public abstract class TypeList
     }
 
     /// <summary>
-    /// The return types of a function.
+    /// A TypeList that derives its types from a list of type annotations.
     /// </summary>
-    public class Returns(Tree.Expression.Function function) : TypeList
+    public class FromTypes(List<Tree.Type> types) : TypeList
     {
-        public Tree.Expression.Function Function => function;
-        public override int Count => function.Type.ReturnTypes?.Count ?? 0;
+        public List<Tree.Type> Types => types;
+        public override int Count => types.Count;
+    }
+
+    /// <summary>
+    /// A TypeList that derives its types from a list of values.
+    /// </summary>
+    public class FromValues(List<Tree.Expression> values) : TypeList
+    {
+        public List<Tree.Expression> Values => values;
+        public override int Count => values.Count;
     }
 
     /// <summary>

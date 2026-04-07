@@ -71,7 +71,7 @@ public class Emitter
         Emit('(');
         EmitDeclarationList(function.Type.Parameters);
         Emit(")\n");
-        EmitBlock(function.Body, indent + 1);
+        EmitBlock(function.Chunk, indent + 1);
         EmitIndent(indent);
         Emit("end");
     }

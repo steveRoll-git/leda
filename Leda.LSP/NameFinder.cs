@@ -112,7 +112,7 @@ public static class NameFinder
             Tree.Statement.Do doBlock => GetNameAtPosition(doBlock.Body, position),
 
             Tree.Expression.Function function => GetNameAtPosition(function.Type, position) ??
-                                                 GetNameAtPosition(function.Body, position),
+                                                 GetNameAtPosition(function.Chunk, position),
 
             Tree.Type.Function functionType => GetNameAtPosition(functionType.Parameters, position) ??
                                                GetNameAtPosition(functionType.ReturnTypes, position) ??

@@ -80,31 +80,19 @@ public abstract class Type
     public static readonly Type FunctionPrimitive =
         new PrimitiveType(other => other is Function) { Name = "function" };
 
-    public class Function : Type
+    public class Function(TypeList parameters, TypeList returns, List<TypeParameter> typeParameters) : Type
     {
-        public Function(TypeList parameters, TypeList returns, List<TypeParameter> typeParameters)
-        {
-            Parameters = parameters;
-            Return = returns;
-            TypeParameters = typeParameters;
-        }
-
-        public Function(Tree.Expression.Function function)
-        {
-            Parameters = new TypeList.Parameters(function);
-        }
-
         /// <summary>
         /// The types of this function's parameters.
         /// </summary>
-        public TypeList Parameters { get; }
+        public TypeList Parameters => parameters;
 
         /// <summary>
         /// This function's return types.
         /// </summary>
-        public TypeList Return { get; set; }
+        public TypeList Return => returns;
 
-        public List<TypeParameter> TypeParameters { get; }
+        public List<TypeParameter> TypeParameters => typeParameters;
     }
 
     /// <summary>

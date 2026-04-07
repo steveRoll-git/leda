@@ -79,6 +79,18 @@ public abstract class Tree
     }
 
     /// <summary>
+    /// The top-level block of a function or a file, which also stores all of its return statements.
+    /// </summary>
+    public class Chunk(
+        List<Statement> statements,
+        List<TypeAliasDeclaration> typeDeclarations,
+        List<Statement.Return> returnStatements)
+        : Block(statements, typeDeclarations)
+    {
+        public List<Statement.Return> ReturnStatements => returnStatements;
+    }
+
+    /// <summary>
     /// Tree nodes that appear as statements.
     /// </summary>
     public abstract class Statement : Tree
@@ -304,10 +316,11 @@ public abstract class Tree
         /// <summary>
         /// A function value.
         /// </summary>
-        public class Function(Type.Function type, Block body, bool isMethod) : Expression
+        public class Function(Type.Function type, Chunk chunk, bool isMethod)
+            : Expression
         {
             public new Type.Function Type => type;
-            public Block Body => body;
+            public Chunk Chunk => chunk;
 
             /// <summary>
             /// Whether this function was defined with a `:`.
