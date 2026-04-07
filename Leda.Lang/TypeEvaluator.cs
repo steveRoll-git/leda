@@ -211,6 +211,7 @@ public class TypeEvaluator(Source source)
         return symbol switch
         {
             Symbol.LocalVariable localVariable => GetTypeOfLocalVariable(localVariable),
+            Symbol.LocalFunction localFunction => GetTypeOfFunction(localFunction.Declaration.Function),
             // A parameter symbol will always reference an existent function parameter.
             Symbol.Parameter parameter => GetTypeOfParameter(parameter.Function, parameter.Index)!,
             Symbol.NumericForCounter => Type.NumberPrimitive,
@@ -288,6 +289,47 @@ public class TypeEvaluator(Source source)
             Tree.Type.Table table => GetTypeOfTableAnnotation(table),
             _ => Type.Unknown
         };
+    }
+
+    /// <summary>
+    /// Returns the effective number of values produced by this expression list, including trailing values.
+    /// </summary>
+    internal int GetNumberOfValues(List<Tree.Expression> expressions)
+    {
+        return expressions.Count;
+    }
+
+    /// <summary>
+    /// Returns the minimum number of elements in this TypeList.
+    /// </summary>
+    internal int GetTypeListMinimum(TypeList typeList)
+    {
+        // TODO consider nillable types and rest
+        return typeList.Count;
+    }
+
+    /// <summary>
+    /// Returns the maximum number of elements in this TypeList.<br/>
+    /// (Only relevant if the TypeList does not have a repeating `rest` type.)
+    /// </summary>
+    internal int GetTypeListMaximum(TypeList typeList)
+    {
+        // TODO consider rest
+        return typeList.Count;
+    }
+
+    /// <summary>
+    /// Returns whether a TypeList has a repeating `rest` type.
+    /// </summary>
+    internal bool DoesTypeListHaveRest(TypeList typeList)
+    {
+        if (typeList is TypeList.Builtin)
+        {
+            return true;
+        }
+
+        // TODO
+        return false;
     }
 
     internal (Type? Type, bool IsRest) GetTypeInTypeList(TypeList typeList, int index)

@@ -6,6 +6,11 @@ namespace Leda.Lang;
 public abstract class TypeList
 {
     /// <summary>
+    /// The number of elements in this TypeList, excluding the `rest` part.
+    /// </summary>
+    public virtual int Count => 0;
+
+    /// <summary>
     /// A TypeList that doesn't depend on any information from the source code.
     /// </summary>
     public class Builtin : TypeList;
@@ -31,6 +36,7 @@ public abstract class TypeList
     public class Parameters(Tree.Expression.Function function) : TypeList
     {
         public Tree.Expression.Function Function => function;
+        public override int Count => function.Type.Parameters.Count;
     }
 
     /// <summary>
@@ -39,7 +45,18 @@ public abstract class TypeList
     public class Returns(Tree.Expression.Function function) : TypeList
     {
         public Tree.Expression.Function Function => function;
+        public override int Count => function.Type.ReturnTypes?.Count ?? 0;
     }
+
+    /// <summary>
+    /// Returns a string that represents an item in this kind of TypeList.
+    /// </summary>
+    public static string ItemNoun(TypeListKind kind) => kind switch
+    {
+        TypeListKind.Parameter or TypeListKind.FunctionTypeParameter => "parameter",
+        TypeListKind.Return or TypeListKind.FunctionTypeReturn => "return value",
+        _ => "value"
+    };
 }
 
 /// <summary>

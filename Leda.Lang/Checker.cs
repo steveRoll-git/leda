@@ -44,39 +44,30 @@ public class Checker
         }
     }
 
-    private TypeList VisitCall(Tree.Expression.Call call)
+    private void VisitCall(Tree.Expression.Call call)
     {
+        VisitExpression(call.Target);
+        VisitExpressionList(call.Parameters);
+
         var target = evaluator.GetTypeOfExpression(call.Target);
 
         if (target == Type.Unknown)
         {
-            VisitExpressionList(call.Parameters);
-            return TypeList.Unknown;
+            return;
         }
 
         // TODO we could store a simple flag for whether a type is callable instead of checking like this.
         if (!IsAssignableFrom(Type.FunctionPrimitive, target)) // TODO handle __call metamethod
         {
             Report(new Diagnostic.TypeNotCallable(call.Target.Range));
-            VisitExpressionList(call.Parameters);
-            return TypeList.Unknown;
-        }
-
-        if (target == Type.FunctionPrimitive)
-        {
-            VisitExpressionList(call.Parameters);
-            return TypeList.Any;
+            return;
         }
 
         if (target is Type.Function function)
         {
             // TODO support overloads
             CheckAssignment(function.Parameters, call.Parameters, TypeListKind.Parameter, call.Target.Range);
-
-            return function.Return;
         }
-
-        throw new NotImplementedException("Types other than `Function` aren't callable yet");
     }
 
     private void VisitExpressionList(List<Tree.Expression> expressions)
@@ -286,8 +277,7 @@ public class Checker
     }
 
     /// <summary>
-    /// Checks an assignment of a list of values to a list of targets, inferring types along the way.<br/>
-    /// This is used in assignments, local declarations, and function parameters.
+    /// Checks an assignment of a list of values to a list of target types.
     /// </summary>
     /// <param name="targets">The targets being assigned to.</param>
     /// <param name="sources">The values being assigned.</param>
@@ -296,7 +286,36 @@ public class Checker
     private void CheckAssignment(TypeList targets, List<Tree.Expression> sources, TypeListKind kind,
         Range sideErrorRange = new())
     {
-        throw new NotImplementedException();
+        var expectedValues = evaluator.GetTypeListMinimum(targets);
+        var gotValues = evaluator.GetNumberOfValues(sources);
+        if (gotValues < expectedValues)
+        {
+            Report(new Diagnostic.TypeMismatch(sideErrorRange,
+                new TypeMismatch.NotEnoughValues(expectedValues, gotValues, kind)));
+            return;
+        }
+
+        var i = 0;
+        for (; i < sources.Count; i++)
+        {
+            var value = sources[i];
+            var (targetType, _) = evaluator.GetTypeInTypeList(targets, i);
+            if (targetType != null)
+            {
+                CheckValueToType(targetType, value, null);
+            }
+        }
+
+        if (!evaluator.DoesTypeListHaveRest(targets))
+        {
+            var maximum = evaluator.GetTypeListMaximum(targets);
+            if (i > maximum)
+            {
+                var firstExcessive = sources[maximum];
+                var lastExcessive = sources[i - 1];
+                Report(new Diagnostic.TooManyValues(firstExcessive.Range.Union(lastExcessive.Range), kind, maximum, i));
+            }
+        }
     }
 
     private void VisitStatement(Tree.Statement.Return returnStatement)

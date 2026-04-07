@@ -225,6 +225,12 @@ public abstract record Diagnostic(Range Range)
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Warning;
         public override string Message => "This variable will have `nil` assigned to it. This may not be intentional.";
     }
+
+    public record TooManyValues(Range Range, TypeListKind Kind, int Maximum, int Got) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Expected at most {Maximum} {TypeList.ItemNoun(Kind)}s, but got {Got}.";
+    }
 }
 
 public enum DiagnosticSeverity
