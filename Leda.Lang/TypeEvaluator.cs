@@ -22,7 +22,6 @@ public class TypeEvaluator(Source source)
 
     internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
     {
-        // TODO incomplete
         switch (expression)
         {
             case Tree.Expression.Name name:
@@ -37,6 +36,10 @@ public class TypeEvaluator(Source source)
                 return GetTypeOfTableValue(table);
             case Tree.Expression.Access access:
                 return GetTypeOfAccess(access) ?? Type.Unknown;
+            case Tree.Expression.Call call:
+                return GetTypeOfExpression(call.Target) is Type.Function { Return: var returnTypes }
+                    ? GetTypeInTypeList(returnTypes, 0).Type ?? Type.Nil
+                    : Type.Unknown;
             case Tree.Expression.False:
                 return isConstant ? Type.False : Type.Boolean;
             case Tree.Expression.True:
@@ -264,8 +267,22 @@ public class TypeEvaluator(Source source)
             return GetTypeOfExpression(expressions[index]);
         }
 
-        // TODO
-        return Type.Unknown;
+        if (expressions.Count >= 1)
+        {
+            var last = expressions[^1];
+            if (last is Tree.Expression.Call { Target: var callTarget })
+            {
+                var targetType = GetTypeOfExpression(callTarget);
+                if (targetType is Type.Function function)
+                {
+                    return GetTypeInTypeList(function.Return, index - expressions.Count + 1).Type ?? Type.Nil;
+                }
+
+                return Type.Unknown;
+            }
+        }
+
+        return Type.Nil;
     }
 
     private Type GetTypeOfTypeAliasUncached(Symbol.TypeAlias typeAlias)
@@ -386,7 +403,7 @@ public class TypeEvaluator(Source source)
                 return (GetTypeOfTypeAnnotation(types[index]), false);
             }
 
-            return (Type.Unknown, true);
+            return (Type.Nil, true);
         }
 
         if (typeList is TypeList.FromValues { Values: var values })
