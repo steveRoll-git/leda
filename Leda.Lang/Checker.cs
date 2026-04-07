@@ -284,26 +284,23 @@ public class Checker
             return;
         }
 
-        var i = 0;
-        for (; i < sources.Count; i++)
+        var targetsHaveRest = evaluator.DoesTypeListHaveRest(targets);
+        var maximum = evaluator.GetTypeListMaximum(targets);
+
+        for (var i = 0; i < sources.Count && (targetsHaveRest || i < maximum); i++)
         {
             var value = sources[i];
+            // TODO store & reuse existing rest type
             var (targetType, _) = evaluator.GetTypeInTypeList(targets, i);
-            if (targetType != null)
-            {
-                CheckValueToType(targetType, value, null);
-            }
+            CheckValueToType(targetType!, value, null);
         }
 
-        if (!evaluator.DoesTypeListHaveRest(targets))
+        if (!targetsHaveRest && sources.Count > maximum)
         {
-            var maximum = evaluator.GetTypeListMaximum(targets);
-            if (i > maximum)
-            {
-                var firstExcessive = sources[maximum];
-                var lastExcessive = sources[i - 1];
-                Report(new Diagnostic.TooManyValues(firstExcessive.Range.Union(lastExcessive.Range), kind, maximum, i));
-            }
+            var firstExcessive = sources[maximum];
+            var lastExcessive = sources[^1];
+            Report(new Diagnostic.TooManyValues(firstExcessive.Range.Union(lastExcessive.Range), kind, maximum,
+                sources.Count));
         }
     }
 
