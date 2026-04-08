@@ -276,7 +276,7 @@ public class Checker
         Range sideErrorRange = new())
     {
         var expectedValues = evaluator.GetTypeListMinimum(targets);
-        var gotValues = evaluator.GetNumberOfValues(sources);
+        var gotValues = evaluator.GetMinimumNumberOfValues(sources);
         if (gotValues < expectedValues)
         {
             Report(new Diagnostic.TypeMismatch(sideErrorRange,
@@ -290,9 +290,21 @@ public class Checker
         for (var i = 0; i < sources.Count && (targetsHaveRest || i < maximum); i++)
         {
             var value = sources[i];
+            // If the last expression is one that returns a TypeList, check it with `IsAssignableFrom`.
+            if (i == sources.Count - 1 && evaluator.GetTypeListOfExpression(value) is { } sourceTypeList)
+            {
+                if (!IsAssignableFrom(targets, sourceTypeList, out var reasons, TypeListKind.Return, targetIndex: i))
+                {
+                    Report(new Diagnostic.TypeMismatch(value.Range,
+                        new TypeMismatch.TrailingValuesIncompatible { Children = reasons }));
+                }
+
+                break;
+            }
+
             // TODO store & reuse existing rest type
-            var (targetType, _) = evaluator.GetTypeInTypeList(targets, i);
-            CheckValueToType(targetType!, value, null);
+            var targetType = evaluator.GetTypeInTypeList(targets, i);
+            CheckValueToType(targetType, value, null);
         }
 
         if (!targetsHaveRest && sources.Count > maximum)
@@ -680,54 +692,56 @@ public class Checker
         return true;
     }
 
-    private bool IsAssignableFrom(TypeList target, TypeList other, [NotNullWhen(false)] out List<TypeMismatch>? reasons,
-        TypeListKind kind)
+    private bool IsAssignableFrom(TypeList targets, TypeList sources,
+        [NotNullWhen(false)] out List<TypeMismatch>? reasons,
+        TypeListKind kind,
+        int targetIndex = 0)
     {
         reasons = [];
 
-        var targetMinimum = evaluator.GetTypeListMinimum(target);
-        var sourceMinimum = evaluator.GetTypeListMinimum(other);
+        var targetMinimum = evaluator.GetTypeListMinimum(targets) - targetIndex;
+        var sourceMinimum = evaluator.GetTypeListMinimum(sources);
         if (sourceMinimum < targetMinimum)
         {
             reasons.Add(new TypeMismatch.NotEnoughValues(targetMinimum, sourceMinimum, kind));
             return false;
         }
 
-        var targetIndex = 0;
-        var sourceIndex = 0;
+        var sourcesHaveRest = evaluator.DoesTypeListHaveRest(sources);
+        var targetsHaveRest = evaluator.DoesTypeListHaveRest(targets);
 
-        while (true)
+        int maximum;
+        if (sourcesHaveRest && !targetsHaveRest)
         {
-            var (sourceType, isSourceRest) = evaluator.GetTypeInTypeList(other, sourceIndex);
-            var (targetType, isTargetRest) = evaluator.GetTypeInTypeList(target, targetIndex);
+            maximum = evaluator.GetTypeListMaximum(targets);
+        }
+        else if (!sourcesHaveRest && targetsHaveRest)
+        {
+            maximum = evaluator.GetTypeListMaximum(sources) + targetIndex;
+        }
+        else
+        {
+            maximum = Math.Min(evaluator.GetTypeListMaximum(targets),
+                evaluator.GetTypeListMaximum(sources) + targetIndex);
+        }
 
-            if (targetType == null)
-            {
-                // No more target types, there is no need to check the source further.
-                // (But a warning about excessive values could be shown here)
-                break;
-            }
+        var sourceIndex = 0;
+        for (; targetIndex < maximum; targetIndex++)
+        {
+            var sourceType = evaluator.GetTypeInTypeList(sources, sourceIndex);
+            var targetType = evaluator.GetTypeInTypeList(targets, targetIndex);
 
-            if (isTargetRest && sourceType == null)
-            {
-                // If the target type list has a rest type, we only need to check them as long as the source is
-                // providing unique types.
-                break;
-            }
-
-            if (!IsAssignableFrom(targetType, sourceType ?? Type.Nil, out var subReason))
+            if (!IsAssignableFrom(targetType, sourceType, out var subReason))
             {
                 reasons.Add(new TypeMismatch.ValueInListIncompatible(sourceIndex, kind) { Children = [subReason] });
             }
 
-            if (isTargetRest && isSourceRest)
-            {
-                // If both type lists end with a rest type, we have to check their assignability just once.
-                break;
-            }
-
             sourceIndex++;
-            targetIndex++;
+        }
+
+        if (targetsHaveRest && sourcesHaveRest)
+        {
+            // TODO compare rest types
         }
 
         if (reasons.Count > 0)

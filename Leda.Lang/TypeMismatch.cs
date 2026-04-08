@@ -44,6 +44,11 @@ public abstract record TypeMismatch
         public override string Message => $"Values at key '{Key}' are incompatible.";
     }
 
+    public record TrailingValuesIncompatible : TypeMismatch
+    {
+        public override string Message => "The values returned here are incompatible.";
+    }
+
     private string ToString(int indent)
     {
         var result = new string(' ', indent * 2) + Message;

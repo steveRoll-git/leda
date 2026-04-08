@@ -37,9 +37,7 @@ public class TypeEvaluator(Source source)
             case Tree.Expression.Access access:
                 return GetTypeOfAccess(access) ?? Type.Unknown;
             case Tree.Expression.Call call:
-                return GetTypeOfExpression(call.Target) is Type.Function { Return: var returnTypes }
-                    ? GetTypeInTypeList(returnTypes, 0).Type ?? Type.Nil
-                    : Type.Unknown;
+                return GetTypeInTypeList(GetTypeListOfCall(call), 0);
             case Tree.Expression.False:
                 return isConstant ? Type.False : Type.Boolean;
             case Tree.Expression.True:
@@ -212,12 +210,12 @@ public class TypeEvaluator(Source source)
         return GetTypeOfExpressionInList(localVariable.Declaration.Values, localVariable.Index);
     }
 
-    private Type? GetTypeOfParameter(Tree.Expression.Function function, int index)
+    private Type GetTypeOfParameter(Tree.Expression.Function function, int index)
     {
         if (index >= function.Type.Parameters.Count)
         {
             // TODO check rest
-            return null;
+            return Type.Unknown;
         }
 
         var declaration = function.Type.Parameters[index];
@@ -270,15 +268,9 @@ public class TypeEvaluator(Source source)
         if (expressions.Count >= 1)
         {
             var last = expressions[^1];
-            if (last is Tree.Expression.Call { Target: var callTarget })
+            if (last is Tree.Expression.Call call)
             {
-                var targetType = GetTypeOfExpression(callTarget);
-                if (targetType is Type.Function function)
-                {
-                    return GetTypeInTypeList(function.Return, index - expressions.Count + 1).Type ?? Type.Nil;
-                }
-
-                return Type.Unknown;
+                return GetTypeInTypeList(GetTypeListOfCall(call), index - expressions.Count + 1);
             }
         }
 
@@ -332,11 +324,13 @@ public class TypeEvaluator(Source source)
     }
 
     /// <summary>
-    /// Returns the effective number of values produced by this expression list, including trailing values.
+    /// Returns the effective minimum number of values produced by this expression list, including trailing values.
     /// </summary>
-    internal int GetNumberOfValues(List<Tree.Expression> expressions)
+    internal int GetMinimumNumberOfValues(List<Tree.Expression> expressions)
     {
-        return expressions.Count;
+        return expressions.Count + (expressions.Count >= 1 && GetTypeListOfExpression(expressions[^1]) is { } typeList
+            ? GetTypeListMinimum(typeList)
+            : 0);
     }
 
     /// <summary>
@@ -372,27 +366,26 @@ public class TypeEvaluator(Source source)
         return false;
     }
 
-    internal (Type? Type, bool IsRest) GetTypeInTypeList(TypeList typeList, int index)
+    internal Type GetTypeInTypeList(TypeList typeList, int index)
     {
         if (typeList == TypeList.Empty)
         {
-            return (Type.Nil, true);
+            return Type.Nil;
         }
 
         if (typeList == TypeList.Any)
         {
-            return (Type.Any, true);
+            return Type.Any;
         }
 
         if (typeList == TypeList.Unknown)
         {
-            return (Type.Unknown, true);
+            return Type.Unknown;
         }
 
         if (typeList is TypeList.Parameters { Function: var function })
         {
-            // TODO check rest properly
-            return (GetTypeOfParameter(function, index), false);
+            return GetTypeOfParameter(function, index);
         }
 
         if (typeList is TypeList.FromTypes { Types: var types })
@@ -400,19 +393,42 @@ public class TypeEvaluator(Source source)
             // TODO check rest
             if (index < types.Count)
             {
-                return (GetTypeOfTypeAnnotation(types[index]), false);
+                return GetTypeOfTypeAnnotation(types[index]);
             }
 
-            return (Type.Nil, true);
+            return Type.Nil;
         }
 
         if (typeList is TypeList.FromValues { Values: var values })
         {
             // TODO check rest
-            return (GetTypeOfExpressionInList(values, index), false);
+            return GetTypeOfExpressionInList(values, index);
         }
 
-        return (Type.Unknown, true);
+        return Type.Unknown;
+    }
+
+    private TypeList GetTypeListOfCall(Tree.Expression.Call call)
+    {
+        var targetType = GetTypeOfExpression(call.Target);
+        if (targetType is Type.Function { Return: var returns })
+        {
+            return returns;
+        }
+
+        return TypeList.Unknown;
+    }
+
+    internal TypeList? GetTypeListOfExpression(Tree.Expression expression)
+    {
+        if (expression is Tree.Expression.Call call)
+        {
+            return GetTypeListOfCall(call);
+        }
+
+        // TODO handle vararg
+
+        return null;
     }
 
     /// <summary>
@@ -498,7 +514,7 @@ public class TypeEvaluator(Source source)
                 result += name + ": ";
             }
 
-            result += TypeToString(GetTypeInTypeList(typeList, i).Type!);
+            result += TypeToString(GetTypeInTypeList(typeList, i));
 
             if (i < maximum - 1)
             {
