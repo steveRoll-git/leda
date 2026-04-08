@@ -416,6 +416,19 @@ public class TypeEvaluator(Source source)
     }
 
     /// <summary>
+    /// Returns the name of a value in a TypeList, if it exists.
+    /// </summary>
+    private string? GetNameInTypeList(TypeList typeList, int index)
+    {
+        if (typeList is TypeList.Parameters { Function.Type: var function } && index < function.Parameters.Count)
+        {
+            return function.Parameters[index].Name.Value;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Runs the function and returns its result, only if it doesn't exist in the cache.
     /// </summary>
     /// <param name="function">The function that performs the query.</param>
@@ -473,6 +486,36 @@ public class TypeEvaluator(Source source)
         return s + "}";
     }
 
+    private string TypeListToString(TypeList typeList)
+    {
+        var result = "";
+
+        var maximum = GetTypeListMaximum(typeList);
+        for (var i = 0; i < maximum; i++)
+        {
+            if (GetNameInTypeList(typeList, i) is { } name)
+            {
+                result += name + ": ";
+            }
+
+            result += TypeToString(GetTypeInTypeList(typeList, i).Type!);
+
+            if (i < maximum - 1)
+            {
+                result += ", ";
+            }
+        }
+
+        return result;
+    }
+
+    private string FunctionToString(Type.Function function)
+    {
+        var parameters = TypeListToString(function.Parameters);
+        var returns = function.Return == TypeList.Empty ? "" : ": " + TypeListToString(function.Return);
+        return $"function({parameters}){returns}";
+    }
+
     /// <summary>
     /// Returns a string representation of the type.
     /// </summary>
@@ -497,7 +540,7 @@ public class TypeEvaluator(Source source)
             Type.StringLiteral stringLiteral => '"' + stringLiteral.Literal + '"',
             Type.PrimitiveType or Type.Reference or Type.TypeParameter => type.Name!,
             Type.Table table => TableToString(table, multiline, indent),
-            Type.Function function => throw new NotImplementedException(),
+            Type.Function function => FunctionToString(function),
             _ => throw new ArgumentOutOfRangeException(nameof(type))
         };
     }
