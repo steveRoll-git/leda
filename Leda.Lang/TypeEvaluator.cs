@@ -18,6 +18,7 @@ public class TypeEvaluator(Source source)
     private readonly Dictionary<Tree.Expression.Table, Type.Table> inferredTableCache = [];
     private readonly Dictionary<Tree.Type.Table, Type.Table> tableAnnotationCache = [];
     private readonly Dictionary<Tree.Expression.Function, Type.Function> functionTypeCache = [];
+    private readonly Dictionary<Tree.Type.Function, Type.Function> functionAnnotationCache = [];
     private readonly Dictionary<Symbol.TypeAlias, Type> typeAliasCache = [];
 
     internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
@@ -96,6 +97,17 @@ public class TypeEvaluator(Source source)
     private Type.Table GetTypeOfTableAnnotation(Tree.Type.Table table)
     {
         return GetQueryOrCached(GetTypeOfTableAnnotationUncached, table, tableAnnotationCache);
+    }
+
+    private static Type.Function GetTypeOfFunctionAnnotationUncached(Tree.Type.Function function)
+    {
+        return new Type.Function(new TypeList.FromDeclarations(function.Parameters),
+            function.ReturnTypes != null ? new TypeList.FromTypes(function.ReturnTypes) : TypeList.Empty, []);
+    }
+
+    private Type.Function GetTypeOfFunctionAnnotation(Tree.Type.Function function)
+    {
+        return GetQueryOrCached(GetTypeOfFunctionAnnotationUncached, function, functionAnnotationCache);
     }
 
     internal Type? GetTypeOfStringKeyInTable(Type.Table table, string key)
@@ -319,6 +331,7 @@ public class TypeEvaluator(Source source)
             Tree.Type.NumberLiteral numberLiteral => new Type.NumberLiteral(numberLiteral.Value),
             Tree.Type.Name name => GetTypeOfTypeName(name),
             Tree.Type.Table table => GetTypeOfTableAnnotation(table),
+            Tree.Type.Function function => GetTypeOfFunctionAnnotation(function),
             _ => Type.Unknown
         };
     }
@@ -383,35 +396,39 @@ public class TypeEvaluator(Source source)
             return Type.Unknown;
         }
 
-        if (typeList is TypeList.Parameters { Function: var function })
+        switch (typeList)
         {
-            return GetTypeOfParameter(function, index);
+            case TypeList.Parameters { Function: var function }:
+                return GetTypeOfParameter(function, index);
+
+            case TypeList.FromTypes { Types: var types } when index < types.Count:
+                // TODO check rest
+                if (index < types.Count)
+                {
+                    return GetTypeOfTypeAnnotation(types[index]);
+                }
+
+                return Type.Nil;
+
+            case TypeList.FromValues { Values: var values }:
+                // TODO check rest
+                return GetTypeOfExpressionInList(values, index);
+
+            case TypeList.AssignmentTargets { Targets: var targets }:
+                // TODO check rest
+                return GetTypeOfExpressionInList(targets, index);
+
+            case TypeList.FromDeclarations { Declarations: var declarations }:
+                if (index < declarations.Count && declarations[index].Type is { } declarationType)
+                {
+                    return GetTypeOfTypeAnnotation(declarationType);
+                }
+
+                return Type.Nil;
+
+            default:
+                return Type.Unknown;
         }
-
-        if (typeList is TypeList.FromTypes { Types: var types })
-        {
-            // TODO check rest
-            if (index < types.Count)
-            {
-                return GetTypeOfTypeAnnotation(types[index]);
-            }
-
-            return Type.Nil;
-        }
-
-        if (typeList is TypeList.FromValues { Values: var values })
-        {
-            // TODO check rest
-            return GetTypeOfExpressionInList(values, index);
-        }
-
-        if (typeList is TypeList.AssignmentTargets { Targets: var targets })
-        {
-            // TODO check rest
-            return GetTypeOfExpressionInList(targets, index);
-        }
-
-        return Type.Unknown;
     }
 
     private TypeList GetTypeListOfCall(Tree.Expression.Call call)
@@ -442,12 +459,14 @@ public class TypeEvaluator(Source source)
     /// </summary>
     private string? GetNameInTypeList(TypeList typeList, int index)
     {
-        if (typeList is TypeList.Parameters { Function.Type: var function } && index < function.Parameters.Count)
+        return typeList switch
         {
-            return function.Parameters[index].Name.Value;
-        }
-
-        return null;
+            TypeList.Parameters { Function.Type.Parameters: var parameters } when index < parameters.Count =>
+                parameters[index].Name.Value,
+            TypeList.FromDeclarations { Declarations: var declarations } when index < declarations.Count =>
+                declarations[index].Name.Value,
+            _ => null
+        };
     }
 
     /// <summary>

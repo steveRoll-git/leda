@@ -60,6 +60,12 @@ public abstract class TypeList
         public override int Count => values.Count;
     }
 
+    public class FromDeclarations(List<Tree.Declaration> declarations) : TypeList
+    {
+        public List<Tree.Declaration> Declarations => declarations;
+        public override int Count => declarations.Count;
+    }
+
     /// <summary>
     /// The values being assigned to in an assignment statement.<br/>
     /// </summary>
