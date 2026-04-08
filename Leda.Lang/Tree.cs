@@ -322,6 +322,8 @@ public abstract class Tree
             public new Type.Function Type => type;
             public Chunk Chunk => chunk;
 
+            internal AssignmentTarget? AssignmentTarget { get; set; }
+
             /// <summary>
             /// Whether this function was defined with a `:`.
             /// </summary>
@@ -420,5 +422,17 @@ public abstract class Tree
     {
         public Type.Name Name => name;
         public Type Type => type;
+    }
+}
+
+/// <summary>
+/// Represents a location where a value could be assigned to. Used when inferring the parameter types of functions.
+/// </summary>
+internal abstract class AssignmentTarget
+{
+    public class LocalVariable(Tree.Statement.LocalDeclaration localDeclaration, int index) : AssignmentTarget
+    {
+        public Tree.Statement.LocalDeclaration LocalDeclaration => localDeclaration;
+        public int Index => index;
     }
 }

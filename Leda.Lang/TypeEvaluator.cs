@@ -222,6 +222,22 @@ public class TypeEvaluator(Source source)
         return GetTypeOfExpressionInList(localVariable.Declaration.Values, localVariable.Index);
     }
 
+    private Type GetAssignmentTargetType(AssignmentTarget assignmentTarget)
+    {
+        if (assignmentTarget is AssignmentTarget.LocalVariable
+            {
+                LocalDeclaration: var localDeclaration, Index: var localIndex
+            } &&
+            localDeclaration.Declarations[localIndex].Type is { } annotation)
+
+        {
+            return GetTypeOfTypeAnnotation(annotation);
+        }
+
+
+        return Type.Unknown;
+    }
+
     private Type GetTypeOfParameter(Tree.Expression.Function function, int index)
     {
         if (index >= function.Type.Parameters.Count)
@@ -237,7 +253,11 @@ public class TypeEvaluator(Source source)
             return GetTypeOfTypeAnnotation(declaration.Type);
         }
 
-        // TODO infer parameter type
+        if (function.AssignmentTarget != null &&
+            GetAssignmentTargetType(function.AssignmentTarget) is Type.Function targetFunction)
+        {
+            return GetTypeInTypeList(targetFunction.Parameters, index);
+        }
 
         return Type.Unknown;
     }

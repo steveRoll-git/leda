@@ -38,6 +38,8 @@ public class Binder
         [Type.FunctionPrimitive.Name!] = new(null, Symbol.FunctionType)
     };
 
+    private readonly Stack<AssignmentTarget> assignmentTargetStack = [];
+
     private Binder(Source source)
     {
         this.source = source;
@@ -273,11 +275,25 @@ public class Binder
         }
     }
 
-    private void Visit(List<Tree.Expression> expressions)
+    private void Visit(List<Tree.Expression> expressions, Tree? parent = null)
     {
-        foreach (var expression in expressions)
+        for (var i = 0; i < expressions.Count; i++)
         {
+            // TODO temporary
+            var pushed = false;
+            if (parent is Tree.Statement.LocalDeclaration localDeclaration)
+            {
+                assignmentTargetStack.Push(new AssignmentTarget.LocalVariable(localDeclaration, i));
+                pushed = true;
+            }
+
+            var expression = expressions[i];
             Visit(expression);
+
+            if (pushed)
+            {
+                assignmentTargetStack.Pop();
+            }
         }
     }
 
@@ -376,6 +392,11 @@ public class Binder
 
     private void Visit(Tree.Expression.Function function)
     {
+        if (assignmentTargetStack.Count > 0)
+        {
+            function.AssignmentTarget = assignmentTargetStack.Peek();
+        }
+
         PushScope();
         VisitFunction(function);
         PopScope();
@@ -449,7 +470,7 @@ public class Binder
 
     private void Visit(Tree.Statement.LocalDeclaration localDeclaration)
     {
-        Visit(localDeclaration.Values);
+        Visit(localDeclaration.Values, localDeclaration);
 
         for (var i = 0; i < localDeclaration.Declarations.Count; i++)
         {

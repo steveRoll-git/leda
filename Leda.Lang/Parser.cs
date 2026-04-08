@@ -618,7 +618,7 @@ public class Parser
 
         if (Accept<Token.Function>())
         {
-            // 'local' name funcbody
+            // 'local' 'function' name funcbody
             var name = ParseValueName();
             var function = ParseFunctionBody(false);
             return EndTree(new Tree.Statement.LocalFunctionDeclaration(name, function));
