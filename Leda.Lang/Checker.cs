@@ -246,7 +246,7 @@ public class Checker
             ? assignment.Values[0].Range.Union(assignment.Values[^1].Range)
             : assignment.Range;
 
-        CheckAssignment(new TypeList.FromValues(assignment.Targets), assignment.Values, TypeListKind.Value,
+        CheckAssignment(new TypeList.AssignmentTargets(assignment.Targets), assignment.Values, TypeListKind.Value,
             sideErrorRange);
     }
 
@@ -293,7 +293,7 @@ public class Checker
             // TODO store & reuse existing rest type
             var targetType = evaluator.GetTypeInTypeList(targets, i);
             CheckValueToType(targetType, value,
-                targets is TypeList.FromValues { Values: var targetValues } ? targetValues[i] : null);
+                targets is TypeList.AssignmentTargets { Targets: var targetValues } ? targetValues[i] : null);
         }
 
         if (!targetsHaveRest && sources.Count > maximum)

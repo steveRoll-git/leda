@@ -61,6 +61,19 @@ public abstract class TypeList
     }
 
     /// <summary>
+    /// The values being assigned to in an assignment statement.<br/>
+    /// </summary>
+    /// <remarks>
+    /// This is used only in the checker when checking assignment statements, to reuse existing code for checking lists
+    /// of types and values.
+    /// </remarks>
+    public class AssignmentTargets(List<Tree.Expression> targets) : TypeList
+    {
+        public List<Tree.Expression> Targets => targets;
+        public override int Count => targets.Count;
+    }
+
+    /// <summary>
     /// Returns a string that represents an item in this kind of TypeList.
     /// </summary>
     public static string ItemNoun(TypeListKind kind) => kind switch

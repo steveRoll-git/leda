@@ -405,6 +405,12 @@ public class TypeEvaluator(Source source)
             return GetTypeOfExpressionInList(values, index);
         }
 
+        if (typeList is TypeList.AssignmentTargets { Targets: var targets })
+        {
+            // TODO check rest
+            return GetTypeOfExpressionInList(targets, index);
+        }
+
         return Type.Unknown;
     }
 
