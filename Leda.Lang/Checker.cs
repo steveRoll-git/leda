@@ -237,32 +237,17 @@ public class Checker
 
     private void VisitStatement(Tree.Statement.Assignment assignment)
     {
-        for (var i = 0; i < assignment.Values.Count; i++)
+        foreach (var value in assignment.Values)
         {
-            var value = assignment.Values[i];
             VisitExpression(value);
-            if (i >= assignment.Targets.Count)
-            {
-                Report(new Diagnostic.ValueNotAssigned(value.Range));
-            }
         }
 
-        for (var i = 0; i < assignment.Targets.Count; i++)
-        {
-            var target = assignment.Targets[i];
-            var targetType = evaluator.GetTypeOfExpression(target);
-            if (i < assignment.Values.Count)
-            {
-                var value = assignment.Values[i];
-                CheckValueToType(targetType, value, target);
-            }
-            else
-            {
-                // TODO check trailing values
-                CheckTypeToType(targetType, Type.Nil, target.Range);
-                Report(new Diagnostic.TargetNotAssigned(target.Range));
-            }
-        }
+        var sideErrorRange = assignment.Values.Count >= 1
+            ? assignment.Values[0].Range.Union(assignment.Values[^1].Range)
+            : assignment.Range;
+
+        CheckAssignment(new TypeList.FromValues(assignment.Targets), assignment.Values, TypeListKind.Value,
+            sideErrorRange);
     }
 
     /// <summary>
@@ -273,7 +258,7 @@ public class Checker
     /// <param name="kind">The kind of typelist being checked.</param>
     /// <param name="sideErrorRange">The range to show an error, if there are no source or target nodes.</param>
     private void CheckAssignment(TypeList targets, List<Tree.Expression> sources, TypeListKind kind,
-        Range sideErrorRange = new())
+        Range sideErrorRange)
     {
         var expectedValues = evaluator.GetTypeListMinimum(targets);
         var gotValues = evaluator.GetMinimumNumberOfValues(sources);
@@ -290,8 +275,11 @@ public class Checker
         for (var i = 0; i < sources.Count && (targetsHaveRest || i < maximum); i++)
         {
             var value = sources[i];
-            // If the last expression is one that returns a TypeList, check it with `IsAssignableFrom`.
-            if (i == sources.Count - 1 && evaluator.GetTypeListOfExpression(value) is { } sourceTypeList)
+            // If the last expression is one that returns a TypeList (and that TypeList returns more than one value),
+            // check it with `IsAssignableFrom`.
+            if (i == sources.Count - 1 && i < maximum - 1 &&
+                evaluator.GetTypeListOfExpression(value) is { } sourceTypeList &&
+                evaluator.GetTypeListMinimum(sourceTypeList) > 1)
             {
                 if (!IsAssignableFrom(targets, sourceTypeList, out var reasons, TypeListKind.Return, targetIndex: i))
                 {
@@ -304,7 +292,8 @@ public class Checker
 
             // TODO store & reuse existing rest type
             var targetType = evaluator.GetTypeInTypeList(targets, i);
-            CheckValueToType(targetType, value, null);
+            CheckValueToType(targetType, value,
+                targets is TypeList.FromValues { Values: var targetValues } ? targetValues[i] : null);
         }
 
         if (!targetsHaveRest && sources.Count > maximum)

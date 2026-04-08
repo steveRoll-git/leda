@@ -329,7 +329,7 @@ public class TypeEvaluator(Source source)
     internal int GetMinimumNumberOfValues(List<Tree.Expression> expressions)
     {
         return expressions.Count + (expressions.Count >= 1 && GetTypeListOfExpression(expressions[^1]) is { } typeList
-            ? GetTypeListMinimum(typeList)
+            ? GetTypeListMinimum(typeList) - 1
             : 0);
     }
 
