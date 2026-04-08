@@ -685,6 +685,14 @@ public class Checker
     {
         reasons = [];
 
+        var targetMinimum = evaluator.GetTypeListMinimum(target);
+        var sourceMinimum = evaluator.GetTypeListMinimum(other);
+        if (sourceMinimum < targetMinimum)
+        {
+            reasons.Add(new TypeMismatch.NotEnoughValues(targetMinimum, sourceMinimum, kind));
+            return false;
+        }
+
         var targetIndex = 0;
         var sourceIndex = 0;
 
