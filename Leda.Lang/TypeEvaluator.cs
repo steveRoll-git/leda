@@ -509,11 +509,16 @@ public class TypeEvaluator(Source source)
         return result;
     }
 
-    private string FunctionToString(Type.Function function)
+    public string FunctionSignatureToString(Type.Function function)
     {
         var parameters = TypeListToString(function.Parameters);
         var returns = function.Return == TypeList.Empty ? "" : ": " + TypeListToString(function.Return);
-        return $"function({parameters}){returns}";
+        return $"({parameters}){returns}";
+    }
+
+    private string FunctionToString(Type.Function function)
+    {
+        return "function" + FunctionSignatureToString(function);
     }
 
     /// <summary>

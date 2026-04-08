@@ -4,6 +4,7 @@ using EmmyLua.LanguageServer.Framework.Protocol.Message.Hover;
 using EmmyLua.LanguageServer.Framework.Protocol.Model.Markup;
 using EmmyLua.LanguageServer.Framework.Server.Handler;
 using Leda.Lang;
+using Type = Leda.Lang.Type;
 
 namespace Leda.LSP;
 
@@ -20,29 +21,32 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
             string? content = null;
             if (name is Tree.Expression.Name valueName)
             {
-                var type = source.Evaluator.TypeToString(source.Evaluator.GetTypeOfSymbol(symbol), multiline: true);
-                content = $"""
-                           ```leda
-                           local {valueName.Value}: {type}
-                           ```
-                           """;
+                var type = source.Evaluator.GetTypeOfSymbol(symbol);
+                if (symbol is Symbol.LocalFunction && type is Type.Function function)
+                {
+                    content = $"local function {valueName.Value}{source.Evaluator.FunctionSignatureToString(function)}";
+                }
+                else
+                {
+                    content = $"local {valueName.Value}: {source.Evaluator.TypeToString(type)}";
+                }
             }
             else if (name is Tree.Type.Name typeName)
             {
-                var type = source.Evaluator.TypeToString(source.Evaluator.GetTypeOfTypeName(typeName),
-                    typeContents: true, multiline: true);
                 var typeValue = symbol is not Symbol.IntrinsicType and not Symbol.TypeParameter
-                    ? " = " + type
+                    ? " = " + source.Evaluator.TypeToString(source.Evaluator.GetTypeOfTypeName(typeName),
+                        typeContents: true, multiline: true)
                     : "";
-                content = $"""
-                           ```leda
-                           type {typeName.Value}{typeValue}
-                           ```
-                           """;
+                content = $"type {typeName.Value}{typeValue}";
             }
 
             if (content != null)
             {
+                content = $"""
+                           ```leda
+                           {content}
+                           ```
+                           """;
                 return Task.FromResult(new HoverResponse
                 {
                     Contents = new MarkupContent
