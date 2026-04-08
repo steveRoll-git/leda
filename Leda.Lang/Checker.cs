@@ -342,15 +342,18 @@ public class Checker
             var declaration = localDeclaration.Declarations[i];
             if (declaration.Type != null)
             {
+                var targetType = evaluator.GetTypeOfTypeAnnotation(declaration.Type);
                 if (i < localDeclaration.Values.Count)
                 {
-                    var targetType = evaluator.GetTypeOfTypeAnnotation(declaration.Type);
                     var value = localDeclaration.Values[i];
                     CheckValueToType(targetType, value, declaration.Name);
                 }
-                else
+                else if (localDeclaration.Values.Count >= 1 &&
+                         evaluator.GetTypeListOfExpression(localDeclaration.Values[^1]) is { } typeList)
                 {
-                    // TODO check trailing values
+                    CheckTypeToType(targetType,
+                        evaluator.GetTypeInTypeList(typeList, i - localDeclaration.Values.Count + 1),
+                        declaration.Name.Range);
                 }
             }
         }
