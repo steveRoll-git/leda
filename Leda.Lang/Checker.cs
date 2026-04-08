@@ -23,20 +23,10 @@ public class Checker
     /// </summary>
     private void VisitBlock(Tree.Block block)
     {
-        // foreach (var typeDeclaration in block.TypeDeclarations)
-        // {
-        //     if (!source.TryGetTreeSymbol(typeDeclaration.Name, out var symbol))
-        //     {
-        //         throw new Exception();
-        //     }
-        //
-        //     var type = VisitType(typeDeclaration.Type);
-        //     source.SetSymbolType(symbol, type);
-        //     if (type.UserNameable)
-        //     {
-        //         type.Name = typeDeclaration.Name.Value;
-        //     }
-        // }
+        foreach (var typeDeclaration in block.TypeDeclarations)
+        {
+            VisitType(typeDeclaration.Type);
+        }
 
         foreach (var statement in block.Statements)
         {
