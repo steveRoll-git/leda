@@ -260,6 +260,18 @@ public class TypeEvaluator(Source source)
         return path;
     }
 
+    // TODO this probably needs to be cached
+    internal Type? GetInferredParameterType(Tree.Expression.Function function, int index)
+    {
+        if (function.AssignmentPath != null &&
+            GetAssignmentPathType(function.AssignmentPath) is Type.Function targetFunction)
+        {
+            return GetTypeInTypeList(targetFunction.Parameters, index);
+        }
+
+        return null;
+    }
+
     private Type GetTypeOfParameter(Tree.Expression.Function function, int index)
     {
         if (index >= function.Type.Parameters.Count)
@@ -275,13 +287,7 @@ public class TypeEvaluator(Source source)
             return GetTypeOfTypeAnnotation(declaration.Type);
         }
 
-        if (function.AssignmentPath != null &&
-            GetAssignmentPathType(function.AssignmentPath) is Type.Function targetFunction)
-        {
-            return GetTypeInTypeList(targetFunction.Parameters, index);
-        }
-
-        return Type.Unknown;
+        return GetInferredParameterType(function, index) ?? Type.Any;
     }
 
     private Type GetTypeOfSymbolUncached(Symbol symbol)

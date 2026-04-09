@@ -77,6 +77,15 @@ public class Checker
             VisitTypeList(function.Type.ReturnTypes);
         }
 
+        for (var i = 0; i < function.Type.Parameters.Count; i++)
+        {
+            var parameter = function.Type.Parameters[i];
+            if (parameter.Type == null && evaluator.GetInferredParameterType(function, i) == null)
+            {
+                Report(new Diagnostic.ImplicitAnyType(parameter.Name.Range, parameter.Name.Value));
+            }
+        }
+
         functionStack.Push(new(evaluator.GetTypeOfFunction(function), function.Type.ReturnTypes == null));
         VisitBlock(function.Chunk);
         functionStack.Pop();
