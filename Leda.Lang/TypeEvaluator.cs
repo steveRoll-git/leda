@@ -192,22 +192,27 @@ public class TypeEvaluator(Source source)
         }
     }
 
-    internal Type? GetTypeOfAccess(Tree.Expression.Access access)
+    private Type? GetTypeOfTableAccess(Type.Table table, Tree.Expression key)
     {
-        var targetType = GetTypeOfExpression(access.Target);
-        if (targetType is not Type.Table tableType)
-        {
-            return Type.Unknown;
-        }
-
-        var keyType = GetTypeOfExpression(access.Key, true);
+        var keyType = GetTypeOfExpression(key, true);
         if (keyType is Type.StringLiteral stringLiteral)
         {
-            return GetTypeOfStringKeyInTable(tableType, stringLiteral.Literal);
+            return GetTypeOfStringKeyInTable(table, stringLiteral.Literal);
         }
 
         // TODO check number literals, indexers
         return null;
+    }
+
+    internal Type? GetTypeOfAccess(Tree.Expression.Access access)
+    {
+        var targetType = GetTypeOfExpression(access.Target);
+        if (targetType is Type.Table table)
+        {
+            return GetTypeOfTableAccess(table, access.Key);
+        }
+
+        return Type.Unknown;
     }
 
     private Type GetTypeOfLocalVariable(Symbol.LocalVariable localVariable)
@@ -222,20 +227,37 @@ public class TypeEvaluator(Source source)
         return GetTypeOfExpressionInList(localVariable.Declaration.Values, localVariable.Index);
     }
 
-    private Type GetAssignmentTargetType(AssignmentTarget assignmentTarget)
+    private Type GetAssignmentPathType(AssignmentPath assignmentPath)
     {
-        if (assignmentTarget is AssignmentTarget.LocalVariable
-            {
-                LocalDeclaration: var localDeclaration, Index: var localIndex
-            } &&
-            localDeclaration.Declarations[localIndex].Type is { } annotation)
-
+        var path = assignmentPath switch
         {
-            return GetTypeOfTypeAnnotation(annotation);
+            AssignmentPath.LocalVariable { LocalDeclaration.Declarations: var declarations, Index: var localIndex }
+                when localIndex < declarations.Count && declarations[localIndex].Type is { } annotation =>
+                GetTypeOfTypeAnnotation(annotation),
+            AssignmentPath.AssignmentValue { Assignment.Targets: var targets, Index: var assignIndex }
+                when assignIndex < targets.Count =>
+                GetTypeOfExpression(targets[assignIndex]),
+            AssignmentPath.Argument { Call.Target: var callee, Index: var argIndex }
+                when GetTypeOfExpression(callee) is Type.Function function =>
+                GetTypeInTypeList(function.Parameters, argIndex),
+            AssignmentPath.ReturnValue => throw new NotImplementedException(),
+            _ => Type.Unknown
+        };
+
+        foreach (var key in assignmentPath.TableFields)
+        {
+            if (path is Type.Table table)
+            {
+                path = GetTypeOfTableAccess(table, key) ?? Type.Unknown;
+            }
+            else
+            {
+                path = Type.Unknown;
+                break;
+            }
         }
 
-
-        return Type.Unknown;
+        return path;
     }
 
     private Type GetTypeOfParameter(Tree.Expression.Function function, int index)
@@ -253,8 +275,8 @@ public class TypeEvaluator(Source source)
             return GetTypeOfTypeAnnotation(declaration.Type);
         }
 
-        if (function.AssignmentTarget != null &&
-            GetAssignmentTargetType(function.AssignmentTarget) is Type.Function targetFunction)
+        if (function.AssignmentPath != null &&
+            GetAssignmentPathType(function.AssignmentPath) is Type.Function targetFunction)
         {
             return GetTypeInTypeList(targetFunction.Parameters, index);
         }
@@ -268,8 +290,7 @@ public class TypeEvaluator(Source source)
         {
             Symbol.LocalVariable localVariable => GetTypeOfLocalVariable(localVariable),
             Symbol.LocalFunction localFunction => GetTypeOfFunction(localFunction.Declaration.Function),
-            // A parameter symbol will always reference an existent function parameter.
-            Symbol.Parameter parameter => GetTypeOfParameter(parameter.Function, parameter.Index)!,
+            Symbol.Parameter parameter => GetTypeOfParameter(parameter.Function, parameter.Index),
             Symbol.NumericForCounter => Type.NumberPrimitive,
             _ => Type.Unknown
         };

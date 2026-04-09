@@ -38,7 +38,7 @@ public class Binder
         [Type.FunctionPrimitive.Name!] = new(null, Symbol.FunctionType)
     };
 
-    private readonly Stack<AssignmentTarget> assignmentTargetStack = [];
+    private readonly Stack<AssignmentPath> assignmentPathStack = [];
 
     private Binder(Source source)
     {
@@ -275,25 +275,36 @@ public class Binder
         }
     }
 
-    private void Visit(List<Tree.Expression> expressions, Tree? parent = null)
+    private void Visit(List<Tree.Expression> expressions)
+    {
+        foreach (var expression in expressions)
+        {
+            Visit(expression);
+        }
+    }
+
+    private void Visit(List<Tree.Expression> expressions, Tree parent)
     {
         for (var i = 0; i < expressions.Count; i++)
         {
-            // TODO temporary
-            var pushed = false;
-            if (parent is Tree.Statement.LocalDeclaration localDeclaration)
-            {
-                assignmentTargetStack.Push(new AssignmentTarget.LocalVariable(localDeclaration, i));
-                pushed = true;
-            }
+            assignmentPathStack.Push(parent switch
+                {
+                    Tree.Statement.LocalDeclaration localDeclaration =>
+                        new AssignmentPath.LocalVariable(localDeclaration, i),
+                    Tree.Statement.Assignment assignment =>
+                        new AssignmentPath.AssignmentValue(assignment, i),
+                    Tree.Expression.Call call =>
+                        new AssignmentPath.Argument(call, i),
+                    Tree.Expression.MethodCall => throw new NotImplementedException(),
+                    Tree.Statement.Return => throw new NotImplementedException(),
+                    _ => throw new Exception() // Unreachable.
+                }
+            );
 
             var expression = expressions[i];
             Visit(expression);
 
-            if (pushed)
-            {
-                assignmentTargetStack.Pop();
-            }
+            assignmentPathStack.Pop();
         }
     }
 
@@ -354,19 +365,19 @@ public class Binder
     private void Visit(Tree.Statement.Assignment assignment)
     {
         Visit(assignment.Targets);
-        Visit(assignment.Values);
+        Visit(assignment.Values, assignment);
     }
 
     private void Visit(Tree.Expression.MethodCall methodCall)
     {
         Visit(methodCall.Target);
-        Visit(methodCall.Parameters);
+        Visit(methodCall.Parameters, methodCall);
     }
 
     private void Visit(Tree.Expression.Call call)
     {
         Visit(call.Target);
-        Visit(call.Parameters);
+        Visit(call.Parameters, call);
         if (call.TypeParameters != null)
         {
             Visit(call.TypeParameters);
@@ -392,9 +403,9 @@ public class Binder
 
     private void Visit(Tree.Expression.Function function)
     {
-        if (assignmentTargetStack.Count > 0)
+        if (assignmentPathStack.TryPeek(out var path))
         {
-            function.AssignmentTarget = assignmentTargetStack.Peek();
+            function.AssignmentPath = path with { TableFields = [..path.TableFields] };
         }
 
         PushScope();
@@ -445,14 +456,19 @@ public class Binder
     {
         foreach (var field in table.Fields)
         {
+            assignmentPathStack.TryPeek(out var assignmentPath);
+            assignmentPath?.TableFields.Add(field.Key);
+
             Visit(field.Key);
             Visit(field.Value);
+
+            assignmentPath?.TableFields.RemoveAt(assignmentPath.TableFields.Count - 1);
         }
     }
 
     private void Visit(Tree.Statement.Return returnStatement)
     {
-        Visit(returnStatement.Values);
+        Visit(returnStatement.Values, returnStatement);
     }
 
     private void Visit(Tree.Statement.LocalFunctionDeclaration declaration)

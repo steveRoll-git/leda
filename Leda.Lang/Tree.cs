@@ -322,7 +322,7 @@ public abstract class Tree
             public new Type.Function Type => type;
             public Chunk Chunk => chunk;
 
-            internal AssignmentTarget? AssignmentTarget { get; set; }
+            internal AssignmentPath? AssignmentPath { get; set; }
 
             /// <summary>
             /// Whether this function was defined with a `:`.
@@ -428,11 +428,20 @@ public abstract class Tree
 /// <summary>
 /// Represents a location where a value could be assigned to. Used when inferring the parameter types of functions.
 /// </summary>
-internal abstract class AssignmentTarget
+internal abstract record AssignmentPath
 {
-    public class LocalVariable(Tree.Statement.LocalDeclaration localDeclaration, int index) : AssignmentTarget
-    {
-        public Tree.Statement.LocalDeclaration LocalDeclaration => localDeclaration;
-        public int Index => index;
-    }
+    /// <summary>
+    /// If the value is inside a table, or a series of nested tables, this is a list of the table keys that go from the
+    /// AssignmentPath root to the field where the value itself is located.
+    /// </summary>
+    public List<Tree.Expression> TableFields { get; init; } = [];
+
+    public record AssignmentValue(Tree.Statement.Assignment Assignment, int Index) : AssignmentPath;
+
+    public record LocalVariable(Tree.Statement.LocalDeclaration LocalDeclaration, int Index) : AssignmentPath;
+
+    public record Argument(Tree.Expression.Call Call, int Index) : AssignmentPath;
+
+    // TODO 
+    public record ReturnValue(Tree.Expression.Function Function, int Index) : AssignmentPath;
 }
