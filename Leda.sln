@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leda", "Leda\Leda.csproj", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leda.LSP", "Leda.LSP\Leda.LSP.csproj", "{2671D4B0-EACE-4661-92A2-1F5CB77F3E5C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leda.Test", "Leda.Test\Leda.Test.csproj", "{90A411B7-C375-4F59-BFF6-0036D2EDB8CC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{2671D4B0-EACE-4661-92A2-1F5CB77F3E5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2671D4B0-EACE-4661-92A2-1F5CB77F3E5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2671D4B0-EACE-4661-92A2-1F5CB77F3E5C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90A411B7-C375-4F59-BFF6-0036D2EDB8CC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90A411B7-C375-4F59-BFF6-0036D2EDB8CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90A411B7-C375-4F59-BFF6-0036D2EDB8CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90A411B7-C375-4F59-BFF6-0036D2EDB8CC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
