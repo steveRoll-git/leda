@@ -1,0 +1,19 @@
+local function f()
+  for i = 1, 10 do
+    local h = function()
+      break
+      ^^^^^ `break` cannot be used outside of loops.
+    end
+    break
+  end
+  break
+  ^^^^^ `break` cannot be used outside of loops.
+end
+
+while true do
+  break
+end
+
+for a in f() do
+  break
+end

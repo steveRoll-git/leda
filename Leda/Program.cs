@@ -78,7 +78,7 @@ internal class Program
             var outPath = Path.ChangeExtension(source.Path, ".lua");
             Console.WriteLine("Emitting " + outPath);
 
-            var outCode = Emitter.Emit(source.Tree);
+            var outCode = Emitter.Emit(source.Chunk);
             File.WriteAllText(outPath, outCode);
         }
 

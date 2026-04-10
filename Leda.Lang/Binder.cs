@@ -40,6 +40,10 @@ public class Binder
 
     private readonly Stack<AssignmentPath> assignmentPathStack = [];
 
+    private record FunctionInfo(Stack<Tree.Statement> LoopStack);
+
+    private readonly Stack<FunctionInfo> functionStack = [];
+
     private Binder(Source source)
     {
         this.source = source;
@@ -180,6 +184,13 @@ public class Binder
         }
     }
 
+    private void VisitChunk(Tree.Chunk chunk)
+    {
+        functionStack.Push(new([]));
+        VisitBlock(chunk);
+        functionStack.Pop();
+    }
+
     private void Visit(Tree.Statement stmt)
     {
         switch (stmt)
@@ -222,6 +233,9 @@ public class Binder
                 break;
             case Tree.Statement.While @while:
                 Visit(@while);
+                break;
+            case Tree.Statement.Break @break:
+                Visit(@break);
                 break;
         }
     }
@@ -323,21 +337,6 @@ public class Binder
         PopScope();
     }
 
-    private void Visit(Tree.Statement.NumericalFor numericalFor)
-    {
-        PushScope();
-        Visit(numericalFor.Start);
-        Visit(numericalFor.Limit);
-        if (numericalFor.Step != null)
-        {
-            Visit(numericalFor.Step);
-        }
-
-        AddSymbol(numericalFor.Counter, new Symbol.NumericForCounter());
-        VisitBlock(numericalFor.Body);
-        PopScope();
-    }
-
     private void VisitIfBranch(Tree.IfBranch branch)
     {
         Visit(branch.Condition);
@@ -423,7 +422,7 @@ public class Binder
             AddSymbol(parameter.Name, new Symbol.Parameter(function, i));
         }
 
-        VisitBlock(function.Chunk);
+        VisitChunk(function.Chunk);
     }
 
     private void Visit(Tree.Expression.Name name)
@@ -501,24 +500,29 @@ public class Binder
 
     private void Visit(Tree.Statement.RepeatUntil repeatUntil)
     {
+        functionStack.Peek().LoopStack.Push(repeatUntil);
         PushScope();
         VisitBlock(repeatUntil.Body);
         Visit(repeatUntil.Condition);
         PopScope();
+        functionStack.Peek().LoopStack.Pop();
     }
 
     private void Visit(Tree.Statement.While whileLoop)
     {
         Visit(whileLoop.Condition);
+        functionStack.Peek().LoopStack.Push(whileLoop);
         PushScope();
         VisitBlock(whileLoop.Body);
         PopScope();
+        functionStack.Peek().LoopStack.Pop();
     }
 
     private void Visit(Tree.Statement.IteratorFor forLoop)
     {
         Visit(forLoop.Iterator);
 
+        functionStack.Peek().LoopStack.Push(forLoop);
         PushScope();
 
         for (var i = 0; i < forLoop.Declarations.Count; i++)
@@ -530,6 +534,24 @@ public class Binder
         VisitBlock(forLoop.Body);
 
         PopScope();
+        functionStack.Peek().LoopStack.Pop();
+    }
+
+    private void Visit(Tree.Statement.NumericalFor numericalFor)
+    {
+        functionStack.Peek().LoopStack.Push(numericalFor);
+        PushScope();
+        Visit(numericalFor.Start);
+        Visit(numericalFor.Limit);
+        if (numericalFor.Step != null)
+        {
+            Visit(numericalFor.Step);
+        }
+
+        AddSymbol(numericalFor.Counter, new Symbol.NumericForCounter());
+        VisitBlock(numericalFor.Body);
+        PopScope();
+        functionStack.Peek().LoopStack.Pop();
     }
 
     private void VisitTypeParameterDeclaration(List<Tree.Type.Name> typeParameters)
@@ -570,13 +592,21 @@ public class Binder
         }
     }
 
+    private void Visit(Tree.Statement.Break brk)
+    {
+        if (functionStack.Peek().LoopStack.Count == 0)
+        {
+            Report(new Diagnostic.BreakOutsideOfLoop(brk.Range));
+        }
+    }
+
     /// <summary>
     /// Visits all nodes in the given tree and updates the infoStore with the relevant information.
     /// </summary>
-    public static List<Diagnostic> Bind(Source source, Tree.Block block)
+    public static List<Diagnostic> Bind(Source source, Tree.Chunk chunk)
     {
         var binder = new Binder(source);
-        binder.VisitBlock(block);
+        binder.VisitChunk(chunk);
         return binder.Diagnostics;
     }
 }

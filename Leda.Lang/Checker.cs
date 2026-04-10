@@ -360,17 +360,20 @@ public class Checker
 
     private void VisitStatement(Tree.Statement.RepeatUntil repeatUntil)
     {
-        throw new NotImplementedException();
+        VisitBlock(repeatUntil.Body);
+        VisitExpression(repeatUntil.Condition);
     }
 
     private void VisitStatement(Tree.Statement.While whileLoop)
     {
-        throw new NotImplementedException();
+        VisitExpression(whileLoop.Condition);
+        VisitBlock(whileLoop.Body);
     }
 
     private void VisitStatement(Tree.Statement.IteratorFor forLoop)
     {
-        throw new NotImplementedException();
+        VisitExpression(forLoop.Iterator);
+        VisitBlock(forLoop.Body);
     }
 
     private void VisitExpression(Tree.Expression.Function function)
@@ -754,7 +757,7 @@ public class Checker
     {
         var checker = new Checker(source, evaluator);
         checker.functionStack.Push(new(new Type.Function(TypeList.Any, TypeList.Any, []), false)); // TODO
-        checker.VisitBlock(source.Tree);
+        checker.VisitBlock(source.Chunk);
         return checker.Diagnostics;
     }
 }

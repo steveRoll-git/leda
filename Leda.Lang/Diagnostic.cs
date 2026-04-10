@@ -125,6 +125,12 @@ public abstract record Diagnostic(Range Range)
         public override string Message => $"A type named '{Name}' has already been declared.";
     }
 
+    public record BreakOutsideOfLoop(Range Range) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "`break` cannot be used outside of loops.";
+    }
+
     public record CantGetLength(Range Range, string Got) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;

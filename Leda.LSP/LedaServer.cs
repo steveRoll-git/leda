@@ -118,7 +118,7 @@ public class LedaServer
     public bool TryGetRequestSymbol(TextDocumentPositionParams request, [NotNullWhen(true)] out Symbol? symbol)
     {
         var source = UriSources[request.TextDocument.Uri];
-        var name = NameFinder.GetNameAtPosition(source.Tree, request.Position.ToLeda());
+        var name = NameFinder.GetNameAtPosition(source.Chunk, request.Position.ToLeda());
         if (name != null)
         {
             return source.TryGetTreeSymbol(name, out symbol);

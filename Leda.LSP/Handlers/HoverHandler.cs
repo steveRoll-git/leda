@@ -14,7 +14,7 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
     {
         var source = server.UriSources[request.TextDocument.Uri];
 
-        var name = NameFinder.GetNameAtPosition(source.Tree, request.Position.ToLeda());
+        var name = NameFinder.GetNameAtPosition(source.Chunk, request.Position.ToLeda());
 
         if (name is not null && source.TryGetTreeSymbol(name, out var symbol))
         {
