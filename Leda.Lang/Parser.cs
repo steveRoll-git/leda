@@ -620,7 +620,7 @@ public class Parser
         {
             // 'local' 'function' name funcbody
             var name = ParseValueName();
-            var function = ParseFunctionBody(false);
+            var function = ParseFunctionBody(name.Range, false);
             return EndTree(new Tree.Statement.LocalFunctionDeclaration(name, function));
         }
 
@@ -642,6 +642,7 @@ public class Parser
 
         // 'function' name {'.' name} [':' name]
         Expect(Function);
+
         Tree.Expression path = ParseValueName();
         var isMethod = false;
         while (token is Token.Dot or Token.Colon)
@@ -660,7 +661,7 @@ public class Parser
             }
         }
 
-        var function = ParseFunctionBody(isMethod);
+        var function = ParseFunctionBody(path.Range, isMethod);
 
         return EndTree(new Tree.Statement.Assignment([path], [function]));
     }
@@ -728,7 +729,7 @@ public class Parser
     /// <summary>
     /// Parses a function body - used in function declarations and in anonymous functions.
     /// </summary>
-    private Tree.Expression.Function ParseFunctionBody(bool isMethod)
+    private Tree.Expression.Function ParseFunctionBody(Range nameRange, bool isMethod)
     {
         StartTree();
 
@@ -738,7 +739,7 @@ public class Parser
         var chunk = ParseChunk();
         Expect(End);
 
-        return EndTree(new Tree.Expression.Function(functionType, chunk, isMethod));
+        return EndTree(new Tree.Expression.Function(functionType, chunk, nameRange, isMethod));
     }
 
     /// <summary>
@@ -1016,11 +1017,11 @@ public class Parser
             return ParseTableConstructor();
         }
 
-        if (token is Token.Function)
+        if (token is Token.Function functionToken)
         {
             StartTree();
             NextToken(); // skip 'function'
-            return EndTree(ParseFunctionBody(false));
+            return EndTree(ParseFunctionBody(functionToken.Range, false));
         }
 
         return ParsePrefixExpression();

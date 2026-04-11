@@ -75,6 +75,16 @@ public class Checker
         if (function.Type.ReturnTypes != null)
         {
             VisitTypeList(function.Type.ReturnTypes);
+
+            // TODO report these only if the return type is not nillable
+            if (function.Chunk.ReturnStatements.Count == 0)
+            {
+                Report(new Diagnostic.FunctionDoesntReturnValue(function.NameRange));
+            }
+            else if (!function.Chunk.AllPathsReturn)
+            {
+                Report(new Diagnostic.NotAllPathsReturn(function.NameRange));
+            }
         }
 
         for (var i = 0; i < function.Type.Parameters.Count; i++)

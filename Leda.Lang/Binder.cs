@@ -164,10 +164,8 @@ public class Binder
     /// <summary>
     /// Visits all of a block's statements.
     /// </summary>
-    private void VisitBlock(Tree.Block block)
+    private FlowNode? VisitBlock(Tree.Block block, FlowNode antecedent)
     {
-        // TODO type declarations need to be traversed in the order they appear in the block,
-        // for `typeof` to work correctly.
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
             AddSymbol(typeDeclaration.Name, new Symbol.TypeAlias(typeDeclaration));
@@ -178,66 +176,76 @@ public class Binder
             Visit(typeDeclaration.Type);
         }
 
+        var stopped = false;
+
         foreach (var statement in block.Statements)
         {
-            Visit(statement);
+            var descendant = VisitStatement(statement, antecedent);
+            if (descendant == null)
+            {
+                // TODO report unreachable code
+                stopped = true;
+            }
+            else
+            {
+                antecedent = descendant;
+            }
         }
+
+        return stopped ? null : antecedent;
     }
 
     private void VisitChunk(Tree.Chunk chunk)
     {
+        var startNode = new FlowNode([]);
+
         functionStack.Push(new([]));
-        VisitBlock(chunk);
+        var descendent = VisitBlock(chunk, startNode);
         functionStack.Pop();
+
+        chunk.AllPathsReturn = descendent == null;
     }
 
-    private void Visit(Tree.Statement stmt)
+    private FlowNode? VisitStatement(Tree.Statement stmt, FlowNode antecedent)
     {
         switch (stmt)
         {
-            case Tree.Statement.Assignment assignment:
-                Visit(assignment);
-                break;
             case Tree.Statement.Call call:
                 Visit(call.CallExpr);
-                break;
-            case Tree.Statement.Do @do:
-                Visit(@do);
-                break;
-            case Tree.Statement.GlobalDeclaration globalDeclaration:
-                Visit(globalDeclaration);
-                break;
-            case Tree.Statement.If @if:
-                Visit(@if);
-                break;
-            case Tree.Statement.IteratorFor iteratorFor:
-                Visit(iteratorFor);
-                break;
-            case Tree.Statement.LocalDeclaration localDeclaration:
-                Visit(localDeclaration);
-                break;
-            case Tree.Statement.LocalFunctionDeclaration localFunctionDeclaration:
-                Visit(localFunctionDeclaration);
                 break;
             case Tree.Statement.MethodCall methodCall:
                 Visit(methodCall.CallExpr);
                 break;
+            case Tree.Statement.Assignment assignment:
+                return VisitStatement(assignment, antecedent);
+            case Tree.Statement.Do @do:
+                return VisitStatement(@do, antecedent);
+            case Tree.Statement.GlobalDeclaration globalDeclaration:
+                return VisitStatement(globalDeclaration, antecedent);
+            case Tree.Statement.If @if:
+                return VisitStatement(@if, antecedent);
+            case Tree.Statement.IteratorFor iteratorFor:
+                return VisitStatement(iteratorFor, antecedent);
+            case Tree.Statement.LocalDeclaration localDeclaration:
+                return VisitStatement(localDeclaration, antecedent);
+            case Tree.Statement.LocalFunctionDeclaration localFunctionDeclaration:
+                VisitStatement(localFunctionDeclaration);
+                break;
             case Tree.Statement.NumericalFor numericalFor:
-                Visit(numericalFor);
-                break;
+                return VisitStatement(numericalFor, antecedent);
             case Tree.Statement.RepeatUntil repeatUntil:
-                Visit(repeatUntil);
-                break;
-            case Tree.Statement.Return @return:
-                Visit(@return);
-                break;
+                return VisitStatement(repeatUntil, antecedent);
             case Tree.Statement.While @while:
-                Visit(@while);
-                break;
+                return VisitStatement(@while, antecedent);
+            case Tree.Statement.Return @return:
+                VisitStatement(@return);
+                return null;
             case Tree.Statement.Break @break:
-                Visit(@break);
-                break;
+                VisitStatement(@break);
+                return null;
         }
+
+        return antecedent;
     }
 
     private void Visit(Tree.Expression expr)
@@ -330,41 +338,55 @@ public class Binder
         }
     }
 
-    private void Visit(Tree.Statement.Do block)
+    private FlowNode? VisitStatement(Tree.Statement.Do block, FlowNode antecedent)
     {
         PushScope();
-        VisitBlock(block.Body);
+        var descendent = VisitBlock(block.Body, antecedent);
         PopScope();
+
+        return descendent;
     }
 
-    private void VisitIfBranch(Tree.IfBranch branch)
+    private FlowNode? VisitIfBranch(Tree.IfBranch branch, FlowNode antecedent)
     {
         Visit(branch.Condition);
         PushScope();
-        VisitBlock(branch.Body);
+        var descendent = VisitBlock(branch.Body, antecedent);
         PopScope();
+
+        return descendent;
     }
 
-    private void Visit(Tree.Statement.If ifStatement)
+    private FlowNode? VisitStatement(Tree.Statement.If ifStatement, FlowNode antecedent)
     {
-        VisitIfBranch(ifStatement.Primary);
+        var descendents = new List<FlowNode>();
+
+        AddIfNotNull(descendents, VisitIfBranch(ifStatement.Primary, antecedent));
+
         foreach (var branch in ifStatement.ElseIfs)
         {
-            VisitIfBranch(branch);
+            AddIfNotNull(descendents, VisitIfBranch(branch, antecedent));
         }
 
         if (ifStatement.ElseBody != null)
         {
             PushScope();
-            VisitBlock(ifStatement.ElseBody);
+            AddIfNotNull(descendents, VisitBlock(ifStatement.ElseBody, antecedent));
             PopScope();
         }
+        else
+        {
+            descendents.Add(antecedent);
+        }
+
+        return descendents.Count > 0 ? new(descendents) : null;
     }
 
-    private void Visit(Tree.Statement.Assignment assignment)
+    private FlowNode VisitStatement(Tree.Statement.Assignment assignment, FlowNode antecedent)
     {
         Visit(assignment.Targets);
         Visit(assignment.Values, assignment);
+        return antecedent;
     }
 
     private void Visit(Tree.Expression.MethodCall methodCall)
@@ -465,12 +487,12 @@ public class Binder
         }
     }
 
-    private void Visit(Tree.Statement.Return returnStatement)
+    private void VisitStatement(Tree.Statement.Return returnStatement)
     {
         Visit(returnStatement.Values, returnStatement);
     }
 
-    private void Visit(Tree.Statement.LocalFunctionDeclaration declaration)
+    private void VisitStatement(Tree.Statement.LocalFunctionDeclaration declaration)
     {
         AddSymbol(declaration.Name, new Symbol.LocalFunction(declaration));
         PushScope();
@@ -478,12 +500,12 @@ public class Binder
         PopScope();
     }
 
-    private void Visit(Tree.Statement.GlobalDeclaration declaration)
+    private FlowNode VisitStatement(Tree.Statement.GlobalDeclaration declaration, FlowNode antecedent)
     {
         throw new NotImplementedException();
     }
 
-    private void Visit(Tree.Statement.LocalDeclaration localDeclaration)
+    private FlowNode VisitStatement(Tree.Statement.LocalDeclaration localDeclaration, FlowNode antecedent)
     {
         Visit(localDeclaration.Values, localDeclaration);
 
@@ -496,30 +518,40 @@ public class Binder
                 Visit(declaration.Type);
             }
         }
+
+        return antecedent;
     }
 
-    private void Visit(Tree.Statement.RepeatUntil repeatUntil)
+    private FlowNode? VisitStatement(Tree.Statement.RepeatUntil repeatUntil, FlowNode antecedent)
     {
         functionStack.Peek().LoopStack.Push(repeatUntil);
         PushScope();
-        VisitBlock(repeatUntil.Body);
+        var descendent = VisitBlock(repeatUntil.Body, antecedent);
         Visit(repeatUntil.Condition);
         PopScope();
         functionStack.Peek().LoopStack.Pop();
+
+        return descendent;
     }
 
-    private void Visit(Tree.Statement.While whileLoop)
+    private FlowNode VisitStatement(Tree.Statement.While whileLoop, FlowNode antecedent)
     {
+        var descendents = new List<FlowNode> { antecedent };
+
         Visit(whileLoop.Condition);
         functionStack.Peek().LoopStack.Push(whileLoop);
         PushScope();
-        VisitBlock(whileLoop.Body);
+        AddIfNotNull(descendents, VisitBlock(whileLoop.Body, antecedent));
         PopScope();
         functionStack.Peek().LoopStack.Pop();
+
+        return new FlowNode(descendents);
     }
 
-    private void Visit(Tree.Statement.IteratorFor forLoop)
+    private FlowNode VisitStatement(Tree.Statement.IteratorFor forLoop, FlowNode antecedent)
     {
+        var descendents = new List<FlowNode> { antecedent };
+
         Visit(forLoop.Iterator);
 
         functionStack.Peek().LoopStack.Push(forLoop);
@@ -531,14 +563,18 @@ public class Binder
             AddSymbol(declaration.Name, new Symbol.ForVariable(forLoop, i));
         }
 
-        VisitBlock(forLoop.Body);
+        AddIfNotNull(descendents, VisitBlock(forLoop.Body, antecedent));
 
         PopScope();
         functionStack.Peek().LoopStack.Pop();
+
+        return new FlowNode(descendents);
     }
 
-    private void Visit(Tree.Statement.NumericalFor numericalFor)
+    private FlowNode VisitStatement(Tree.Statement.NumericalFor numericalFor, FlowNode antecedent)
     {
+        var descendents = new List<FlowNode> { antecedent };
+
         functionStack.Peek().LoopStack.Push(numericalFor);
         PushScope();
         Visit(numericalFor.Start);
@@ -549,9 +585,11 @@ public class Binder
         }
 
         AddSymbol(numericalFor.Counter, new Symbol.NumericForCounter());
-        VisitBlock(numericalFor.Body);
+        AddIfNotNull(descendents, VisitBlock(numericalFor.Body, antecedent));
         PopScope();
         functionStack.Peek().LoopStack.Pop();
+
+        return new FlowNode(descendents);
     }
 
     private void VisitTypeParameterDeclaration(List<Tree.Type.Name> typeParameters)
@@ -592,7 +630,7 @@ public class Binder
         }
     }
 
-    private void Visit(Tree.Statement.Break brk)
+    private void VisitStatement(Tree.Statement.Break brk)
     {
         if (functionStack.Peek().LoopStack.Count == 0)
         {
@@ -608,5 +646,16 @@ public class Binder
         var binder = new Binder(source);
         binder.VisitChunk(chunk);
         return binder.Diagnostics;
+    }
+
+    /// <summary>
+    /// Adds the item to the list if it isn't null.
+    /// </summary>
+    private static void AddIfNotNull<T>(List<T> list, T? item)
+    {
+        if (item != null)
+        {
+            list.Add(item);
+        }
     }
 }

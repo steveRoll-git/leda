@@ -88,6 +88,11 @@ public abstract class Tree
         : Block(statements, typeDeclarations)
     {
         public List<Statement.Return> ReturnStatements => returnStatements;
+
+        /// <summary>
+        /// Whether all the control paths in this chunk stop or return a value.
+        /// </summary>
+        public bool AllPathsReturn { get; set; }
     }
 
     /// <summary>
@@ -316,11 +321,11 @@ public abstract class Tree
         /// <summary>
         /// A function value.
         /// </summary>
-        public class Function(Type.Function type, Chunk chunk, bool isMethod)
-            : Expression
+        public class Function(Type.Function type, Chunk chunk, Range nameRange, bool isMethod) : Expression
         {
             public new Type.Function Type => type;
             public Chunk Chunk => chunk;
+            public Range NameRange => nameRange;
 
             internal AssignmentPath? AssignmentPath { get; set; }
 

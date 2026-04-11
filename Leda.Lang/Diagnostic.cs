@@ -226,16 +226,22 @@ public abstract record Diagnostic(Range Range)
         public override string Message => "This value is not assigned to any variable.";
     }
 
-    public record TargetNotAssigned(Range Range) : Diagnostic(Range)
-    {
-        public override DiagnosticSeverity Severity => DiagnosticSeverity.Warning;
-        public override string Message => "This variable will have `nil` assigned to it. This may not be intentional.";
-    }
-
     public record TooManyValues(Range Range, TypeListKind Kind, int Maximum, int Got) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Expected at most {Maximum} {TypeList.ItemNoun(Kind)}s, but got {Got}.";
+    }
+
+    public record FunctionDoesntReturnValue(Range Range) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "Functions with a return type annotation must return a value.";
+    }
+
+    public record NotAllPathsReturn(Range Range) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "Not all code paths return a value.";
     }
 }
 
