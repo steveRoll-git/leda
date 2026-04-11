@@ -318,7 +318,8 @@ public class Binder
                     Tree.Expression.Call call =>
                         new AssignmentPath.Argument(call, i),
                     Tree.Expression.MethodCall => throw new NotImplementedException(),
-                    Tree.Statement.Return => throw new NotImplementedException(),
+                    Tree.Statement.Return returnStmt =>
+                        new AssignmentPath.ReturnValue(returnStmt, i),
                     _ => throw new Exception() // Unreachable.
                 }
             );

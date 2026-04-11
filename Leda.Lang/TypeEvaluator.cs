@@ -240,7 +240,9 @@ public class TypeEvaluator(Source source)
             AssignmentPath.Argument { Call.Target: var callee, Index: var argIndex }
                 when GetTypeOfExpression(callee) is Type.Function function =>
                 GetTypeInTypeList(function.Parameters, argIndex),
-            AssignmentPath.ReturnValue => throw new NotImplementedException(),
+            AssignmentPath.ReturnValue { Return: var returnStmt, Index: var returnIndex }
+                when returnStmt.ParentChunk.ParentFunction is { } function =>
+                GetTypeInTypeList(GetTypeOfFunction(function).Return, returnIndex),
             _ => Type.Unknown
         };
 

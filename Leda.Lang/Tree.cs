@@ -81,18 +81,30 @@ public abstract class Tree
     /// <summary>
     /// The top-level block of a function or a file, which also stores all of its return statements.
     /// </summary>
-    public class Chunk(
-        List<Statement> statements,
-        List<TypeAliasDeclaration> typeDeclarations,
-        List<Statement.Return> returnStatements)
-        : Block(statements, typeDeclarations)
+    public class Chunk : Block
     {
-        public List<Statement.Return> ReturnStatements => returnStatements;
+        /// <summary>
+        /// All the return statements in this chunk.
+        /// </summary>
+        public List<Statement.Return> ReturnStatements { get; }
 
         /// <summary>
         /// Whether all the control paths in this chunk stop or return a value.
         /// </summary>
         public bool AllPathsReturn { get; set; }
+
+        public Expression.Function? ParentFunction { get; internal set; }
+
+        public Chunk(List<Statement> statements,
+            List<TypeAliasDeclaration> typeDeclarations,
+            List<Statement.Return> returnStatements) : base(statements, typeDeclarations)
+        {
+            ReturnStatements = returnStatements;
+            foreach (var returnStatement in returnStatements)
+            {
+                returnStatement.ParentChunk = this;
+            }
+        }
     }
 
     /// <summary>
@@ -203,6 +215,7 @@ public abstract class Tree
         public class Return(List<Expression> values) : Statement
         {
             public List<Expression> Values => values;
+            public Chunk ParentChunk { get; internal set; } = null!;
         }
 
         /// <summary>
@@ -321,18 +334,30 @@ public abstract class Tree
         /// <summary>
         /// A function value.
         /// </summary>
-        public class Function(Type.Function type, Chunk chunk, Range nameRange, bool isMethod) : Expression
+        public class Function : Expression
         {
-            public new Type.Function Type => type;
-            public Chunk Chunk => chunk;
-            public Range NameRange => nameRange;
+            public new Type.Function Type { get; }
+            public Chunk Chunk { get; }
+            public Range NameRange { get; }
 
             internal AssignmentPath? AssignmentPath { get; set; }
 
             /// <summary>
             /// Whether this function was defined with a `:`.
             /// </summary>
-            public bool IsMethod => isMethod;
+            public bool IsMethod { get; }
+
+            /// <summary>
+            /// A function value.
+            /// </summary>
+            public Function(Type.Function type, Chunk chunk, Range nameRange, bool isMethod)
+            {
+                Type = type;
+                Chunk = chunk;
+                chunk.ParentFunction = this;
+                NameRange = nameRange;
+                IsMethod = isMethod;
+            }
         }
 
         /// <summary>
@@ -447,6 +472,5 @@ internal abstract record AssignmentPath
 
     public record Argument(Tree.Expression.Call Call, int Index) : AssignmentPath;
 
-    // TODO 
-    public record ReturnValue(Tree.Expression.Function Function, int Index) : AssignmentPath;
+    public record ReturnValue(Tree.Statement.Return Return, int Index) : AssignmentPath;
 }
