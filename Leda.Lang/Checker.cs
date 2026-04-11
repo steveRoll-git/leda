@@ -321,6 +321,8 @@ public class Checker
         {
             CheckAssignment(function.Return, returnStatement.Values, TypeListKind.Return, returnStatement.Range);
         }
+
+        VisitExpressionList(returnStatement.Values);
     }
 
     private void VisitStatement(Tree.Statement.LocalFunctionDeclaration declaration)
