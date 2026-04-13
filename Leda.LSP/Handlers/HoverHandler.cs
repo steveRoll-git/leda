@@ -19,7 +19,12 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
         if (name is not null && source.TryGetTreeSymbol(name, out var symbol))
         {
             string? content = null;
-            if (name is Tree.Expression.Name valueName)
+            if (symbol is Symbol.StringKey { Table: var table, Key: var key })
+            {
+                content =
+                    $"(field) {key}: {source.Evaluator.TypeToString(source.Evaluator.GetStringKeyInTable(table, key)?.Type ?? Type.Unknown)}";
+            }
+            else if (name is Tree.Expression.Name valueName)
             {
                 var type = source.Evaluator.GetTypeOfSymbol(symbol);
                 if (symbol is Symbol.LocalFunction && type is Type.Function function)

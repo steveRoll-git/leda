@@ -75,7 +75,12 @@ public abstract class Symbol
     /// <summary>
     /// A string key in a table.
     /// </summary>
-    public class StringKey : Symbol;
+    public class StringKey(Type.Table table, string key) : Symbol
+    {
+        // For this symbol it's okay to store type information, since it's recreated in the typecheck phase.
+        public Type.Table Table => table;
+        public string Key => key;
+    }
 
     /// <summary>
     /// The built-in any type.

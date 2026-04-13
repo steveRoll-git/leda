@@ -116,7 +116,7 @@ public class TypeEvaluator(Source source)
     private Type.Table.StringKey AddStringKeyFromValue(Type.Table table, string key, Tree.Expression.Table.Field field)
     {
         var newKey = new Type.Table.StringKey(
-            Symbol: new Symbol.StringKey { Definition = new Location(source, field.Key.Range) },
+            Symbol: new Symbol.StringKey(table, key) { Definition = new Location(source, field.Key.Range) },
             Type: GetTypeOfExpression(field.Value));
         table.StringLiterals.Add(key, newKey);
         source.AttachSymbol(field.Key, newKey.Symbol, true);
@@ -126,17 +126,17 @@ public class TypeEvaluator(Source source)
     /// <summary>
     /// Adds a string key to a table type annotation.
     /// </summary>
-    private Type.Table.StringKey AddStringKeyFromType(Type.Table table, string keyString, Tree.Type.Pair pair)
+    private Type.Table.StringKey AddStringKeyFromType(Type.Table table, string key, Tree.Type.Pair pair)
     {
         var newKey = new Type.Table.StringKey(
-            Symbol: new Symbol.StringKey { Definition = new Location(source, pair.Key.Range) },
+            Symbol: new Symbol.StringKey(table, key) { Definition = new Location(source, pair.Key.Range) },
             Type: GetTypeOfTypeAnnotation(pair.Value));
-        table.StringLiterals.Add(keyString, newKey);
+        table.StringLiterals.Add(key, newKey);
         source.AttachSymbol(pair.Key, newKey.Symbol, true);
         return newKey;
     }
 
-    internal Type.Table.StringKey? GetStringKeyInTable(Type.Table table, string keyString)
+    public Type.Table.StringKey? GetStringKeyInTable(Type.Table table, string keyString)
     {
         if (table.StringLiterals.TryGetValue(keyString, out var key))
         {
