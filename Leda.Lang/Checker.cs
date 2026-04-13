@@ -505,8 +505,14 @@ public class Checker
                 Type? targetValueType;
                 if (sourceKeyType is Type.StringLiteral stringLiteral)
                 {
-                    targetValueType = targetTable.StringLiterals.GetValueOrDefault(stringLiteral.Literal)?.Type;
                     missingStrings.Remove(stringLiteral.Literal);
+
+                    var stringKey = targetTable.StringLiterals.GetValueOrDefault(stringLiteral.Literal);
+                    targetValueType = stringKey?.Type;
+                    if (stringKey != null && sourceField.Key is Tree.Expression.String)
+                    {
+                        source.AttachSymbol(sourceField.Key, stringKey.Symbol);
+                    }
                 }
                 else
                 {
