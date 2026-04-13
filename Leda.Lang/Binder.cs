@@ -147,7 +147,6 @@ public class Binder
             currentBinding.TypeSymbol = symbol;
         }
 
-        symbol.Definition = new(source, node.Range);
         source.AttachSymbol(node, symbol, true);
     }
 

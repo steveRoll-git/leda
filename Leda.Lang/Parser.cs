@@ -559,9 +559,9 @@ public class Parser
                 key = ParseType();
                 Expect(RSquare);
             }
-            else if (Accept<Token.Name>(out var name))
+            else if (token is Token.Name name)
             {
-                key = new Tree.Type.StringLiteral(name.Value);
+                key = ConsumeTree(new Tree.Type.StringLiteral(name.Value));
             }
             else
             {

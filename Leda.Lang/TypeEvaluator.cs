@@ -110,22 +110,48 @@ public class TypeEvaluator(Source source)
         return GetQueryOrCached(GetTypeOfFunctionAnnotationUncached, function, functionAnnotationCache);
     }
 
-    internal Type? GetTypeOfStringKeyInTable(Type.Table table, string key)
+    /// <summary>
+    /// Adds a string key to an inferred table.
+    /// </summary>
+    private Type.Table.StringKey AddStringKeyFromValue(Type.Table table, string key, Tree.Expression.Table.Field field)
     {
-        if (table.StringLiterals.TryGetValue(key, out var type))
+        var newKey = new Type.Table.StringKey(
+            Symbol: new Symbol.StringKey { Definition = new Location(source, field.Key.Range) },
+            Type: GetTypeOfExpression(field.Value));
+        table.StringLiterals.Add(key, newKey);
+        source.AttachSymbol(field.Key, newKey.Symbol, true);
+        return newKey;
+    }
+
+    /// <summary>
+    /// Adds a string key to a table type annotation.
+    /// </summary>
+    private Type.Table.StringKey AddStringKeyFromType(Type.Table table, string keyString, Tree.Type.Pair pair)
+    {
+        var newKey = new Type.Table.StringKey(
+            Symbol: new Symbol.StringKey { Definition = new Location(source, pair.Key.Range) },
+            Type: GetTypeOfTypeAnnotation(pair.Value));
+        table.StringLiterals.Add(keyString, newKey);
+        source.AttachSymbol(pair.Key, newKey.Symbol, true);
+        return newKey;
+    }
+
+    internal Type.Table.StringKey? GetStringKeyInTable(Type.Table table, string keyString)
+    {
+        if (table.StringLiterals.TryGetValue(keyString, out var key))
         {
-            return type;
+            return key;
         }
 
-        Type? value = null;
+        Type.Table.StringKey? newKey = null;
         if (table.IsInferred(out var inferTree, out var typeTree))
         {
             foreach (var field in inferTree.Fields)
             {
-                if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral stringLiteral &&
-                    stringLiteral.Literal == key)
+                if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral { Literal: var literal } &&
+                    literal == keyString)
                 {
-                    value = GetTypeOfExpression(field.Value);
+                    newKey = AddStringKeyFromValue(table, keyString, field);
                     break;
                 }
             }
@@ -134,17 +160,16 @@ public class TypeEvaluator(Source source)
         {
             foreach (var pair in typeTree.Pairs)
             {
-                if (GetTypeOfTypeAnnotation(pair.Key) is Type.StringLiteral stringLiteral &&
-                    stringLiteral.Literal == key)
+                if (GetTypeOfTypeAnnotation(pair.Key) is Type.StringLiteral { Literal: var literal } &&
+                    literal == keyString)
                 {
-                    value = GetTypeOfTypeAnnotation(pair.Value);
+                    newKey = AddStringKeyFromType(table, keyString, pair);
                     break;
                 }
             }
         }
 
-        table.StringLiterals.Add(key, value);
-        return value;
+        return newKey;
     }
 
     /// <summary>
@@ -157,11 +182,10 @@ public class TypeEvaluator(Source source)
         {
             foreach (var field in inferTree.Fields)
             {
-                if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral stringLiteral &&
-                    !table.StringLiterals.ContainsKey(stringLiteral.Literal))
+                if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral { Literal: var literal } &&
+                    !table.StringLiterals.ContainsKey(literal))
                 {
-                    var value = GetTypeOfExpression(field.Value);
-                    table.StringLiterals.Add(stringLiteral.Literal, value);
+                    AddStringKeyFromValue(table, literal, field);
                 }
             }
         }
@@ -169,11 +193,10 @@ public class TypeEvaluator(Source source)
         {
             foreach (var pair in typeTree.Pairs)
             {
-                if (GetTypeOfTypeAnnotation(pair.Key) is Type.StringLiteral stringLiteral &&
-                    !table.StringLiterals.ContainsKey(stringLiteral.Literal))
+                if (GetTypeOfTypeAnnotation(pair.Key) is Type.StringLiteral { Literal: var literal } &&
+                    !table.StringLiterals.ContainsKey(literal))
                 {
-                    var value = GetTypeOfTypeAnnotation(pair.Value);
-                    table.StringLiterals.Add(stringLiteral.Literal, value);
+                    AddStringKeyFromType(table, literal, pair);
                 }
             }
         }
@@ -197,7 +220,7 @@ public class TypeEvaluator(Source source)
         var keyType = GetTypeOfExpression(key, true);
         if (keyType is Type.StringLiteral stringLiteral)
         {
-            return GetTypeOfStringKeyInTable(table, stringLiteral.Literal);
+            return GetStringKeyInTable(table, stringLiteral.Literal)?.Type;
         }
 
         // TODO check number literals, indexers
@@ -213,6 +236,20 @@ public class TypeEvaluator(Source source)
         }
 
         return Type.Unknown;
+    }
+
+    /// <summary>
+    /// Gets the type of a string key in a value, which may not necessarily be a table type.
+    /// (For example, other types with a `__index`.)
+    /// </summary>
+    internal Type.Table.StringKey? GetTypeOfAccessWithStringKey(Type type, string keyString)
+    {
+        if (type is Type.Table table)
+        {
+            return GetStringKeyInTable(table, keyString);
+        }
+
+        return null;
     }
 
     private Type GetTypeOfLocalVariable(Symbol.LocalVariable localVariable)
@@ -564,7 +601,7 @@ public class TypeEvaluator(Source source)
                 }
 
                 s +=
-                    $"{pair.Key}: {TypeToStringIndent(pair.Value, multiline: multiline, indent: newIndent)},{separator}";
+                    $"{pair.Key}: {TypeToStringIndent(pair.Value.Type, multiline: multiline, indent: newIndent)},{separator}";
             }
         }
 
@@ -633,7 +670,7 @@ public class TypeEvaluator(Source source)
         {
             Type.NumberLiteral numberLiteral => numberLiteral.Literal.ToString(CultureInfo.InvariantCulture),
             Type.StringLiteral stringLiteral => '"' + stringLiteral.Literal + '"',
-            Type.PrimitiveType or Type.Reference or Type.TypeParameter => type.Name!,
+            Type.PrimitiveType or Type.TypeParameter => type.Name!,
             Type.Table table => TableToString(table, multiline, indent),
             Type.Function function => FunctionToString(function),
             _ => throw new ArgumentOutOfRangeException(nameof(type))

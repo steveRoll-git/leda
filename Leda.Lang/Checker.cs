@@ -2,6 +2,11 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Leda.Lang;
 
+/// <summary>
+/// Visits all nodes in the syntax tree, and uses the TypeEvaluator to get their types and to show relevant
+/// type-related diagnostics.<br/>
+/// Also associates string keys in tables with symbols.
+/// </summary>
 public class Checker
 {
     private readonly Source source;
@@ -415,7 +420,22 @@ public class Checker
             return;
         }
 
-        if (evaluator.GetTypeOfAccess(access) == null)
+        var found = false;
+
+        if (access.Key is Tree.Expression.String literal)
+        {
+            if (evaluator.GetTypeOfAccessWithStringKey(targetType, literal.Value) is { } stringKey)
+            {
+                found = true;
+                source.AttachSymbol(literal, stringKey.Symbol);
+            }
+        }
+        else
+        {
+            found = evaluator.GetTypeOfAccess(access) != null;
+        }
+
+        if (!found)
         {
             Report(new Diagnostic.TypeDoesntHaveKey(access.Key.Range, evaluator.TypeToString(targetType),
                 evaluator.TypeToString(evaluator.GetTypeOfExpression(access.Key, true))));
@@ -485,7 +505,7 @@ public class Checker
                 Type? targetValueType;
                 if (sourceKeyType is Type.StringLiteral stringLiteral)
                 {
-                    targetValueType = targetTable.StringLiterals.GetValueOrDefault(stringLiteral.Literal);
+                    targetValueType = targetTable.StringLiterals.GetValueOrDefault(stringLiteral.Literal)?.Type;
                     missingStrings.Remove(stringLiteral.Literal);
                 }
                 else
@@ -540,12 +560,6 @@ public class Checker
     /// </summary>
     private Type Dereference(Type type)
     {
-        if (type is Type.Reference reference)
-        {
-            // TODO this should be done in the evaluator
-            return Dereference(evaluator.GetTypeOfSymbol(reference.Symbol));
-        }
-
         return type;
     }
 
@@ -643,7 +657,7 @@ public class Checker
                 continue;
             }
 
-            var sourceValue = evaluator.GetTypeOfStringKeyInTable(sourceTable, targetKey);
+            var sourceValue = evaluator.GetStringKeyInTable(sourceTable, targetKey);
             if (sourceValue == null)
             {
                 reasons.Add(new TypeMismatch.SourceMissingKey(evaluator.TypeToString(targetTable),
@@ -652,7 +666,7 @@ public class Checker
                 continue;
             }
 
-            if (!IsAssignableFrom(targetValue, sourceValue, out var valueReason))
+            if (!IsAssignableFrom(targetValue.Type, sourceValue.Type, out var valueReason))
             {
                 reasons.Add(new TypeMismatch.TableKeyIncompatible('"' + targetKey + '"')
                     { Children = [valueReason] });

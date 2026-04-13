@@ -73,6 +73,11 @@ public abstract class Symbol
     public class TypeParameter : Symbol;
 
     /// <summary>
+    /// A string key in a table.
+    /// </summary>
+    public class StringKey : Symbol;
+
+    /// <summary>
     /// The built-in any type.
     /// </summary>
     public static readonly IntrinsicType AnyType = new(Type.Any);

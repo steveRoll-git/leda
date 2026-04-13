@@ -107,9 +107,14 @@ public abstract class Type
     public class Table : Type
     {
         /// <summary>
+        /// The symbol and type of a string key in a table.
+        /// </summary>
+        public record StringKey(Symbol Symbol, Type Type);
+
+        /// <summary>
         /// Cached values of pairs whose keys are string literals.
         /// </summary>
-        public Dictionary<string, Type?> StringLiterals { get; } = [];
+        public Dictionary<string, StringKey?> StringLiterals { get; } = [];
 
         /// <summary>
         /// Cached values of pairs whose keys are number literals.
@@ -154,23 +159,6 @@ public abstract class Type
             inferTree = InferTree;
             typeTree = TypeTree;
             return inferTree != null;
-        }
-    }
-
-    /// <summary>
-    /// A reference to a symbol.
-    /// </summary>
-    public class Reference : Type
-    {
-        public Symbol Symbol { get; }
-
-        /// <summary>
-        /// A reference to a symbol.
-        /// </summary>
-        public Reference(Symbol symbol, string name)
-        {
-            Symbol = symbol;
-            Name = name;
         }
     }
 

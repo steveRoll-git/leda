@@ -74,7 +74,11 @@ public static class NameFinder
     /// <summary>
     /// Finds the name that lies on the given position by recursively descending the tree.
     /// </summary>
-    /// <returns>The expression or type name under the given position, or null if it wasn't found.</returns>
+    /// <returns>
+    /// The expression or type name under the given position, or null if it wasn't found.<br/>
+    /// The returned node may be one of the following: Tree.Expression.Name, Tree.Type.Name, Tree.Expression.String, or
+    /// Tree.Type.StringLiteral.
+    /// </returns>
     public static Tree? GetNameAtPosition(Tree? tree, Position position)
     {
         if (tree == null)
@@ -87,7 +91,7 @@ public static class NameFinder
             return null;
         }
 
-        if (tree is Tree.Expression.Name or Tree.Type.Name)
+        if (tree is Tree.Expression.Name or Tree.Type.Name or Tree.Expression.String or Tree.Type.StringLiteral)
         {
             return tree;
         }

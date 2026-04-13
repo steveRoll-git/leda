@@ -129,7 +129,11 @@ public class Source
     {
         treeSymbolMap.Add(tree, symbol);
 
-        if (!isDefinition)
+        if (isDefinition)
+        {
+            symbol.Definition = new(this, tree.Range);
+        }
+        else
         {
             if (!SymbolReferences.TryGetValue(symbol, out var references))
             {
