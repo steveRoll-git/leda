@@ -86,7 +86,7 @@ public class TypeEvaluator(Source source)
         {
             if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral { Literal: var literal })
             {
-                var newKey = new Type.Table.ValueStringKey(new Symbol.StringKey(type, literal), field);
+                var newKey = new Type.Table.ValueStringField(new Symbol.StringField(type, literal), field);
                 type.StringLiterals[literal] = newKey;
                 if (field.Key is Tree.Expression.String)
                 {
@@ -114,7 +114,7 @@ public class TypeEvaluator(Source source)
         {
             if (GetTypeOfTypeAnnotation(field.Key) is Type.StringLiteral { Literal: var literal })
             {
-                var newKey = new Type.Table.TypeStringKey(new Symbol.StringKey(type, literal), field);
+                var newKey = new Type.Table.TypeStringField(new Symbol.StringField(type, literal), field);
                 type.StringLiterals[literal] = newKey;
                 source.AttachSymbol(field.Key, newKey.Symbol, true);
             }
@@ -128,17 +128,17 @@ public class TypeEvaluator(Source source)
         return GetQueryOrCached(GetTypeOfTableAnnotationUncached, table, tableAnnotationCache);
     }
 
-    internal Type GetTypeOfStringKey(Type.Table.StringKey stringKey)
+    internal Type GetTypeOfStringField(Type.Table.StringField stringField)
     {
-        if (stringKey.CachedType == null)
+        if (stringField.CachedType == null)
         {
-            if (stringKey is Type.Table.ValueStringKey valueStringKey)
+            if (stringField is Type.Table.ValueStringField valueStringField)
             {
-                stringKey.CachedType = GetTypeOfExpression(valueStringKey.Field.Value);
+                stringField.CachedType = GetTypeOfExpression(valueStringField.Field.Value);
             }
-            else if (stringKey is Type.Table.TypeStringKey typeStringKey)
+            else if (stringField is Type.Table.TypeStringField typeStringField)
             {
-                stringKey.CachedType = GetTypeOfTypeAnnotation(typeStringKey.Field.Value);
+                stringField.CachedType = GetTypeOfTypeAnnotation(typeStringField.Field.Value);
             }
             else
             {
@@ -146,17 +146,17 @@ public class TypeEvaluator(Source source)
             }
         }
 
-        return stringKey.CachedType;
+        return stringField.CachedType;
     }
 
-    public Type? GetTypeOfStringKeyInTable(Type.Table table, string key)
+    public Type? GetTypeOfStringFieldInTable(Type.Table table, string key)
     {
-        if (!table.StringLiterals.TryGetValue(key, out var stringKey))
+        if (!table.StringLiterals.TryGetValue(key, out var field))
         {
             return null;
         }
 
-        return GetTypeOfStringKey(stringKey);
+        return GetTypeOfStringField(field);
     }
 
     private Type? GetTypeOfTableAccess(Type.Table table, Tree.Expression key)
@@ -164,7 +164,7 @@ public class TypeEvaluator(Source source)
         var keyType = GetTypeOfExpression(key, true);
         if (keyType is Type.StringLiteral stringLiteral)
         {
-            return GetTypeOfStringKeyInTable(table, stringLiteral.Literal);
+            return GetTypeOfStringFieldInTable(table, stringLiteral.Literal);
         }
 
         // TODO check number literals, indexers
@@ -183,10 +183,10 @@ public class TypeEvaluator(Source source)
     }
 
     /// <summary>
-    /// Gets the type of a string key in a value, which may not necessarily be a table type.
+    /// Gets a string field in a value, whose type may not necessarily be a table.
     /// (For example, other types with a `__index`.)
     /// </summary>
-    internal static Type.Table.StringKey? GetTypeOfAccessWithStringKey(Type type, string key)
+    internal static Type.Table.StringField? GetStringFieldInType(Type type, string key)
     {
         if (type is Type.Table table)
         {
@@ -553,7 +553,7 @@ public class TypeEvaluator(Source source)
             }
 
             s +=
-                $"{key}: {TypeToStringIndent(GetTypeOfStringKey(value), multiline: multiline, indent: newIndent)},{separator}";
+                $"{key}: {TypeToStringIndent(GetTypeOfStringField(value), multiline: multiline, indent: newIndent)},{separator}";
         }
 
         if (multiline)

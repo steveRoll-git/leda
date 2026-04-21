@@ -427,10 +427,10 @@ public class Checker
 
         if (access.Key is Tree.Expression.String literal)
         {
-            if (TypeEvaluator.GetTypeOfAccessWithStringKey(targetType, literal.Value) is { } stringKey)
+            if (TypeEvaluator.GetStringFieldInType(targetType, literal.Value) is { } stringField)
             {
                 found = true;
-                source.AttachSymbol(literal, stringKey.Symbol);
+                source.AttachSymbol(literal, stringField.Symbol);
             }
         }
         else
@@ -459,7 +459,7 @@ public class Checker
     {
         if (generateFieldSymbols)
         {
-            // Call this just to generate symbols for the table's string keys, if they weren't evaluated before.
+            // Call this just to generate symbols for the table's string fields, if they weren't evaluated before.
             evaluator.GetTypeOfTableValue(table);
         }
 
@@ -483,7 +483,7 @@ public class Checker
 
     private void VisitType(Tree.Type.Table table)
     {
-        // Call this just to generate symbols for the table's string keys, if they weren't evaluated before.
+        // Call this just to generate symbols for the table's string fields, if they weren't evaluated before.
         evaluator.GetTypeOfTableAnnotation(table);
 
         foreach (var (key, value) in table.Fields)
@@ -517,11 +517,11 @@ public class Checker
                 {
                     missingStrings.Remove(stringLiteral.Literal);
 
-                    var stringKey = targetTable.StringLiterals.GetValueOrDefault(stringLiteral.Literal);
-                    targetValueType = stringKey != null ? evaluator.GetTypeOfStringKey(stringKey) : null;
-                    if (stringKey != null && sourceField.Key is Tree.Expression.String)
+                    var stringField = targetTable.StringLiterals.GetValueOrDefault(stringLiteral.Literal);
+                    targetValueType = stringField != null ? evaluator.GetTypeOfStringField(stringField) : null;
+                    if (stringField != null && sourceField.Key is Tree.Expression.String)
                     {
-                        source.AttachSymbol(sourceField.Key, stringKey.Symbol);
+                        source.AttachSymbol(sourceField.Key, stringField.Symbol);
                     }
                 }
                 else
@@ -664,9 +664,9 @@ public class Checker
     {
         List<TypeMismatch> reasons = [];
 
-        foreach (var (targetKey, targetStringKey) in targetTable.StringLiterals)
+        foreach (var (targetKey, targetStringField) in targetTable.StringLiterals)
         {
-            var sourceType = evaluator.GetTypeOfStringKeyInTable(sourceTable, targetKey);
+            var sourceType = evaluator.GetTypeOfStringFieldInTable(sourceTable, targetKey);
             if (sourceType == null)
             {
                 reasons.Add(new TypeMismatch.SourceMissingKey(evaluator.TypeToString(targetTable),
@@ -675,7 +675,7 @@ public class Checker
                 continue;
             }
 
-            if (!IsAssignableFrom(evaluator.GetTypeOfStringKey(targetStringKey), sourceType, out var valueReason))
+            if (!IsAssignableFrom(evaluator.GetTypeOfStringField(targetStringField), sourceType, out var valueReason))
             {
                 reasons.Add(new TypeMismatch.TableKeyIncompatible('"' + targetKey + '"') { Children = [valueReason] });
             }
