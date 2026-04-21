@@ -474,7 +474,7 @@ public class Checker
 
     private void VisitType(Tree.Type.Table table)
     {
-        foreach (var (key, value) in table.Pairs)
+        foreach (var (key, value) in table.Fields)
         {
             VisitType(key);
             VisitType(value);

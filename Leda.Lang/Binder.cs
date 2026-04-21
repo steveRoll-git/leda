@@ -623,10 +623,10 @@ public class Binder
 
     private void Visit(Tree.Type.Table table)
     {
-        foreach (var pair in table.Pairs)
+        foreach (var field in table.Fields)
         {
-            Visit(pair.Key);
-            Visit(pair.Value);
+            Visit(field.Key);
+            Visit(field.Value);
         }
     }
 

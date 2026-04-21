@@ -112,23 +112,23 @@ public abstract class Type
         public record StringKey(Symbol Symbol, Type Type);
 
         /// <summary>
-        /// Cached values of pairs whose keys are string literals.
+        /// Cached values of fields whose keys are string literals.
         /// </summary>
         public Dictionary<string, StringKey?> StringLiterals { get; } = [];
 
         /// <summary>
-        /// Cached values of pairs whose keys are number literals.
+        /// Cached values of fields whose keys are number literals.
         /// </summary>
         public Dictionary<double, Type> NumberLiterals { get; } = [];
 
         // TODO also store `true` and `false` literals
 
-        public readonly record struct Pair(Type Key, Type Value);
+        public readonly record struct Field(Type Key, Type Value);
 
         /// <summary>
-        /// Cached values of pairs whose key is not a string or number literal.
+        /// Cached values of fields whose key is not a string or number literal.
         /// </summary>
-        public List<Pair> Indexers { get; } = [];
+        public List<Field> Indexers { get; } = [];
 
         /// <summary>
         /// The table value that this table type should be inferred from.

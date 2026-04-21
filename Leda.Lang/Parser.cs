@@ -549,7 +549,7 @@ public class Parser
 
         Expect(LCurly);
 
-        List<Tree.Type.Pair> pairs = [];
+        List<Tree.Type.Field> fields = [];
 
         while (!Accept<Token.RCurly>())
         {
@@ -574,7 +574,7 @@ public class Parser
 
             if (key != null)
             {
-                pairs.Add(new(key, value));
+                fields.Add(new(key, value));
             }
 
             if (!Accept<Token.Comma>())
@@ -584,7 +584,7 @@ public class Parser
             }
         }
 
-        return new Tree.Type.Table(pairs);
+        return new Tree.Type.Table(fields);
     }
 
     private List<Tree.Type> ParseTypeList()

@@ -43,7 +43,7 @@ public static class NameFinder
         return null;
     }
 
-    private static Tree? GetNameAtPosition(List<Tree.Type.Pair> fields, Position position)
+    private static Tree? GetNameAtPosition(List<Tree.Type.Field> fields, Position position)
     {
         foreach (var field in fields)
         {
@@ -162,7 +162,7 @@ public static class NameFinder
             Tree.Expression.Table.Field tableField => GetNameAtPosition(tableField.Key, position) ??
                                                       GetNameAtPosition(tableField.Value, position),
 
-            Tree.Type.Table table => GetNameAtPosition(table.Pairs, position),
+            Tree.Type.Table table => GetNameAtPosition(table.Fields, position),
 
             Tree.Statement.While whileStatement => GetNameAtPosition(whileStatement.Condition, position) ??
                                                    GetNameAtPosition(whileStatement.Body, position),

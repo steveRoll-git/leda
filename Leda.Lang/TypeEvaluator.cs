@@ -126,13 +126,13 @@ public class TypeEvaluator(Source source)
     /// <summary>
     /// Adds a string key to a table type annotation.
     /// </summary>
-    private Type.Table.StringKey AddStringKeyFromType(Type.Table table, string key, Tree.Type.Pair pair)
+    private Type.Table.StringKey AddStringKeyFromType(Type.Table table, string key, Tree.Type.Field field)
     {
         var newKey = new Type.Table.StringKey(
-            Symbol: new Symbol.StringKey(table, key) { Definition = new Location(source, pair.Key.Range) },
-            Type: GetTypeOfTypeAnnotation(pair.Value));
+            Symbol: new Symbol.StringKey(table, key) { Definition = new Location(source, field.Key.Range) },
+            Type: GetTypeOfTypeAnnotation(field.Value));
         table.StringLiterals.Add(key, newKey);
-        source.AttachSymbol(pair.Key, newKey.Symbol, true);
+        source.AttachSymbol(field.Key, newKey.Symbol, true);
         return newKey;
     }
 
@@ -158,12 +158,12 @@ public class TypeEvaluator(Source source)
         }
         else
         {
-            foreach (var pair in typeTree.Pairs)
+            foreach (var field in typeTree.Fields)
             {
-                if (GetTypeOfTypeAnnotation(pair.Key) is Type.StringLiteral { Literal: var literal } &&
+                if (GetTypeOfTypeAnnotation(field.Key) is Type.StringLiteral { Literal: var literal } &&
                     literal == keyString)
                 {
-                    newKey = AddStringKeyFromType(table, keyString, pair);
+                    newKey = AddStringKeyFromType(table, keyString, field);
                     break;
                 }
             }
@@ -191,27 +191,14 @@ public class TypeEvaluator(Source source)
         }
         else
         {
-            foreach (var pair in typeTree.Pairs)
+            foreach (var field in typeTree.Fields)
             {
-                if (GetTypeOfTypeAnnotation(pair.Key) is Type.StringLiteral { Literal: var literal } &&
+                if (GetTypeOfTypeAnnotation(field.Key) is Type.StringLiteral { Literal: var literal } &&
                     !table.StringLiterals.ContainsKey(literal))
                 {
-                    AddStringKeyFromType(table, literal, pair);
+                    AddStringKeyFromType(table, literal, field);
                 }
             }
-        }
-    }
-
-    /// <summary>
-    /// Evaluates all the type's inner information that wasn't lazily evaluated before.
-    /// </summary>
-    private void CompleteType(Type type)
-    {
-        switch (type)
-        {
-            case Type.Table table:
-                CompleteTableType(table);
-                break;
         }
     }
 
