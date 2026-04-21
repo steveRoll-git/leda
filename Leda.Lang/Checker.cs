@@ -160,7 +160,7 @@ public class Checker
         }
     }
 
-    private void VisitExpression(Tree.Expression expr)
+    private void VisitExpression(Tree.Expression expr, bool generateFieldSymbols = false)
     {
         switch (expr)
         {
@@ -180,7 +180,7 @@ public class Checker
                 VisitExpression(methodCall);
                 break;
             case Tree.Expression.Table table:
-                VisitExpression(table);
+                VisitExpression(table, generateFieldSymbols);
                 break;
             case Tree.Expression.Unary unary:
                 VisitExpression(unary);
@@ -345,7 +345,10 @@ public class Checker
         for (var i = 0; i < localDeclaration.Values.Count; i++)
         {
             var value = localDeclaration.Values[i];
-            VisitExpression(value);
+            VisitExpression(value,
+                // Generate symbols for table fields only if the value is inferred.
+                i < localDeclaration.Declarations.Count && localDeclaration.Declarations[i].Type == null);
+
             if (i >= localDeclaration.Declarations.Count)
             {
                 Report(new Diagnostic.ValueNotAssigned(value.Range));
@@ -424,7 +427,7 @@ public class Checker
 
         if (access.Key is Tree.Expression.String literal)
         {
-            if (evaluator.GetTypeOfAccessWithStringKey(targetType, literal.Value) is { } stringKey)
+            if (TypeEvaluator.GetTypeOfAccessWithStringKey(targetType, literal.Value) is { } stringKey)
             {
                 found = true;
                 source.AttachSymbol(literal, stringKey.Symbol);
@@ -452,8 +455,14 @@ public class Checker
         VisitExpression(unary.Expression);
     }
 
-    private void VisitExpression(Tree.Expression.Table table)
+    private void VisitExpression(Tree.Expression.Table table, bool generateFieldSymbols)
     {
+        if (generateFieldSymbols)
+        {
+            // Call this just to generate symbols for the table's string keys, if they weren't evaluated before.
+            evaluator.GetTypeOfTableValue(table);
+        }
+
         foreach (var field in table.Fields)
         {
             VisitExpression(field.Key);
@@ -474,6 +483,9 @@ public class Checker
 
     private void VisitType(Tree.Type.Table table)
     {
+        // Call this just to generate symbols for the table's string keys, if they weren't evaluated before.
+        evaluator.GetTypeOfTableAnnotation(table);
+
         foreach (var (key, value) in table.Fields)
         {
             VisitType(key);
@@ -495,8 +507,6 @@ public class Checker
 
         if (sourceValue is Tree.Expression.Table sourceTable && targetType is Type.Table targetTable)
         {
-            evaluator.CompleteTableType(targetTable);
-
             var missingStrings = new HashSet<string>(targetTable.StringLiterals.Select(p => p.Key));
             // TODO check number literals too
             foreach (var sourceField in sourceTable.Fields)
@@ -508,7 +518,7 @@ public class Checker
                     missingStrings.Remove(stringLiteral.Literal);
 
                     var stringKey = targetTable.StringLiterals.GetValueOrDefault(stringLiteral.Literal);
-                    targetValueType = stringKey?.Type;
+                    targetValueType = stringKey != null ? evaluator.GetTypeOfStringKey(stringKey) : null;
                     if (stringKey != null && sourceField.Key is Tree.Expression.String)
                     {
                         source.AttachSymbol(sourceField.Key, stringKey.Symbol);
@@ -654,17 +664,10 @@ public class Checker
     {
         List<TypeMismatch> reasons = [];
 
-        evaluator.CompleteTableType(targetTable);
-
-        foreach (var (targetKey, targetValue) in targetTable.StringLiterals)
+        foreach (var (targetKey, targetStringKey) in targetTable.StringLiterals)
         {
-            if (targetValue == null)
-            {
-                continue;
-            }
-
-            var sourceValue = evaluator.GetStringKeyInTable(sourceTable, targetKey);
-            if (sourceValue == null)
+            var sourceType = evaluator.GetTypeOfStringKeyInTable(sourceTable, targetKey);
+            if (sourceType == null)
             {
                 reasons.Add(new TypeMismatch.SourceMissingKey(evaluator.TypeToString(targetTable),
                     evaluator.TypeToString(sourceTable),
@@ -672,10 +675,9 @@ public class Checker
                 continue;
             }
 
-            if (!IsAssignableFrom(targetValue.Type, sourceValue.Type, out var valueReason))
+            if (!IsAssignableFrom(evaluator.GetTypeOfStringKey(targetStringKey), sourceType, out var valueReason))
             {
-                reasons.Add(new TypeMismatch.TableKeyIncompatible('"' + targetKey + '"')
-                    { Children = [valueReason] });
+                reasons.Add(new TypeMismatch.TableKeyIncompatible('"' + targetKey + '"') { Children = [valueReason] });
             }
         }
         // TODO check number literals too

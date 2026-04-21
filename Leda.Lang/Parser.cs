@@ -549,7 +549,7 @@ public class Parser
 
         Expect(LCurly);
 
-        List<Tree.Type.Field> fields = [];
+        List<Tree.Type.Table.Field> fields = [];
 
         while (!Accept<Token.RCurly>())
         {

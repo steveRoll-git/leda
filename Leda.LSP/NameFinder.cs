@@ -43,7 +43,7 @@ public static class NameFinder
         return null;
     }
 
-    private static Tree? GetNameAtPosition(List<Tree.Type.Field> fields, Position position)
+    private static Tree? GetNameAtPosition(List<Tree.Type.Table.Field> fields, Position position)
     {
         foreach (var field in fields)
         {

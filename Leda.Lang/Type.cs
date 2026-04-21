@@ -109,12 +109,32 @@ public abstract class Type
         /// <summary>
         /// The symbol and type of a string key in a table.
         /// </summary>
-        public record StringKey(Symbol Symbol, Type Type);
+        public abstract class StringKey(Symbol symbol)
+        {
+            public Symbol Symbol => symbol;
+            public Type? CachedType = null;
+        }
+
+        /// <summary>
+        /// A string key in a table type that's inferred from a value.
+        /// </summary>
+        public class ValueStringKey(Symbol symbol, Tree.Expression.Table.Field field) : StringKey(symbol)
+        {
+            public Tree.Expression.Table.Field Field => field;
+        }
+
+        /// <summary>
+        /// A string key in a table type that's defined by a type annotation.
+        /// </summary>
+        public class TypeStringKey(Symbol symbol, Tree.Type.Table.Field field) : StringKey(symbol)
+        {
+            public Tree.Type.Table.Field Field => field;
+        }
 
         /// <summary>
         /// Cached values of fields whose keys are string literals.
         /// </summary>
-        public Dictionary<string, StringKey?> StringLiterals { get; } = [];
+        public Dictionary<string, StringKey> StringLiterals { get; } = [];
 
         /// <summary>
         /// Cached values of fields whose keys are number literals.
@@ -148,17 +168,6 @@ public abstract class Type
         public Table(Tree.Type.Table typeTree)
         {
             TypeTree = typeTree;
-        }
-
-        /// <summary>
-        /// Returns whether this table type is inferred from a table value, or defined by a table type annotation.
-        /// </summary>
-        public bool IsInferred([NotNullWhen(true)] out Tree.Expression.Table? inferTree,
-            [NotNullWhen(false)] out Tree.Type.Table? typeTree)
-        {
-            inferTree = InferTree;
-            typeTree = TypeTree;
-            return inferTree != null;
         }
     }
 

@@ -79,127 +79,84 @@ public class TypeEvaluator(Source source)
         return GetQueryOrCached(GetTypeOfFunctionUncached, function, functionTypeCache);
     }
 
-    private static Type.Table GetTypeOfTableValueUncached(Tree.Expression.Table table)
+    private Type.Table GetTypeOfTableValueUncached(Tree.Expression.Table table)
     {
-        return new Type.Table(table);
+        var type = new Type.Table(table);
+        foreach (var field in table.Fields)
+        {
+            if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral { Literal: var literal })
+            {
+                var newKey = new Type.Table.ValueStringKey(new Symbol.StringKey(type, literal), field);
+                type.StringLiterals[literal] = newKey;
+                if (field.Key is Tree.Expression.String)
+                {
+                    source.AttachSymbol(field.Key, newKey.Symbol, true);
+                }
+                else
+                {
+                    newKey.Symbol.Definition = new(source, field.Key.Range);
+                }
+            }
+        }
+
+        return type;
     }
 
-    private Type.Table GetTypeOfTableValue(Tree.Expression.Table table)
+    internal Type.Table GetTypeOfTableValue(Tree.Expression.Table table)
     {
         return GetQueryOrCached(GetTypeOfTableValueUncached, table, inferredTableCache);
     }
 
-    private static Type.Table GetTypeOfTableAnnotationUncached(Tree.Type.Table table)
+    private Type.Table GetTypeOfTableAnnotationUncached(Tree.Type.Table table)
     {
-        return new Type.Table(table);
+        var type = new Type.Table(table);
+        foreach (var field in table.Fields)
+        {
+            if (GetTypeOfTypeAnnotation(field.Key) is Type.StringLiteral { Literal: var literal })
+            {
+                var newKey = new Type.Table.TypeStringKey(new Symbol.StringKey(type, literal), field);
+                type.StringLiterals[literal] = newKey;
+                source.AttachSymbol(field.Key, newKey.Symbol, true);
+            }
+        }
+
+        return type;
     }
 
-    private Type.Table GetTypeOfTableAnnotation(Tree.Type.Table table)
+    internal Type.Table GetTypeOfTableAnnotation(Tree.Type.Table table)
     {
         return GetQueryOrCached(GetTypeOfTableAnnotationUncached, table, tableAnnotationCache);
     }
 
-    private static Type.Function GetTypeOfFunctionAnnotationUncached(Tree.Type.Function function)
+    internal Type GetTypeOfStringKey(Type.Table.StringKey stringKey)
     {
-        return new Type.Function(new TypeList.FromDeclarations(function.Parameters),
-            function.ReturnTypes != null ? new TypeList.FromTypes(function.ReturnTypes) : TypeList.Empty, []);
-    }
-
-    private Type.Function GetTypeOfFunctionAnnotation(Tree.Type.Function function)
-    {
-        return GetQueryOrCached(GetTypeOfFunctionAnnotationUncached, function, functionAnnotationCache);
-    }
-
-    /// <summary>
-    /// Adds a string key to an inferred table.
-    /// </summary>
-    private Type.Table.StringKey AddStringKeyFromValue(Type.Table table, string key, Tree.Expression.Table.Field field)
-    {
-        var newKey = new Type.Table.StringKey(
-            Symbol: new Symbol.StringKey(table, key) { Definition = new Location(source, field.Key.Range) },
-            Type: GetTypeOfExpression(field.Value));
-        table.StringLiterals.Add(key, newKey);
-        source.AttachSymbol(field.Key, newKey.Symbol, true);
-        return newKey;
-    }
-
-    /// <summary>
-    /// Adds a string key to a table type annotation.
-    /// </summary>
-    private Type.Table.StringKey AddStringKeyFromType(Type.Table table, string key, Tree.Type.Field field)
-    {
-        var newKey = new Type.Table.StringKey(
-            Symbol: new Symbol.StringKey(table, key) { Definition = new Location(source, field.Key.Range) },
-            Type: GetTypeOfTypeAnnotation(field.Value));
-        table.StringLiterals.Add(key, newKey);
-        source.AttachSymbol(field.Key, newKey.Symbol, true);
-        return newKey;
-    }
-
-    public Type.Table.StringKey? GetStringKeyInTable(Type.Table table, string keyString)
-    {
-        if (table.StringLiterals.TryGetValue(keyString, out var key))
+        if (stringKey.CachedType == null)
         {
-            return key;
-        }
-
-        Type.Table.StringKey? newKey = null;
-        if (table.IsInferred(out var inferTree, out var typeTree))
-        {
-            foreach (var field in inferTree.Fields)
+            if (stringKey is Type.Table.ValueStringKey valueStringKey)
             {
-                if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral { Literal: var literal } &&
-                    literal == keyString)
-                {
-                    newKey = AddStringKeyFromValue(table, keyString, field);
-                    break;
-                }
+                stringKey.CachedType = GetTypeOfExpression(valueStringKey.Field.Value);
             }
-        }
-        else
-        {
-            foreach (var field in typeTree.Fields)
+            else if (stringKey is Type.Table.TypeStringKey typeStringKey)
             {
-                if (GetTypeOfTypeAnnotation(field.Key) is Type.StringLiteral { Literal: var literal } &&
-                    literal == keyString)
-                {
-                    newKey = AddStringKeyFromType(table, keyString, field);
-                    break;
-                }
+                stringKey.CachedType = GetTypeOfTypeAnnotation(typeStringKey.Field.Value);
+            }
+            else
+            {
+                return Type.Unknown; // Unreachable.
             }
         }
 
-        return newKey;
+        return stringKey.CachedType;
     }
 
-    /// <summary>
-    /// Evaluates all the table's field types that weren't lazily evaluated before.
-    /// </summary>
-    internal void CompleteTableType(Type.Table table)
+    public Type? GetTypeOfStringKeyInTable(Type.Table table, string key)
     {
-        // TODO number literals and indexers
-        if (table.IsInferred(out var inferTree, out var typeTree))
+        if (!table.StringLiterals.TryGetValue(key, out var stringKey))
         {
-            foreach (var field in inferTree.Fields)
-            {
-                if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral { Literal: var literal } &&
-                    !table.StringLiterals.ContainsKey(literal))
-                {
-                    AddStringKeyFromValue(table, literal, field);
-                }
-            }
+            return null;
         }
-        else
-        {
-            foreach (var field in typeTree.Fields)
-            {
-                if (GetTypeOfTypeAnnotation(field.Key) is Type.StringLiteral { Literal: var literal } &&
-                    !table.StringLiterals.ContainsKey(literal))
-                {
-                    AddStringKeyFromType(table, literal, field);
-                }
-            }
-        }
+
+        return GetTypeOfStringKey(stringKey);
     }
 
     private Type? GetTypeOfTableAccess(Type.Table table, Tree.Expression key)
@@ -207,7 +164,7 @@ public class TypeEvaluator(Source source)
         var keyType = GetTypeOfExpression(key, true);
         if (keyType is Type.StringLiteral stringLiteral)
         {
-            return GetStringKeyInTable(table, stringLiteral.Literal)?.Type;
+            return GetTypeOfStringKeyInTable(table, stringLiteral.Literal);
         }
 
         // TODO check number literals, indexers
@@ -229,14 +186,26 @@ public class TypeEvaluator(Source source)
     /// Gets the type of a string key in a value, which may not necessarily be a table type.
     /// (For example, other types with a `__index`.)
     /// </summary>
-    internal Type.Table.StringKey? GetTypeOfAccessWithStringKey(Type type, string keyString)
+    internal static Type.Table.StringKey? GetTypeOfAccessWithStringKey(Type type, string key)
     {
         if (type is Type.Table table)
         {
-            return GetStringKeyInTable(table, keyString);
+            table.StringLiterals.TryGetValue(key, out var value);
+            return value;
         }
 
         return null;
+    }
+
+    private static Type.Function GetTypeOfFunctionAnnotationUncached(Tree.Type.Function function)
+    {
+        return new Type.Function(new TypeList.FromDeclarations(function.Parameters),
+            function.ReturnTypes != null ? new TypeList.FromTypes(function.ReturnTypes) : TypeList.Empty, []);
+    }
+
+    private Type.Function GetTypeOfFunctionAnnotation(Tree.Type.Function function)
+    {
+        return GetQueryOrCached(GetTypeOfFunctionAnnotationUncached, function, functionAnnotationCache);
     }
 
     private Type GetTypeOfLocalVariable(Symbol.LocalVariable localVariable)
@@ -567,8 +536,6 @@ public class TypeEvaluator(Source source)
 
     private string TableToString(Type.Table table, bool multiline, string indent)
     {
-        CompleteTableType(table);
-
         var s = "{";
         var newIndent = indent + "  ";
         var separator = multiline ? "\n" : " ";
@@ -578,18 +545,15 @@ public class TypeEvaluator(Source source)
             s += separator;
         }
 
-        foreach (var pair in table.StringLiterals)
+        foreach (var (key, value) in table.StringLiterals)
         {
-            if (pair.Value != null)
+            if (multiline)
             {
-                if (multiline)
-                {
-                    s += newIndent;
-                }
-
-                s +=
-                    $"{pair.Key}: {TypeToStringIndent(pair.Value.Type, multiline: multiline, indent: newIndent)},{separator}";
+                s += newIndent;
             }
+
+            s +=
+                $"{key}: {TypeToStringIndent(GetTypeOfStringKey(value), multiline: multiline, indent: newIndent)},{separator}";
         }
 
         if (multiline)

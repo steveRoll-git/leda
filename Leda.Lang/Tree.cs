@@ -36,16 +36,16 @@ public abstract class Tree
         }
 
         /// <summary>
-        /// A pair of key and value types.
-        /// </summary>
-        public record struct Field(Type Key, Type Value);
-
-        /// <summary>
         /// A list of key-value pairs of types.
         /// </summary>
-        public class Table(List<Field> fields) : Type
+        public class Table(List<Table.Field> fields) : Type
         {
             public List<Field> Fields => fields;
+
+            /// <summary>
+            /// A pair of key and value types.
+            /// </summary>
+            public record struct Field(Type Key, Type Value);
         }
 
         /// <summary>
