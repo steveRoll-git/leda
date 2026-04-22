@@ -9,7 +9,7 @@ public class DefinitionHandler(LedaServer server) : DefinitionHandlerBase
 {
     protected override Task<DefinitionResponse?> Handle(DefinitionParams request, CancellationToken cancellationToken)
     {
-        if (server.TryGetRequestSymbol(request, out var symbol) && symbol.Definition.Source != null)
+        if (server.GetRequestSymbol(request) is { } symbol && symbol.Definition.Source != null)
         {
             return Task.FromResult(new DefinitionResponse(server.ToLsLocation(symbol.Definition)))!;
         }

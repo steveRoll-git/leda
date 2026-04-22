@@ -11,7 +11,7 @@ public class DocumentHighlightHandler(LedaServer server) : DocumentHighlightHand
     protected override Task<DocumentHighlightResponse> Handle(DocumentHighlightParams request, CancellationToken token)
     {
         var source = server.UriSources[request.TextDocument.Uri];
-        if (server.TryGetRequestSymbol(request, out var symbol))
+        if (server.GetRequestSymbol(request) is { } symbol)
         {
             IEnumerable<Location> references = source.SymbolReferences.GetValueOrDefault(symbol) ?? [];
 

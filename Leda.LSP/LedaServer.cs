@@ -115,17 +115,10 @@ public class LedaServer
     /// <summary>
     /// Tries to find the symbol that the `TextDocumentPosition` request is pointing to.
     /// </summary>
-    public bool TryGetRequestSymbol(TextDocumentPositionParams request, [NotNullWhen(true)] out Symbol? symbol)
+    public Symbol? GetRequestSymbol(TextDocumentPositionParams request)
     {
         var source = UriSources[request.TextDocument.Uri];
-        var name = NameFinder.GetNameAtPosition(source.Chunk, request.Position.ToLeda());
-        if (name != null)
-        {
-            return source.TryGetTreeSymbol(name, out symbol);
-        }
-
-        symbol = null;
-        return false;
+        return SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()).symbol;
     }
 
     public List<Location> GetSymbolReferences(Symbol symbol, bool includeDefinition)

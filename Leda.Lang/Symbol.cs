@@ -3,18 +3,20 @@ namespace Leda.Lang;
 /// <summary>
 /// A value or type that has some origin in the source code, that may be referenced in multiple places.
 /// </summary>
-public abstract class Symbol
+public abstract class Symbol(string name)
 {
     /// <summary>
     /// The location where this symbol was defined.
     /// </summary>
     public Location Definition { get; internal set; }
 
+    public string Name => name;
+
     /// <summary>
     /// A local variable.
     /// </summary>
     public class LocalVariable(Tree.Statement.LocalDeclaration declaration, int index)
-        : Symbol
+        : Symbol(declaration.Declarations[index].Name.Value)
     {
         public Tree.Statement.LocalDeclaration Declaration => declaration;
         public int Index => index;
@@ -23,7 +25,7 @@ public abstract class Symbol
     /// <summary>
     /// A function defined with `local function`.
     /// </summary>
-    public class LocalFunction(Tree.Statement.LocalFunctionDeclaration declaration) : Symbol
+    public class LocalFunction(Tree.Statement.LocalFunctionDeclaration declaration) : Symbol(declaration.Name.Value)
     {
         public Tree.Statement.LocalFunctionDeclaration Declaration => declaration;
     }
@@ -31,7 +33,8 @@ public abstract class Symbol
     /// <summary>
     /// A parameter in a function.
     /// </summary>
-    public class Parameter(Tree.Expression.Function function, int index) : Symbol
+    public class Parameter(Tree.Expression.Function function, int index)
+        : Symbol(function.Type.Parameters[index].Name.Value)
     {
         public Tree.Expression.Function Function => function;
         public int Index => index;
@@ -40,12 +43,13 @@ public abstract class Symbol
     /// <summary>
     /// The counter variable of a numeric `for` loop.
     /// </summary>
-    public class NumericForCounter : Symbol;
+    public class NumericForCounter(Tree.Statement.NumericalFor forLoop) : Symbol(forLoop.Counter.Value);
 
     /// <summary>
     /// An iteration variable in a generic `for` loop.
     /// </summary>
-    public class ForVariable(Tree.Statement.IteratorFor forLoop, int index) : Symbol
+    public class ForVariable(Tree.Statement.IteratorFor forLoop, int index)
+        : Symbol(forLoop.Declarations[index].Name.Value)
     {
         public Tree.Statement.IteratorFor ForLoop => forLoop;
         public int Index => index;
@@ -54,7 +58,7 @@ public abstract class Symbol
     /// <summary>
     /// A language-defined type that is known ahead of time.
     /// </summary>
-    public class IntrinsicType(Type type) : Symbol
+    public class IntrinsicType(Type type) : Symbol(type.Name!)
     {
         public Type Type => type;
     }
@@ -62,7 +66,7 @@ public abstract class Symbol
     /// <summary>
     /// A type alias.
     /// </summary>
-    public class TypeAlias(Tree.TypeAliasDeclaration declaration) : Symbol
+    public class TypeAlias(Tree.TypeAliasDeclaration declaration) : Symbol(declaration.Name.Value)
     {
         public Tree.TypeAliasDeclaration Declaration => declaration;
     }
@@ -70,16 +74,16 @@ public abstract class Symbol
     /// <summary>
     /// A generic type parameter.
     /// </summary>
-    public class TypeParameter : Symbol;
+    public class TypeParameter(Tree.Type.Name name) : Symbol(name.Value);
 
     /// <summary>
     /// A string field in a table.
     /// </summary>
-    public class StringField(Type.Table table, string key) : Symbol
+    public class StringField(Type.Table table, string key) : Symbol(key)
     {
         // For this symbol it's okay to store type information, since it's recreated in the typecheck phase.
         public Type.Table Table => table;
-        public string Key => key;
+        public string Key => Name;
     }
 
     /// <summary>

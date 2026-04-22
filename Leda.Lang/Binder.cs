@@ -584,7 +584,7 @@ public class Binder
             Visit(numericalFor.Step);
         }
 
-        AddSymbol(numericalFor.Counter, new Symbol.NumericForCounter());
+        AddSymbol(numericalFor.Counter, new Symbol.NumericForCounter(numericalFor));
         AddIfNotNull(descendents, VisitBlock(numericalFor.Body, antecedent));
         PopScope();
         functionStack.Peek().LoopStack.Pop();
@@ -596,7 +596,7 @@ public class Binder
     {
         foreach (var typeParameter in typeParameters)
         {
-            AddSymbol(typeParameter, new Symbol.TypeParameter());
+            AddSymbol(typeParameter, new Symbol.TypeParameter(typeParameter));
         }
     }
 

@@ -1,8 +1,9 @@
 using Leda.Lang;
+using Range = Leda.Lang.Range;
 
 namespace Leda.LSP;
 
-public static class NameFinder
+public static class SymbolFinder
 {
     // TODO could the return type of all these methods be something more specific than the base Tree?
 
@@ -61,16 +62,6 @@ public static class NameFinder
         return null;
     }
 
-    public static Tree? GetNameAtPosition(Tree.Block? block, Position position)
-    {
-        if (block == null)
-        {
-            return null;
-        }
-
-        return GetNameAtPosition(block.TypeDeclarations, position) ?? GetNameAtPosition(block.Statements, position);
-    }
-
     /// <summary>
     /// Finds the name that lies on the given position by recursively descending the tree.
     /// </summary>
@@ -79,7 +70,7 @@ public static class NameFinder
     /// The returned node may be one of the following: Tree.Expression.Name, Tree.Type.Name, Tree.Expression.String, or
     /// Tree.Type.StringLiteral.
     /// </returns>
-    public static Tree? GetNameAtPosition(Tree? tree, Position position)
+    private static Tree? GetNameAtPosition(Tree? tree, Position position)
     {
         if (tree == null)
         {
@@ -175,5 +166,30 @@ public static class NameFinder
 
             _ => null
         };
+    }
+
+    private static Tree? GetNameAtPosition(Tree.Block? block, Position position)
+    {
+        if (block == null)
+        {
+            return null;
+        }
+
+        return GetNameAtPosition(block.TypeDeclarations, position) ?? GetNameAtPosition(block.Statements, position);
+    }
+
+    /// <summary>
+    /// Returns the symbol and range of the tree node under the given position, if it exists.
+    /// </summary>
+    public static (Symbol? symbol, Range range) GetSymbolAtPosition(Source source, Position position)
+    {
+        var name = GetNameAtPosition(source.Chunk, position);
+        if (name != null)
+        {
+            source.TryGetTreeSymbol(name, out var symbol);
+            return (symbol, name.Range);
+        }
+
+        return default;
     }
 }

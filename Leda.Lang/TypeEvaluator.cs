@@ -293,6 +293,8 @@ public class TypeEvaluator(Source source)
             Symbol.LocalFunction localFunction => GetTypeOfFunction(localFunction.Declaration.Function),
             Symbol.Parameter parameter => GetTypeOfParameter(parameter.Function, parameter.Index),
             Symbol.NumericForCounter => Type.NumberPrimitive,
+            Symbol.IntrinsicType intrinsicType => intrinsicType.Type,
+            Symbol.TypeAlias typeAlias => GetTypeOfTypeAlias(typeAlias),
             _ => Type.Unknown
         };
     }
@@ -304,12 +306,12 @@ public class TypeEvaluator(Source source)
 
     private Type GetTypeOfVariable(Tree.Expression.Name name)
     {
-        if (!source.TryGetTreeSymbol(name, out var symbol))
+        if (source.TryGetTreeSymbol(name, out var symbol))
         {
-            return Type.Unknown;
+            return GetTypeOfSymbol(symbol);
         }
 
-        return GetTypeOfSymbol(symbol);
+        return Type.Unknown;
     }
 
     private Type GetTypeOfExpressionInList(List<Tree.Expression> expressions, int index)
@@ -347,19 +349,11 @@ public class TypeEvaluator(Source source)
         return GetQueryOrCached(GetTypeOfTypeAliasUncached, typeAlias, typeAliasCache);
     }
 
-    public Type GetTypeOfTypeName(Tree.Type.Name name)
+    private Type GetTypeOfTypeName(Tree.Type.Name name)
     {
         if (source.TryGetTreeSymbol(name, out var symbol))
         {
-            if (symbol is Symbol.IntrinsicType intrinsicType)
-            {
-                return intrinsicType.Type;
-            }
-
-            if (symbol is Symbol.TypeAlias typeAlias)
-            {
-                return GetTypeOfTypeAlias(typeAlias);
-            }
+            return GetTypeOfSymbol(symbol);
         }
 
         return Type.Unknown;

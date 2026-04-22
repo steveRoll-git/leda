@@ -10,7 +10,7 @@ public class ReferenceHandler(LedaServer server) : ReferenceHandlerBase
 {
     protected override Task<ReferenceResponse?> Handle(ReferenceParams request, CancellationToken cancellationToken)
     {
-        if (server.TryGetRequestSymbol(request, out var symbol))
+        if (server.GetRequestSymbol(request) is { } symbol)
         {
             var references = server.GetSymbolReferences(symbol, request.Context?.IncludeDeclaration ?? false);
             return Task.FromResult(new ReferenceResponse(references))!;

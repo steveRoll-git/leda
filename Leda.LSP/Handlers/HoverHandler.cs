@@ -14,54 +14,54 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
     {
         var source = server.UriSources[request.TextDocument.Uri];
 
-        var name = NameFinder.GetNameAtPosition(source.Chunk, request.Position.ToLeda());
-
-        if (name is not null && source.TryGetTreeSymbol(name, out var symbol))
+        if (SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()) is ({ } symbol, var range))
         {
             string? content = null;
-            if (symbol is Symbol.StringField { Table: var table, Key: var key })
+            switch (symbol)
             {
-                content =
-                    $"(field) {key}: {source.Evaluator.TypeToString(source.Evaluator.GetTypeOfStringFieldInTable(table, key) ?? Type.Unknown)}";
-            }
-            else if (name is Tree.Expression.Name valueName)
-            {
-                var type = source.Evaluator.GetTypeOfSymbol(symbol);
-                if (symbol is Symbol.LocalFunction && type is Type.Function function)
+                case Symbol.StringField { Table: var table, Key: var key }:
+                    content =
+                        $"(field) {key}: {source.Evaluator.TypeToString(source.Evaluator.GetTypeOfStringFieldInTable(table, key) ?? Type.Unknown)}";
+                    break;
+                case Symbol.LocalVariable:
+                    content =
+                        $"local {symbol.Name}: {source.Evaluator.TypeToString(source.Evaluator.GetTypeOfSymbol(symbol))}";
+                    break;
+                case Symbol.LocalFunction:
                 {
-                    content = $"local function {valueName.Value}{source.Evaluator.FunctionSignatureToString(function)}";
+                    var type = source.Evaluator.GetTypeOfSymbol(symbol);
+                    content =
+                        $"local function {symbol.Name}{(type is Type.Function function ? source.Evaluator.FunctionSignatureToString(function) : "")}";
+                    break;
                 }
-                else
+                case Symbol.IntrinsicType or Symbol.TypeAlias or Symbol.TypeParameter:
                 {
-                    content = $"local {valueName.Value}: {source.Evaluator.TypeToString(type)}";
+                    var typeValue = symbol is not Symbol.IntrinsicType and not Symbol.TypeParameter
+                        ? " = " + source.Evaluator.TypeToString(source.Evaluator.GetTypeOfSymbol(symbol),
+                            typeContents: true, multiline: true)
+                        : "";
+                    content = $"type {symbol.Name}{typeValue}";
+                    break;
                 }
-            }
-            else if (name is Tree.Type.Name typeName)
-            {
-                var typeValue = symbol is not Symbol.IntrinsicType and not Symbol.TypeParameter
-                    ? " = " + source.Evaluator.TypeToString(source.Evaluator.GetTypeOfTypeName(typeName),
-                        typeContents: true, multiline: true)
-                    : "";
-                content = $"type {typeName.Value}{typeValue}";
+                default:
+                    content = $"??? {symbol.Name}";
+                    break;
             }
 
-            if (content != null)
+            content = $"""
+                       ```leda
+                       {content}
+                       ```
+                       """;
+            return Task.FromResult(new HoverResponse
             {
-                content = $"""
-                           ```leda
-                           {content}
-                           ```
-                           """;
-                return Task.FromResult(new HoverResponse
+                Contents = new MarkupContent
                 {
-                    Contents = new MarkupContent
-                    {
-                        Kind = MarkupKind.Markdown,
-                        Value = content
-                    },
-                    Range = name.Range.ToLs()
-                })!;
-            }
+                    Kind = MarkupKind.Markdown,
+                    Value = content
+                },
+                Range = range.ToLs()
+            })!;
         }
 
         return Task.FromResult<HoverResponse?>(null);
