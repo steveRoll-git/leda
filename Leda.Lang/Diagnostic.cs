@@ -62,23 +62,17 @@ public abstract record Diagnostic(Range Range)
         public override string Message => "Unfinished long comment.";
     }
 
-    public record ExpectedToken(Range Range, Token Expected)
+    public record ExpectedToken(Range Range, TokenKind Expected)
         : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"Expected \"{Expected.KindName}\".";
+        public override string Message => $"Expected {Token.KindName(Expected)}.";
     }
 
-    public record ExpectedExpressionButGotToken(Range Range, Token Got) : Diagnostic(Range)
+    public record DidNotExpectTokenHere(Range Range, TokenKind Got) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"Expected an expression, but got \"{Got.Value}\".";
-    }
-
-    public record DidNotExpectTokenHere(Range Range, Token Got) : Diagnostic(Range)
-    {
-        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"Did not expect \"{Got.Value}\" here.";
+        public override string Message => $"Did not expect {Token.KindName(Got)} here.";
     }
 
     public record AmbiguousSyntax(Range Range) : Diagnostic(Range)

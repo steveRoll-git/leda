@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 
 namespace Leda.Lang;
@@ -6,10 +5,8 @@ namespace Leda.Lang;
 /// <summary>
 /// Reads a source file into a stream of tokens.
 /// </summary>
-public class Lexer
+public class Lexer(Source source)
 {
-    private readonly Source source;
-
     public List<Diagnostic> Diagnostics { get; internal init; } = [];
 
     private string Code => source.Code;
@@ -32,15 +29,9 @@ public class Lexer
     /// <summary>
     /// Whether the end of the file has been reached.
     /// </summary>
-    public bool ReachedEnd { get; private set; }
+    private bool ReachedEnd { get; set; } = source.Code.Length == 0;
 
     private char CurChar => CharAt(index);
-
-    public Lexer(Source source)
-    {
-        this.source = source;
-        ReachedEnd = source.Code.Length == 0;
-    }
 
     private void Report(Diagnostic diagnostic)
     {
@@ -111,7 +102,7 @@ public class Lexer
         // Return an EOF token if the end was reached.
         if (ReachedEnd)
         {
-            return new Token.Eof(position);
+            return new Token(TokenKind.Eof, new(position, position), "");
         }
 
         var start = position;
@@ -167,7 +158,7 @@ public class Lexer
                 Report(new Diagnostic.UnfinishedLongString(range));
             }
 
-            return new Token.LongString(level, range, value.Replace("\r\n", "\n"));
+            return new Token.LongString(range, level, value.Replace("\r\n", "\n"));
         }
 
         // If `CurChar` is a digit, or a period with a digit right after it...
@@ -183,24 +174,26 @@ public class Lexer
         }
 
         // Otherwise, see if the current character matches any known tokens.
-        if (Token.StringTokenMap.TryGetValue(CurChar.ToString(), out var token))
+        if (Token.StringTokenMap.TryGetValue(CurChar.ToString(), out var tokenKind))
         {
+            var tokenValue = CurChar.ToString();
             AdvanceChar();
             // As long as the next character still makes a valid token, add it and advance.
-            while (Token.StringTokenMap.TryGetValue($"{token.Value}{CurChar}", out var otherToken))
+            while (Token.StringTokenMap.TryGetValue($"{tokenValue}{CurChar}", out var nextKind))
             {
-                token = otherToken;
+                tokenValue += CurChar;
+                tokenKind = nextKind;
                 AdvanceChar();
             }
 
-            return token with { WordRange = start };
+            return new Token(tokenKind, new(start, position), tokenValue);
         }
 
         var character = CurChar;
         AdvanceChar();
         Report(new Diagnostic.InvalidCharacter(new(start, position), character));
 
-        return new Token(new(prevCharPosition, position));
+        return new Token(TokenKind.Unknown, new(prevCharPosition, position), character.ToString());
     }
 
     private static readonly Dictionary<char, string> EscapeSequences = new()
@@ -221,10 +214,10 @@ public class Lexer
     /// <summary>
     /// Reads a single-line string literal.
     /// </summary>
-    private Token.String ReadString()
+    private Token ReadString()
     {
         var start = position;
-        char delimiter = CurChar;
+        var delimiter = CurChar;
         StringBuilder value = new();
 
         AdvanceChar();
@@ -284,7 +277,7 @@ public class Lexer
 
         AdvanceChar();
 
-        return new Token.String(new(start, position), value.ToString());
+        return new Token(TokenKind.String, new(start, position), value.ToString());
     }
 
     /// <summary>
@@ -383,7 +376,7 @@ public class Lexer
             Report(new Diagnostic.MalformedNumber(new(start, position)));
         }
 
-        return new Token.Number(start, value, numberValue);
+        return new Token.Number(new(start, position), value, numberValue);
     }
 
 
@@ -402,12 +395,9 @@ public class Lexer
 
         var value = Code.Substring(startIndex, index - startIndex);
 
-        if (Token.StringTokenMap.TryGetValue(value, out var keyword))
-        {
-            return keyword with { WordRange = start };
-        }
+        var tokenKind = Token.StringTokenMap.GetValueOrDefault(value, TokenKind.Name);
 
-        return new Token.Name(start, value);
+        return new Token(tokenKind, new(start, position), value);
     }
 
     /// <summary>

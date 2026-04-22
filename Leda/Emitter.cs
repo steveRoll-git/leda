@@ -30,7 +30,7 @@ public class Emitter
 
     private static bool AreBinaryParensNeeded(Tree.Expression.Binary outer, Tree.Expression inner) =>
         inner is Tree.Expression.Binary innerBinary &&
-        innerBinary.Operator.Precedence < outer.Operator.Precedence;
+        Token.Precedence(innerBinary.Operator) < Token.Precedence(outer.Operator);
 
     private Emitter() { }
 
@@ -210,7 +210,7 @@ public class Emitter
         else if (expression is Tree.Expression.Unary unary)
         {
             Emit(unary.Operator.Value);
-            if (unary.Operator is Token.Not)
+            if (unary.Operator.Kind == TokenKind.Not)
             {
                 Emit(' ');
             }

@@ -7,40 +7,13 @@ namespace Leda.Lang;
 /// </summary>
 public class Parser
 {
-    private static readonly Token.Name Name = new();
-    private static readonly Token.LParen LParen = new();
-    private static readonly Token.LCurly LCurly = new();
-    private static readonly Token.RParen RParen = new();
-    private static readonly Token.RSquare RSquare = new();
-    private static readonly Token.RCurly RCurly = new();
-    private static readonly Token.Assign Assign = new();
-    private static readonly Token.Comma Comma = new();
-    private static readonly Token.Colon Colon = new();
-    private static readonly Token.DoubleColon DoubleColon = new();
-    private static readonly Token.If If = new();
-    private static readonly Token.Then Then = new();
-    private static readonly Token.For For = new();
-    private static readonly Token.In In = new();
-    private static readonly Token.While While = new();
-    private static readonly Token.Repeat Repeat = new();
-    private static readonly Token.Do Do = new();
-    private static readonly Token.Until Until = new();
-    private static readonly Token.End End = new();
-    private static readonly Token.Goto Goto = new();
-    private static readonly Token.Function Function = new();
-    private static readonly Token.Local Local = new();
-    private static readonly Token.Less Less = new();
-    private static readonly Token.Greater Greater = new();
-
     /// <summary>
     /// Returns whether `token` can end a statement.
     /// </summary>
     private static bool IsStatementEndingToken(Token token) =>
-        token is Token.End or Token.Else or Token.Elseif or Token.Until or Token.Eof;
+        token.Kind is TokenKind.End or TokenKind.Else or TokenKind.Elseif or TokenKind.Until or TokenKind.Eof;
 
-    private readonly Source source;
-
-    public List<Diagnostic> Diagnostics { get; } = [];
+    private List<Diagnostic> Diagnostics { get; } = [];
 
     private readonly Lexer lexer;
 
@@ -70,9 +43,8 @@ public class Parser
 
     private static bool IsAssignableTo(Tree.Expression tree) => tree is Tree.Expression.Name or Tree.Expression.Access;
 
-    public Parser(Source source)
+    private Parser(Source source)
     {
-        this.source = source;
         lexer = new Lexer(source) { Diagnostics = Diagnostics };
         token = lexer.ReadToken();
     }
@@ -109,11 +81,11 @@ public class Parser
         return consumed;
     }
 
-    private bool Accept<T>([NotNullWhen(true)] out T? result) where T : Token
+    private bool Accept(TokenKind kind, [NotNullWhen(true)] out Token? result)
     {
-        if (token is T correctToken)
+        if (token.Kind == kind)
         {
-            result = correctToken;
+            result = token;
             NextToken();
             return true;
         }
@@ -123,28 +95,25 @@ public class Parser
     }
 
     /// <summary>
-    /// If the current token is of type `T`, consumes it and returns `true`, otherwise returns `false`.
+    /// If the current token is of the given kind, consumes it and returns `true`, otherwise returns `false`.
     /// </summary>
-    private bool Accept<T>() where T : Token
+    private bool Accept(TokenKind kind)
     {
-        return Accept<T>(out _);
+        return Accept(kind, out _);
     }
 
     /// <summary>
-    /// If the current token is of type `T`, consumes it and returns it, otherwise reports an error and returns the
-    /// template token.<br/>
-    /// This method receives a token value because it needs to print information about it in case of an error.
+    /// Consumes and returns the current token. If it isn't of the given kind, reports an error.<br/>
     /// </summary>
-    private T Expect<T>(T expected) where T : Token
+    private Token Expect(TokenKind kind)
     {
         var got = Consume();
-        if (got is T gotT)
+        if (got.Kind != kind)
         {
-            return gotT;
+            Report(new Diagnostic.ExpectedToken(got.Range, kind));
         }
 
-        Report(new Diagnostic.ExpectedToken(got.Range, expected));
-        return expected;
+        return got;
     }
 
     /// <summary>
@@ -215,17 +184,17 @@ public class Parser
 
     private Tree.Expression.Name ParseValueName()
     {
-        return StartEndTree(new Tree.Expression.Name(Expect(Name).Value));
+        return StartEndTree(new Tree.Expression.Name(Expect(TokenKind.Name).Value));
     }
 
     private Tree.Type.Name ParseTypeName()
     {
-        return StartEndTree(new Tree.Type.Name(Expect(Name).Value));
+        return StartEndTree(new Tree.Type.Name(Expect(TokenKind.Name).Value));
     }
 
     private Tree.LabelName ParseLabelName()
     {
-        return StartEndTree(new Tree.LabelName(Expect(Name).Value));
+        return StartEndTree(new Tree.LabelName(Expect(TokenKind.Name).Value));
     }
 
     /// <summary>
@@ -233,7 +202,7 @@ public class Parser
     /// </summary>
     private Tree.Expression.String ParseStringIdentifier()
     {
-        return StartEndTree(new Tree.Expression.String(Expect(Name).Value));
+        return StartEndTree(new Tree.Expression.String(Expect(TokenKind.Name).Value));
     }
 
     /// <summary>
@@ -246,7 +215,7 @@ public class Parser
 
         while (!IsStatementEndingToken(token))
         {
-            if (token is Token.Name { Value: "type" } && Lookahead(1) is Token.Name)
+            if (token is { Kind: TokenKind.Name, Value: "type" } && Lookahead(1).Kind == TokenKind.Name)
             {
                 typeDeclarations.Add(ParseTypeAlias());
             }
@@ -256,7 +225,7 @@ public class Parser
                 statements.Add(statement);
 
                 // This behavior models Lua 5.1's syntax - in Lua 5.2+, semicolons may be their own statements.
-                Accept<Token.Semicolon>();
+                Accept(TokenKind.Semicolon);
 
                 if (statement is Tree.Statement.Return or Tree.Statement.Break)
                 {
@@ -286,7 +255,7 @@ public class Parser
     private Tree.Statement ParseStatement()
     {
         // 'return' [explist]
-        if (token is Token.Return)
+        if (token.Kind == TokenKind.Return)
         {
             StartTree();
             NextToken(); // skip 'return'
@@ -295,52 +264,52 @@ public class Parser
             return EndTree(returnStatement);
         }
 
-        if (token is Token.Break)
+        if (token.Kind == TokenKind.Break)
         {
             return ConsumeTree(new Tree.Statement.Break());
         }
 
-        if (token is Token.Do)
+        if (token.Kind == TokenKind.Do)
         {
             return ParseDo();
         }
 
-        if (token is Token.If)
+        if (token.Kind == TokenKind.If)
         {
             return ParseIfStatement();
         }
 
-        if (token is Token.For)
+        if (token.Kind == TokenKind.For)
         {
             return ParseForLoop();
         }
 
-        if (token is Token.While)
+        if (token.Kind == TokenKind.While)
         {
             return ParseWhileLoop();
         }
 
-        if (token is Token.Repeat)
+        if (token.Kind == TokenKind.Repeat)
         {
             return ParseRepeatUntilLoop();
         }
 
-        if (token is Token.Local)
+        if (token.Kind == TokenKind.Local)
         {
             return ParseLocalDeclaration();
         }
 
-        if (token is Token.Function)
+        if (token.Kind == TokenKind.Function)
         {
             return ParseFunctionDeclaration();
         }
 
-        if (token is Token.DoubleColon)
+        if (token.Kind == TokenKind.DoubleColon)
         {
             return ParseLabelDefinition();
         }
 
-        if (token is Token.Goto)
+        if (token.Kind == TokenKind.Goto)
         {
             return ParseGoto();
         }
@@ -368,7 +337,7 @@ public class Parser
         if (IsAssignableTo(value))
         {
             List<Tree.Expression> targets = [value];
-            while (Accept<Token.Comma>())
+            while (Accept(TokenKind.Comma))
             {
                 var target = ParsePrefixExpression();
                 if (!IsAssignableTo(target))
@@ -382,7 +351,7 @@ public class Parser
                 }
             }
 
-            Expect(Assign);
+            Expect(TokenKind.Assign);
 
             var expressions = ParseExpressionList();
 
@@ -390,7 +359,7 @@ public class Parser
         }
 
         var got = Consume();
-        Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got));
+        Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got.Kind));
 
         return new Tree.Statement.Error();
     }
@@ -399,9 +368,9 @@ public class Parser
     {
         StartTree();
         // do 'block' end
-        Expect(Do);
+        Expect(TokenKind.Do);
         var block = ParseBlock();
-        Expect(End);
+        Expect(TokenKind.End);
         return EndTree(new Tree.Statement.Do(block));
     }
 
@@ -416,9 +385,9 @@ public class Parser
 
         // 'if' exp 'then' block
         {
-            Expect(If);
+            Expect(TokenKind.If);
             var condition = ParseExpression();
-            Expect(Then);
+            Expect(TokenKind.Then);
             var body = ParseBlock();
             primary = new Tree.IfBranch(condition, body);
         }
@@ -426,10 +395,10 @@ public class Parser
         List<Tree.IfBranch> elseIfs = [];
 
         // 'elseif' exp 'then' block
-        while (Accept<Token.Elseif>())
+        while (Accept(TokenKind.Elseif))
         {
             var condition = ParseExpression();
-            Expect(Then);
+            Expect(TokenKind.Then);
             var body = ParseBlock();
             elseIfs.Add(new Tree.IfBranch(condition, body));
         }
@@ -437,12 +406,12 @@ public class Parser
         Tree.Block? elseBody = null;
 
         // 'else' block
-        if (Accept<Token.Else>())
+        if (Accept(TokenKind.Else))
         {
             elseBody = ParseBlock();
         }
 
-        Expect(End);
+        Expect(TokenKind.End);
 
         return EndTree(new Tree.Statement.If(primary, elseIfs, elseBody));
     }
@@ -451,30 +420,26 @@ public class Parser
     {
         StartTree();
 
-        Expect(For);
-        if (token is not Token.Name)
-        {
-            Report(new Diagnostic.ExpectedToken(Name.Range, Name));
-        }
+        Expect(TokenKind.For);
 
         // 'for' name '=' exp ',' exp [',' exp] 'do' block 'end'
-        if (Lookahead(1) is Token.Assign)
+        if (Lookahead(1).Kind == TokenKind.Assign)
         {
             var counter = ParseValueName();
-            Expect(Assign);
+            Expect(TokenKind.Assign);
             var start = ParseExpression();
-            Expect(Comma);
+            Expect(TokenKind.Comma);
             var end = ParseExpression();
 
             Tree.Expression? step = null;
-            if (Accept<Token.Comma>())
+            if (Accept(TokenKind.Comma))
             {
                 step = ParseExpression();
             }
 
-            Expect(Do);
+            Expect(TokenKind.Do);
             var body = ParseBlock();
-            Expect(End);
+            Expect(TokenKind.End);
 
             return EndTree(new Tree.Statement.NumericalFor(counter, start, end, step, body));
         }
@@ -482,9 +447,9 @@ public class Parser
         // 'for' declarations 'in' exp 'do' block 'end'
         {
             var declarations = ParseDeclarationList();
-            Expect(In);
+            Expect(TokenKind.In);
             var iterator = ParseExpression();
-            Expect(Do);
+            Expect(TokenKind.Do);
             var body = ParseBlock();
             return EndTree(new Tree.Statement.IteratorFor(declarations, iterator, body));
         }
@@ -494,11 +459,11 @@ public class Parser
     {
         StartTree();
         // 'while' exp 'do' block 'end'
-        Expect(While);
+        Expect(TokenKind.While);
         var condition = ParseExpression();
-        Expect(Do);
+        Expect(TokenKind.Do);
         var body = ParseBlock();
-        Expect(End);
+        Expect(TokenKind.End);
         return EndTree(new Tree.Statement.While(condition, body));
     }
 
@@ -506,9 +471,9 @@ public class Parser
     {
         StartTree();
         // 'repeat' block 'until' exp
-        Expect(Repeat);
+        Expect(TokenKind.Repeat);
         var body = ParseBlock();
-        Expect(Until);
+        Expect(TokenKind.Until);
         var condition = ParseExpression();
         return EndTree(new Tree.Statement.RepeatUntil(body, condition));
     }
@@ -524,7 +489,7 @@ public class Parser
         var name = ParseValueName();
 
         Tree.Type? type = null;
-        if (Accept<Token.Colon>())
+        if (Accept(TokenKind.Colon))
         {
             type = ParseType();
         }
@@ -536,14 +501,14 @@ public class Parser
     {
         StartTree();
 
-        if (Accept<Token.String>(out var str))
+        if (Accept(TokenKind.String, out var str))
         {
             return EndTree(new Tree.Type.StringLiteral(str.Value));
         }
 
-        if (Accept<Token.Function>())
+        if (Accept(TokenKind.Function))
         {
-            if (token is Token.LParen)
+            if (token.Kind == TokenKind.LParen)
             {
                 return EndTree(ParseFunctionType());
             }
@@ -551,7 +516,7 @@ public class Parser
             return EndTree(new Tree.Type.Name("function"));
         }
 
-        if (token is Token.LCurly)
+        if (token.Kind == TokenKind.LCurly)
         {
             return EndTree(ParseTableType());
         }
@@ -564,28 +529,28 @@ public class Parser
     {
         // '{' [typepair {',' typepair}] '}'
 
-        Expect(LCurly);
+        Expect(TokenKind.LCurly);
 
         List<Tree.Type.Table.Field> fields = [];
 
-        while (!Accept<Token.RCurly>())
+        while (!Accept(TokenKind.RCurly))
         {
             Tree.Type? key = null;
-            if (Accept<Token.LSquare>())
+            if (Accept(TokenKind.LSquare))
             {
                 key = ParseType();
-                Expect(RSquare);
+                Expect(TokenKind.RSquare);
             }
-            else if (token is Token.Name name)
+            else if (token.Kind == TokenKind.Name)
             {
-                key = ConsumeTree(new Tree.Type.StringLiteral(name.Value));
+                key = ConsumeTree(new Tree.Type.StringLiteral(token.Value));
             }
             else
             {
-                Report(new Diagnostic.DidNotExpectTokenHere(token.Range, token));
+                Report(new Diagnostic.DidNotExpectTokenHere(token.Range, token.Kind));
             }
 
-            Expect(Colon);
+            Expect(TokenKind.Colon);
 
             var value = ParseType();
 
@@ -594,9 +559,9 @@ public class Parser
                 fields.Add(new(key, value));
             }
 
-            if (!Accept<Token.Comma>())
+            if (!Accept(TokenKind.Comma))
             {
-                Expect(RCurly);
+                Expect(TokenKind.RCurly);
                 break;
             }
         }
@@ -610,7 +575,7 @@ public class Parser
         do
         {
             list.Add(ParseType());
-        } while (Accept<Token.Comma>());
+        } while (Accept(TokenKind.Comma));
 
         return list;
     }
@@ -622,7 +587,7 @@ public class Parser
         do
         {
             declarations.Add(ParseDeclaration());
-        } while (Accept<Token.Comma>());
+        } while (Accept(TokenKind.Comma));
 
         return declarations;
     }
@@ -631,9 +596,9 @@ public class Parser
     {
         StartTree();
 
-        Expect(Local);
+        Expect(TokenKind.Local);
 
-        if (Accept<Token.Function>())
+        if (Accept(TokenKind.Function))
         {
             // 'local' 'function' name funcbody
             var name = ParseValueName();
@@ -645,7 +610,7 @@ public class Parser
         var declarations = ParseDeclarationList();
 
         List<Tree.Expression> values = [];
-        if (Accept<Token.Assign>())
+        if (Accept(TokenKind.Assign))
         {
             values = ParseExpressionList();
         }
@@ -658,11 +623,11 @@ public class Parser
         StartTree();
 
         // 'function' name {'.' name} [':' name]
-        Expect(Function);
+        Expect(TokenKind.Function);
 
         Tree.Expression path = ParseValueName();
         var isMethod = false;
-        while (token is Token.Dot or Token.Colon)
+        while (token.Kind is TokenKind.Dot or TokenKind.Colon)
         {
             StartTree(path.Range.Start);
 
@@ -671,7 +636,7 @@ public class Parser
 
             path = EndTree(new Tree.Expression.Access(path, nextName));
 
-            if (separator is Token.Colon)
+            if (separator.Kind == TokenKind.Colon)
             {
                 isMethod = true;
                 break;
@@ -688,9 +653,9 @@ public class Parser
         // '::' name '::'
         StartTree();
 
-        Expect(DoubleColon);
+        Expect(TokenKind.DoubleColon);
         var name = ParseLabelName();
-        Expect(DoubleColon);
+        Expect(TokenKind.DoubleColon);
 
         return EndTree(new Tree.Statement.LabelDefinition(name));
     }
@@ -700,16 +665,16 @@ public class Parser
         // 'goto' name
         StartTree();
 
-        Expect(Goto);
+        Expect(TokenKind.Goto);
         var name = ParseLabelName();
         return EndTree(new Tree.Statement.Goto(name));
     }
 
     private List<Tree.Type.Name> ParseTypeParameterList()
     {
-        var less = Expect(Less);
+        var less = Expect(TokenKind.Less);
 
-        if (Accept<Token.Greater>(out var greater))
+        if (Accept(TokenKind.Greater, out var greater))
         {
             Report(new Diagnostic.EmptyTypeParameterList(less.Range.Union(greater.Range)));
             return [];
@@ -719,9 +684,9 @@ public class Parser
         do
         {
             parameters.Add(ParseTypeName());
-        } while (Accept<Token.Comma>());
+        } while (Accept(TokenKind.Comma));
 
-        Expect(Greater);
+        Expect(TokenKind.Greater);
 
         return parameters;
     }
@@ -736,13 +701,13 @@ public class Parser
         // ['<' typeparams '>'] '(' declarations ')' [':' typelist]
 
         List<Tree.Type.Name>? typeParameters = null;
-        if (token is Token.Less)
+        if (token.Kind == TokenKind.Less)
         {
             typeParameters = ParseTypeParameterList();
         }
 
         var lParenRange = token.Range;
-        Expect(LParen);
+        Expect(TokenKind.LParen);
         List<Tree.Declaration> parameters = [];
         if (isMethod)
         {
@@ -750,14 +715,14 @@ public class Parser
             parameters.Add(new(new Tree.Expression.Name("self") { Range = lParenRange }, null));
         }
 
-        if (!Accept<Token.RParen>())
+        if (!Accept(TokenKind.RParen))
         {
             parameters = ParseDeclarationList();
-            Expect(RParen);
+            Expect(TokenKind.RParen);
         }
 
         List<Tree.Type>? returnTypes = null;
-        if (Accept<Token.Colon>())
+        if (Accept(TokenKind.Colon))
         {
             returnTypes = ParseTypeList();
         }
@@ -776,7 +741,7 @@ public class Parser
         var functionType = ParseFunctionType(isMethod);
 
         var chunk = ParseChunk();
-        Expect(End);
+        Expect(TokenKind.End);
 
         return EndTree(new Tree.Expression.Function(functionType, chunk, nameRange, isMethod));
     }
@@ -789,21 +754,21 @@ public class Parser
         StartTree();
 
         // '(' exp ')'
-        if (Accept<Token.LParen>())
+        if (Accept(TokenKind.LParen))
         {
             var expression = ParseExpression();
-            Expect(RParen);
+            Expect(TokenKind.RParen);
             return ParsePrefixExpression(EndTree(expression));
         }
 
-        if (token is Token.Name)
+        if (token.Kind == TokenKind.Name)
         {
             var name = Consume();
             return ParsePrefixExpression(EndTree(new Tree.Expression.Name(name.Value)));
         }
 
         var got = Consume();
-        Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got));
+        Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got.Kind));
 
         return EndTree(new Tree.Expression.Error());
     }
@@ -812,20 +777,20 @@ public class Parser
     {
         StartTree(previous.Range.Start);
 
-        if (Accept<Token.Dot>())
+        if (Accept(TokenKind.Dot))
         {
-            if (Accept<Token.Less>(out var less))
+            if (Accept(TokenKind.Less, out var less))
             {
                 // Function call with type parameters: '.' '<' typelist '>' '(' [explist] ')'
                 List<Tree.Type>? typeParameters = null;
-                if (Accept<Token.Greater>(out var greater))
+                if (Accept(TokenKind.Greater, out var greater))
                 {
                     Report(new Diagnostic.EmptyTypeParameterList(less.Range.Union(greater.Range)));
                 }
                 else
                 {
                     typeParameters = ParseTypeList();
-                    Expect(Greater);
+                    Expect(TokenKind.Greater);
                 }
 
                 return ParsePrefixExpression(EndTree(ParseCall(previous, typeParameters)));
@@ -837,32 +802,32 @@ public class Parser
         }
 
         // Method call: ':' Name  '(' [explist] ')'
-        if (Accept<Token.Colon>())
+        if (Accept(TokenKind.Colon))
         {
             var funcName = ParseStringIdentifier();
-            Expect(LParen);
+            Expect(TokenKind.LParen);
 
             // TODO parse optional type parameters
 
-            if (Accept<Token.RParen>())
+            if (Accept(TokenKind.RParen))
             {
                 return ParsePrefixExpression(EndTree(new Tree.Expression.MethodCall(previous, funcName, [])));
             }
 
             var parameters = ParseExpressionList();
-            Expect(RParen);
+            Expect(TokenKind.RParen);
             return ParsePrefixExpression(EndTree(new Tree.Expression.MethodCall(previous, funcName, parameters)));
         }
 
         // Access with square brackets: '[' exp ']'
-        if (Accept<Token.LSquare>())
+        if (Accept(TokenKind.LSquare))
         {
             var expression = ParseExpression();
-            Expect(RSquare);
+            Expect(TokenKind.RSquare);
             return ParsePrefixExpression(EndTree(new Tree.Expression.Access(previous, expression)));
         }
 
-        if (token is Token.LParen)
+        if (token.Kind == TokenKind.LParen)
         {
             return ParsePrefixExpression(EndTree(ParseCall(previous, null)));
         }
@@ -879,7 +844,7 @@ public class Parser
     {
         // Function call: '(' [explist] ')'
 
-        Expect(LParen);
+        Expect(TokenKind.LParen);
 
         // If the '(' is on a new line, it could be a new statement that starts with it - report ambiguous syntax.
         if (previous.Range.End.Line < token.Range.Start.Line)
@@ -887,13 +852,13 @@ public class Parser
             Report(new Diagnostic.AmbiguousSyntax(token.Range));
         }
 
-        if (Accept<Token.RParen>())
+        if (Accept(TokenKind.RParen))
         {
             return new Tree.Expression.Call(previous, [], typeParameters);
         }
 
         var parameters = ParseExpressionList();
-        Expect(RParen);
+        Expect(TokenKind.RParen);
         return new Tree.Expression.Call(previous, parameters, typeParameters);
     }
 
@@ -907,7 +872,7 @@ public class Parser
         while (true)
         {
             values.Add(ParseExpression());
-            if (!Accept<Token.Comma>())
+            if (!Accept(TokenKind.Comma))
             {
                 break;
             }
@@ -930,16 +895,17 @@ public class Parser
     /// </summary>
     private Tree.Expression ParseExpression(Tree.Expression left, int minPrecedence)
     {
-        while (token.IsBinary && token.Precedence >= minPrecedence)
+        while (Token.IsBinary(token, out var opPrecedence) && opPrecedence > minPrecedence)
         {
             StartTree(left.Range.Start);
 
             var op = Consume();
             var right = ParsePrimary();
-            while (token.IsBinary && (token.Precedence > op.Precedence ||
-                                      (token.Precedence == op.Precedence && token.RightAssociative)))
+            while (Token.IsBinary(token, out var tokenPrecedence) && (tokenPrecedence > opPrecedence ||
+                                                                      (tokenPrecedence == opPrecedence &&
+                                                                       Token.IsRightAssociative(token))))
             {
-                right = ParseExpression(right, op.Precedence + (token.Precedence > op.Precedence ? 1 : 0));
+                right = ParseExpression(right, opPrecedence + (tokenPrecedence > opPrecedence ? 1 : 0));
             }
 
             left = EndTree(new Tree.Expression.Binary(left, right, op));
@@ -952,12 +918,12 @@ public class Parser
     {
         StartTree();
 
-        Expect(LCurly);
+        Expect(TokenKind.LCurly);
 
         var lastNumberIndex = 1;
         List<Tree.Expression.Table.Field> fields = [];
 
-        while (!Accept<Token.RCurly>())
+        while (!Accept(TokenKind.RCurly))
         {
             var isListElement = false;
 
@@ -965,16 +931,16 @@ public class Parser
 
             Tree.Expression key;
             // '[' exp ']' '=' exp
-            if (Accept<Token.LSquare>())
+            if (Accept(TokenKind.LSquare))
             {
                 key = ParseExpression();
-                Expect(RSquare);
-                Expect(Assign);
+                Expect(TokenKind.RSquare);
+                Expect(TokenKind.Assign);
             }
             // name '=' exp
-            else if (token is Token.Name name && Lookahead(1) is Token.Assign)
+            else if (token.Kind == TokenKind.Name && Lookahead(1).Kind == TokenKind.Assign)
             {
-                key = ConsumeTree(new Tree.Expression.String(name.Value));
+                key = ConsumeTree(new Tree.Expression.String(token.Value));
                 NextToken(); // skip '='
             }
             // Just an expression, will be added at the last number index
@@ -994,9 +960,9 @@ public class Parser
                 key.Range = value.Range;
             }
 
-            if (!Accept<Token.Comma>() && !Accept<Token.Semicolon>())
+            if (!Accept(TokenKind.Comma) && !Accept(TokenKind.Semicolon))
             {
-                Expect(RCurly);
+                Expect(TokenKind.RCurly);
                 break;
             }
         }
@@ -1008,7 +974,7 @@ public class Parser
     private Tree.Expression ParsePrimary()
     {
         // unop exp
-        if (token.IsUnary)
+        if (Token.IsUnary(token))
         {
             StartTree();
             var op = Consume();
@@ -1016,22 +982,22 @@ public class Parser
             return EndTree(new Tree.Expression.Unary(expression, op));
         }
 
-        if (token is Token.Vararg)
+        if (token.Kind == TokenKind.Vararg)
         {
             return ConsumeTree(new Tree.Expression.Vararg());
         }
 
-        if (token is Token.Nil)
+        if (token.Kind == TokenKind.Nil)
         {
             return ConsumeTree(new Tree.Expression.Nil());
         }
 
-        if (token is Token.False)
+        if (token.Kind == TokenKind.False)
         {
             return ConsumeTree(new Tree.Expression.False());
         }
 
-        if (token is Token.True)
+        if (token.Kind == TokenKind.True)
         {
             return ConsumeTree(new Tree.Expression.True());
         }
@@ -1041,9 +1007,9 @@ public class Parser
             return ConsumeTree(new Tree.Expression.Number(numberToken.Value, numberToken.NumberValue));
         }
 
-        if (token is Token.String stringToken)
+        if (token.Kind == TokenKind.String)
         {
-            return ConsumeTree(new Tree.Expression.String(stringToken.Value));
+            return ConsumeTree(new Tree.Expression.String(token.Value));
         }
 
         if (token is Token.LongString longString)
@@ -1051,13 +1017,14 @@ public class Parser
             return ConsumeTree(new Tree.Expression.LongString(longString.Value, longString.Level));
         }
 
-        if (token is Token.LCurly)
+        if (token.Kind == TokenKind.LCurly)
         {
             return ParseTableConstructor();
         }
 
-        if (token is Token.Function functionToken)
+        if (token.Kind == TokenKind.Function)
         {
+            var functionToken = token;
             StartTree();
             NextToken(); // skip 'function'
             return EndTree(ParseFunctionBody(functionToken.Range, false));
@@ -1072,11 +1039,11 @@ public class Parser
 
         StartTree();
 
-        Expect(Name); // The token expected here is `type`, but this is already caught by `ParseBlock`.
+        Expect(TokenKind.Name); // The token expected here is `type`, but this is already caught by `ParseBlock`.
 
         var name = ParseTypeName();
 
-        Expect(Assign);
+        Expect(TokenKind.Assign);
 
         var type = ParseType();
 
