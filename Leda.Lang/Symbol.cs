@@ -86,6 +86,8 @@ public abstract class Symbol(string name)
         public string Key => Name;
     }
 
+    public class Label(Tree.LabelName name) : Symbol(name.Value);
+
     /// <summary>
     /// The built-in any type.
     /// </summary>

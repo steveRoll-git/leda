@@ -247,6 +247,22 @@ public abstract class Tree
         {
             public Expression.MethodCall CallExpr => methodCall;
         }
+
+        /// <summary>
+        /// A label definition. ("::someLabel::")
+        /// </summary>
+        public class LabelDefinition(LabelName name) : Statement
+        {
+            public LabelName Name => name;
+        }
+
+        /// <summary>
+        /// A `goto` statement. ("goto someLabel")
+        /// </summary>
+        public class Goto(LabelName name) : Statement
+        {
+            public LabelName Name => name;
+        }
     }
 
     /// <summary>
@@ -408,6 +424,11 @@ public abstract class Tree
             public String FuncName => funcName;
             public List<Expression> Parameters => parameters;
         }
+    }
+
+    public class LabelName(string value) : Tree
+    {
+        public string Value => value;
     }
 
     /// <summary>

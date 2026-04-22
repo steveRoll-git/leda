@@ -328,6 +328,15 @@ public record Token
         public override string Value => Keyword;
     }
 
+    /// <summary>
+    /// The `goto` keyword.
+    /// </summary>
+    public sealed record Goto : Token
+    {
+        public const string Keyword = "goto";
+        public override string Value => Keyword;
+    }
+
     #endregion
 
     #region Punctuation Tokens
@@ -491,6 +500,12 @@ public record Token
         public override string Value => Punctuation;
     }
 
+    public sealed record DoubleColon : Token
+    {
+        public const string Punctuation = "::";
+        public override string Value => Punctuation;
+    }
+
     public sealed record Comma : Token
     {
         public const string Punctuation = ",";
@@ -546,6 +561,7 @@ public record Token
         { True.Keyword, new True() },
         { Until.Keyword, new Until() },
         { While.Keyword, new While() },
+        { Goto.Keyword, new Goto() },
         { Plus.Punctuation, new Plus() },
         { Minus.Punctuation, new Minus() },
         { Multiply.Punctuation, new Multiply() },
@@ -568,6 +584,7 @@ public record Token
         { RSquare.Punctuation, new RSquare() },
         { Semicolon.Punctuation, new Semicolon() },
         { Colon.Punctuation, new Colon() },
+        { DoubleColon.Punctuation, new DoubleColon() },
         { Comma.Punctuation, new Comma() },
         { Dot.Punctuation, new Dot() },
         { Concat.Punctuation, new Concat() },

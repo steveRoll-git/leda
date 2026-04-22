@@ -16,6 +16,7 @@ public class Parser
     private static readonly Token.Assign Assign = new();
     private static readonly Token.Comma Comma = new();
     private static readonly Token.Colon Colon = new();
+    private static readonly Token.DoubleColon DoubleColon = new();
     private static readonly Token.If If = new();
     private static readonly Token.Then Then = new();
     private static readonly Token.For For = new();
@@ -25,6 +26,7 @@ public class Parser
     private static readonly Token.Do Do = new();
     private static readonly Token.Until Until = new();
     private static readonly Token.End End = new();
+    private static readonly Token.Goto Goto = new();
     private static readonly Token.Function Function = new();
     private static readonly Token.Local Local = new();
     private static readonly Token.Less Less = new();
@@ -221,6 +223,11 @@ public class Parser
         return StartEndTree(new Tree.Type.Name(Expect(Name).Value));
     }
 
+    private Tree.LabelName ParseLabelName()
+    {
+        return StartEndTree(new Tree.LabelName(Expect(Name).Value));
+    }
+
     /// <summary>
     /// Parses a single identifier that represents a string.
     /// </summary>
@@ -326,6 +333,16 @@ public class Parser
         if (token is Token.Function)
         {
             return ParseFunctionDeclaration();
+        }
+
+        if (token is Token.DoubleColon)
+        {
+            return ParseLabelDefinition();
+        }
+
+        if (token is Token.Goto)
+        {
+            return ParseGoto();
         }
 
         StartTree();
@@ -664,6 +681,28 @@ public class Parser
         var function = ParseFunctionBody(path.Range, isMethod);
 
         return EndTree(new Tree.Statement.Assignment([path], [function]));
+    }
+
+    private Tree.Statement.LabelDefinition ParseLabelDefinition()
+    {
+        // '::' name '::'
+        StartTree();
+
+        Expect(DoubleColon);
+        var name = ParseLabelName();
+        Expect(DoubleColon);
+
+        return EndTree(new Tree.Statement.LabelDefinition(name));
+    }
+
+    private Tree.Statement.Goto ParseGoto()
+    {
+        // 'goto' name
+        StartTree();
+
+        Expect(Goto);
+        var name = ParseLabelName();
+        return EndTree(new Tree.Statement.Goto(name));
     }
 
     private List<Tree.Type.Name> ParseTypeParameterList()
