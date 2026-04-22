@@ -16,7 +16,7 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
 
         if (SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()) is ({ } symbol, var range))
         {
-            string? content = null;
+            string? content;
             switch (symbol)
             {
                 case Symbol.StringField { Table: var table, Key: var key }:
@@ -26,6 +26,10 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                 case Symbol.LocalVariable:
                     content =
                         $"local {symbol.Name}: {source.Evaluator.TypeToString(source.Evaluator.GetTypeOfSymbol(symbol))}";
+                    break;
+                case Symbol.Parameter:
+                    content =
+                        $"(parameter) {symbol.Name}: {source.Evaluator.TypeToString(source.Evaluator.GetTypeOfSymbol(symbol))}";
                     break;
                 case Symbol.LocalFunction:
                 {
