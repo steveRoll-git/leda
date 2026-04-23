@@ -9,9 +9,17 @@ public class Binder
     private readonly Source source;
     private List<Diagnostic> Diagnostics { get; } = [];
 
-    private class Scope(Tree.Chunk? chunk) : Dictionary<string, Binding>
+    private class Scope(Tree.Chunk? chunk, Tree? loop) : Dictionary<string, Binding>
     {
+        /// <summary>
+        /// The chunk this scope is inside of.
+        /// </summary>
         public Tree.Chunk? Chunk => chunk;
+
+        /// <summary>
+        /// The loop this scope is inside of.
+        /// </summary>
+        public Tree? Loop => loop;
     }
 
     /// <summary>
@@ -31,7 +39,7 @@ public class Binder
 
     private Scope CurrentScope => scopes[^1];
 
-    private static readonly Scope InitialScope = new(null)
+    private static readonly Scope InitialScope = new(null, null)
     {
         [Type.Any.Name!] = new(null, Symbol.AnyType),
         [Type.Boolean.Name!] = new(null, Symbol.BooleanType),
@@ -42,10 +50,6 @@ public class Binder
 
     private readonly Stack<AssignmentPath> assignmentPathStack = [];
 
-    private record ChunkInfo(Tree.Chunk Chunk, Stack<Tree.Statement> LoopStack);
-
-    private readonly Stack<ChunkInfo> chunkStack = [];
-
     private readonly Dictionary<Tree.LabelName, FlowNode> labelFlowNodes = [];
 
     private Binder(Source source)
@@ -53,7 +57,7 @@ public class Binder
         this.source = source;
 
         scopes.Add(InitialScope);
-        scopes.Add(new Scope(source.Chunk));
+        PushChunkScope(source.Chunk);
     }
 
     private void Report(Diagnostic diagnostic)
@@ -61,14 +65,28 @@ public class Binder
         Diagnostics.Add(diagnostic);
     }
 
-    private void PushScope(Tree.Chunk chunk)
-    {
-        scopes.Add(new Scope(chunk));
-    }
-
+    /// <summary>
+    /// Pushes a new scope with the same chunk and loop as the scope before it.
+    /// </summary>
     private void PushScope()
     {
-        PushScope(chunkStack.Peek().Chunk);
+        scopes.Add(new Scope(scopes[^1].Chunk, scopes[^1].Loop));
+    }
+
+    /// <summary>
+    /// Pushes a new scope that belongs to a new chunk.
+    /// </summary>
+    private void PushChunkScope(Tree.Chunk chunk)
+    {
+        scopes.Add(new Scope(chunk, null));
+    }
+
+    /// <summary>
+    /// Pushes a new scope that belongs to the same chunk as the last scope, but where a loop begins.
+    /// </summary>
+    private void PushLoopScope(Tree loop)
+    {
+        scopes.Add(new Scope(scopes[^1].Chunk, loop));
     }
 
     private void PopScope()
@@ -209,11 +227,7 @@ public class Binder
     private void VisitChunk(Tree.Chunk chunk)
     {
         var startNode = new FlowNode([]);
-
-        chunkStack.Push(new(chunk, []));
         var descendent = VisitBlock(chunk, startNode);
-        chunkStack.Pop();
-
         chunk.AllPathsReturn = descendent == null;
     }
 
@@ -445,7 +459,7 @@ public class Binder
             function.AssignmentPath = path with { TableFields = [..path.TableFields] };
         }
 
-        PushScope(function.Chunk);
+        PushChunkScope(function.Chunk);
         VisitFunction(function);
         PopScope();
     }
@@ -511,7 +525,7 @@ public class Binder
     private void VisitStatement(Tree.Statement.LocalFunctionDeclaration declaration)
     {
         AddSymbol(declaration.Name, new Symbol.LocalFunction(declaration));
-        PushScope(declaration.Function.Chunk);
+        PushChunkScope(declaration.Function.Chunk);
         VisitFunction(declaration.Function);
         PopScope();
     }
@@ -540,12 +554,10 @@ public class Binder
 
     private FlowNode? VisitStatement(Tree.Statement.RepeatUntil repeatUntil, FlowNode antecedent)
     {
-        chunkStack.Peek().LoopStack.Push(repeatUntil);
-        PushScope();
+        PushLoopScope(repeatUntil);
         var descendent = VisitBlock(repeatUntil.Body, antecedent);
         Visit(repeatUntil.Condition);
         PopScope();
-        chunkStack.Peek().LoopStack.Pop();
 
         return descendent;
     }
@@ -555,11 +567,9 @@ public class Binder
         var descendents = new List<FlowNode> { antecedent };
 
         Visit(whileLoop.Condition);
-        chunkStack.Peek().LoopStack.Push(whileLoop);
-        PushScope();
+        PushLoopScope(whileLoop);
         AddIfNotNull(descendents, VisitBlock(whileLoop.Body, antecedent));
         PopScope();
-        chunkStack.Peek().LoopStack.Pop();
 
         return new FlowNode(descendents);
     }
@@ -570,8 +580,7 @@ public class Binder
 
         Visit(forLoop.Iterator);
 
-        chunkStack.Peek().LoopStack.Push(forLoop);
-        PushScope();
+        PushLoopScope(forLoop);
 
         for (var i = 0; i < forLoop.Declarations.Count; i++)
         {
@@ -582,7 +591,6 @@ public class Binder
         AddIfNotNull(descendents, VisitBlock(forLoop.Body, antecedent));
 
         PopScope();
-        chunkStack.Peek().LoopStack.Pop();
 
         return new FlowNode(descendents);
     }
@@ -591,8 +599,7 @@ public class Binder
     {
         var descendents = new List<FlowNode> { antecedent };
 
-        chunkStack.Peek().LoopStack.Push(numericalFor);
-        PushScope();
+        PushLoopScope(numericalFor);
         Visit(numericalFor.Start);
         Visit(numericalFor.Limit);
         if (numericalFor.Step != null)
@@ -603,7 +610,6 @@ public class Binder
         AddSymbol(numericalFor.Counter, new Symbol.NumericForCounter(numericalFor));
         AddIfNotNull(descendents, VisitBlock(numericalFor.Body, antecedent));
         PopScope();
-        chunkStack.Peek().LoopStack.Pop();
 
         return new FlowNode(descendents);
     }
@@ -648,7 +654,7 @@ public class Binder
 
     private void VisitStatement(Tree.Statement.Break brk)
     {
-        if (chunkStack.Peek().LoopStack.Count == 0)
+        if (scopes[^1].Loop == null)
         {
             Report(new Diagnostic.BreakOutsideOfLoop(brk.Range));
         }
@@ -675,7 +681,7 @@ public class Binder
         FlowNode? flowNode = null;
 
         if (TryGetBinding(name.Value, Tree.NameContext.Label) is ({ } symbol, { } scope) &&
-            scope.Chunk == chunkStack.Peek().Chunk)
+            scope.Chunk == scopes[^1].Chunk)
         {
             source.AttachSymbol(name, symbol);
             if (labelFlowNodes.TryGetValue(name, out flowNode))
