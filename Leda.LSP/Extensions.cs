@@ -25,6 +25,7 @@ public static class Extensions
         Message = d.Message,
         Range = d.Range.ToLs(),
         Severity = d.Severity.ToLs(),
+        Tags = d.Unnecessary ? [DiagnosticTag.Unnecessary] : null,
         Source = "leda"
     };
 }

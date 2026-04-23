@@ -205,11 +205,36 @@ public class Binder
             labelFlowNodes[label.Name] = new FlowNode([]);
         }
 
+        // If multiple consecutive statements are unreachable, we report just one diagnostic for all of them.
+        Range? unreachableRange = null;
+        // If the block's antecedent is null, the entire block is unreachable. In this case, the unreachable diagnostic
+        // will be reported by the parent block, so we don't have to here.
+        var entireBlockUnreachable = antecedent == null;
+
         var descendant = antecedent;
 
         foreach (var statement in block.Statements)
         {
+            var previous = descendant;
             descendant = VisitStatement(statement, descendant);
+
+            if (!entireBlockUnreachable)
+            {
+                if (descendant == null && previous == null)
+                {
+                    unreachableRange = unreachableRange is { } range ? range.Union(statement.Range) : statement.Range;
+                }
+                else if (unreachableRange is { } range)
+                {
+                    Report(new Diagnostic.UnreachableCode(range));
+                    unreachableRange = null;
+                }
+            }
+        }
+
+        if (unreachableRange is { } warnRange)
+        {
+            Report(new Diagnostic.UnreachableCode(warnRange));
         }
 
         return descendant;

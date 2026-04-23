@@ -12,6 +12,12 @@ public abstract record Diagnostic(Range Range)
     /// </summary>
     public abstract string Message { get; }
 
+    /// <summary>
+    /// Whether the language server should mark this diagnostic with the "unnecessary" tag (appears faded out in most
+    /// editors.)
+    /// </summary>
+    public virtual bool Unnecessary => false;
+
     private static string NameContextNoun(Tree.NameContext context) => context switch
     {
         Tree.NameContext.Value => "value",
@@ -232,6 +238,13 @@ public abstract record Diagnostic(Range Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => "Not all code paths return a value.";
+    }
+
+    public record UnreachableCode(Range Range) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Warning;
+        public override string Message => "Unreachable code.";
+        public override bool Unnecessary => true;
     }
 }
 
