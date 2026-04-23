@@ -187,7 +187,7 @@ public class Binder
     /// <summary>
     /// Visits all of a block's statements.
     /// </summary>
-    private FlowNode? VisitBlock(Tree.Block block, FlowNode antecedent)
+    private FlowNode? VisitBlock(Tree.Block block, FlowNode? antecedent)
     {
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
@@ -205,23 +205,14 @@ public class Binder
             labelFlowNodes[label.Name] = new FlowNode([]);
         }
 
-        var stopped = false;
+        var descendant = antecedent;
 
         foreach (var statement in block.Statements)
         {
-            var descendant = VisitStatement(statement, antecedent);
-            if (descendant == null)
-            {
-                // TODO report unreachable code
-                stopped = true;
-            }
-            else
-            {
-                antecedent = descendant;
-            }
+            descendant = VisitStatement(statement, descendant);
         }
 
-        return stopped ? null : antecedent;
+        return descendant;
     }
 
     private void VisitChunk(Tree.Chunk chunk)
@@ -231,7 +222,7 @@ public class Binder
         chunk.AllPathsReturn = descendent == null;
     }
 
-    private FlowNode? VisitStatement(Tree.Statement stmt, FlowNode antecedent)
+    private FlowNode? VisitStatement(Tree.Statement stmt, FlowNode? antecedent)
     {
         switch (stmt)
         {
@@ -271,7 +262,8 @@ public class Binder
             case Tree.Statement.LabelDefinition label:
                 return VisitStatement(label, antecedent);
             case Tree.Statement.Goto @goto:
-                return VisitStatement(@goto, antecedent);
+                VisitStatement(@goto, antecedent);
+                return null;
         }
 
         return antecedent;
@@ -368,7 +360,7 @@ public class Binder
         }
     }
 
-    private FlowNode? VisitStatement(Tree.Statement.Do block, FlowNode antecedent)
+    private FlowNode? VisitStatement(Tree.Statement.Do block, FlowNode? antecedent)
     {
         PushScope();
         var descendent = VisitBlock(block.Body, antecedent);
@@ -377,7 +369,7 @@ public class Binder
         return descendent;
     }
 
-    private FlowNode? VisitIfBranch(Tree.IfBranch branch, FlowNode antecedent)
+    private FlowNode? VisitIfBranch(Tree.IfBranch branch, FlowNode? antecedent)
     {
         Visit(branch.Condition);
         PushScope();
@@ -387,7 +379,7 @@ public class Binder
         return descendent;
     }
 
-    private FlowNode? VisitStatement(Tree.Statement.If ifStatement, FlowNode antecedent)
+    private FlowNode? VisitStatement(Tree.Statement.If ifStatement, FlowNode? antecedent)
     {
         var descendents = new List<FlowNode>();
 
@@ -406,13 +398,13 @@ public class Binder
         }
         else
         {
-            descendents.Add(antecedent);
+            AddIfNotNull(descendents, antecedent);
         }
 
         return descendents.Count > 0 ? new(descendents) : null;
     }
 
-    private FlowNode VisitStatement(Tree.Statement.Assignment assignment, FlowNode antecedent)
+    private FlowNode? VisitStatement(Tree.Statement.Assignment assignment, FlowNode? antecedent)
     {
         Visit(assignment.Targets);
         Visit(assignment.Values, assignment);
@@ -530,12 +522,12 @@ public class Binder
         PopScope();
     }
 
-    private FlowNode VisitStatement(Tree.Statement.GlobalDeclaration declaration, FlowNode antecedent)
+    private FlowNode VisitStatement(Tree.Statement.GlobalDeclaration declaration, FlowNode? antecedent)
     {
         throw new NotImplementedException();
     }
 
-    private FlowNode VisitStatement(Tree.Statement.LocalDeclaration localDeclaration, FlowNode antecedent)
+    private FlowNode? VisitStatement(Tree.Statement.LocalDeclaration localDeclaration, FlowNode? antecedent)
     {
         Visit(localDeclaration.Values, localDeclaration);
 
@@ -552,7 +544,7 @@ public class Binder
         return antecedent;
     }
 
-    private FlowNode? VisitStatement(Tree.Statement.RepeatUntil repeatUntil, FlowNode antecedent)
+    private FlowNode? VisitStatement(Tree.Statement.RepeatUntil repeatUntil, FlowNode? antecedent)
     {
         PushLoopScope(repeatUntil);
         var descendent = VisitBlock(repeatUntil.Body, antecedent);
@@ -562,9 +554,10 @@ public class Binder
         return descendent;
     }
 
-    private FlowNode VisitStatement(Tree.Statement.While whileLoop, FlowNode antecedent)
+    private FlowNode VisitStatement(Tree.Statement.While whileLoop, FlowNode? antecedent)
     {
-        var descendents = new List<FlowNode> { antecedent };
+        var descendents = new List<FlowNode>();
+        AddIfNotNull(descendents, antecedent);
 
         Visit(whileLoop.Condition);
         PushLoopScope(whileLoop);
@@ -574,9 +567,10 @@ public class Binder
         return new FlowNode(descendents);
     }
 
-    private FlowNode VisitStatement(Tree.Statement.IteratorFor forLoop, FlowNode antecedent)
+    private FlowNode VisitStatement(Tree.Statement.IteratorFor forLoop, FlowNode? antecedent)
     {
-        var descendents = new List<FlowNode> { antecedent };
+        var descendents = new List<FlowNode>();
+        AddIfNotNull(descendents, antecedent);
 
         Visit(forLoop.Iterator);
 
@@ -595,9 +589,10 @@ public class Binder
         return new FlowNode(descendents);
     }
 
-    private FlowNode VisitStatement(Tree.Statement.NumericalFor numericalFor, FlowNode antecedent)
+    private FlowNode VisitStatement(Tree.Statement.NumericalFor numericalFor, FlowNode? antecedent)
     {
-        var descendents = new List<FlowNode> { antecedent };
+        var descendents = new List<FlowNode>();
+        AddIfNotNull(descendents, antecedent);
 
         PushLoopScope(numericalFor);
         Visit(numericalFor.Start);
@@ -675,16 +670,15 @@ public class Binder
         return flowNode;
     }
 
-    private FlowNode? VisitStatement(Tree.Statement.Goto @goto, FlowNode? antecedent)
+    private void VisitStatement(Tree.Statement.Goto @goto, FlowNode? antecedent)
     {
         var name = @goto.Name;
-        FlowNode? flowNode = null;
 
         if (TryGetBinding(name.Value, Tree.NameContext.Label) is ({ } symbol, { } scope) &&
             scope.Chunk == scopes[^1].Chunk)
         {
             source.AttachSymbol(name, symbol);
-            if (labelFlowNodes.TryGetValue(name, out flowNode))
+            if (labelFlowNodes.TryGetValue(name, out var flowNode))
             {
                 AddIfNotNull(flowNode.Antecedents, antecedent);
             }
@@ -693,8 +687,6 @@ public class Binder
         {
             Report(new Diagnostic.NameNotFound(name.Range, name.Value, Tree.NameContext.Label));
         }
-
-        return flowNode;
     }
 
     /// <summary>
