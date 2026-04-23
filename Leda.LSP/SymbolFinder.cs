@@ -82,7 +82,8 @@ public static class SymbolFinder
             return null;
         }
 
-        if (tree is Tree.Expression.Name or Tree.Type.Name or Tree.Expression.String or Tree.Type.StringLiteral)
+        if (tree is Tree.Expression.Name or Tree.Type.Name or Tree.LabelName or Tree.Expression.String
+            or Tree.Type.StringLiteral)
         {
             return tree;
         }
@@ -163,6 +164,9 @@ public static class SymbolFinder
 
             Tree.Statement.Call call => GetNameAtPosition(call.CallExpr, position),
             Tree.Statement.MethodCall methodCall => GetNameAtPosition(methodCall.CallExpr, position),
+
+            Tree.Statement.LabelDefinition label => GetNameAtPosition(label.Name, position),
+            Tree.Statement.Goto @goto => GetNameAtPosition(@goto.Name, position),
 
             _ => null
         };

@@ -47,6 +47,9 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                     content = $"type {symbol.Name}{typeValue}";
                     break;
                 }
+                case Symbol.Label:
+                    content = $"(label) {symbol.Name}";
+                    break;
                 default:
                     content = $"??? {symbol.Name}";
                     break;
