@@ -59,7 +59,7 @@ public class Source
     {
         Path = path;
         Code = code;
-        Chunk = new Tree.Chunk([], [], []);
+        Chunk = new Tree.Chunk();
         Evaluator = new TypeEvaluator(this);
 
         // Map all newline numbers to the indices they appear at.

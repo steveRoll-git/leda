@@ -51,8 +51,7 @@ public abstract class Tree
         /// <summary>
         /// The type of a function.
         /// </summary>
-        public class Function(List<Declaration> parameters, List<Type>? returnTypes, List<Name>? typeParameters)
-            : Type
+        public class Function(List<Declaration> parameters, List<Type>? returnTypes, List<Name>? typeParameters) : Type
         {
             public List<Declaration> Parameters => parameters;
             public List<Type>? ReturnTypes => returnTypes;
@@ -68,7 +67,10 @@ public abstract class Tree
     /// <summary>
     /// A list of statements.
     /// </summary>
-    public class Block(List<Statement> statements, List<TypeAliasDeclaration> typeDeclarations)
+    public class Block(
+        List<Statement> statements,
+        List<TypeAliasDeclaration> typeDeclarations,
+        List<Statement.LabelDefinition> labels)
     {
         public List<Statement> Statements => statements;
 
@@ -76,6 +78,8 @@ public abstract class Tree
         /// All types that were declared in this block.
         /// </summary>
         public List<TypeAliasDeclaration> TypeDeclarations => typeDeclarations;
+
+        public List<Statement.LabelDefinition> Labels => labels;
     }
 
     /// <summary>
@@ -97,13 +101,19 @@ public abstract class Tree
 
         public Chunk(List<Statement> statements,
             List<TypeAliasDeclaration> typeDeclarations,
-            List<Statement.Return> returnStatements) : base(statements, typeDeclarations)
+            List<Statement.LabelDefinition> labels,
+            List<Statement.Return> returnStatements) : base(statements, typeDeclarations, labels)
         {
             ReturnStatements = returnStatements;
             foreach (var returnStatement in returnStatements)
             {
                 returnStatement.ParentChunk = this;
             }
+        }
+
+        public Chunk() : base([], [], [])
+        {
+            ReturnStatements = [];
         }
     }
 
@@ -462,7 +472,12 @@ public abstract class Tree
         /// <summary>
         /// The name references a type.
         /// </summary>
-        Type
+        Type,
+
+        /// <summary>
+        /// The name references a label.
+        /// </summary>
+        Label
     }
 
     /// <summary>

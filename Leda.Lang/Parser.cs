@@ -212,6 +212,7 @@ public class Parser
     {
         var statements = new List<Tree.Statement>();
         var typeDeclarations = new List<Tree.TypeAliasDeclaration>();
+        var labels = new List<Tree.Statement.LabelDefinition>();
 
         while (!IsStatementEndingToken(token))
         {
@@ -224,6 +225,11 @@ public class Parser
                 var statement = ParseStatement();
                 statements.Add(statement);
 
+                if (statement is Tree.Statement.LabelDefinition label)
+                {
+                    labels.Add(label);
+                }
+
                 // This behavior models Lua 5.1's syntax - in Lua 5.2+, semicolons may be their own statements.
                 Accept(TokenKind.Semicolon);
 
@@ -235,7 +241,7 @@ public class Parser
             }
         }
 
-        return new Tree.Block(statements, typeDeclarations);
+        return new Tree.Block(statements, typeDeclarations, labels);
     }
 
     private Tree.Chunk ParseChunk()
@@ -246,7 +252,7 @@ public class Parser
         var block = ParseBlock();
         chunkStack.Pop();
 
-        return new Tree.Chunk(block.Statements, block.TypeDeclarations, functionInfo.ReturnStatements);
+        return new Tree.Chunk(block.Statements, block.TypeDeclarations, block.Labels, functionInfo.ReturnStatements);
     }
 
     /// <summary>

@@ -12,6 +12,14 @@ public abstract record Diagnostic(Range Range)
     /// </summary>
     public abstract string Message { get; }
 
+    private static string NameContextNoun(Tree.NameContext context) => context switch
+    {
+        Tree.NameContext.Value => "value",
+        Tree.NameContext.Type => "type",
+        Tree.NameContext.Label => "label",
+        _ => throw new ArgumentOutOfRangeException(nameof(context))
+    };
+
     public record MalformedNumber(Range Range) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
@@ -97,26 +105,14 @@ public abstract record Diagnostic(Range Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
 
-        private string Noun => Context switch
-        {
-            Tree.NameContext.Type => "type",
-            _ => "value"
-        };
-
-        public override string Message => $"Cannot find {Noun} named '{Name}'.";
+        public override string Message => $"Cannot find {NameContextNoun(Context)} named '{Name}'.";
     }
 
-    public record ValueAlreadyDeclared(Range Range, string Name)
-        : Diagnostic(Range)
+    public record NameAlreadyDeclared(Range Range, Tree.NameContext Context, string Name) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"A value named '{Name}' has already been declared.";
-    }
 
-    public record TypeAlreadyDeclared(Range Range, string Name) : Diagnostic(Range)
-    {
-        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"A type named '{Name}' has already been declared.";
+        public override string Message => $"A {NameContextNoun(Context)} named '{Name}' has already been declared.";
     }
 
     public record BreakOutsideOfLoop(Range Range) : Diagnostic(Range)

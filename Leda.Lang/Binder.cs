@@ -1,8 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace Leda.Lang;
-
-using Scope = Dictionary<string, Binder.Binding>;
 
 /// <summary>
 /// Visits each node of a Tree to create new Symbols for each declaration that's found, and associates names with
@@ -11,7 +7,12 @@ using Scope = Dictionary<string, Binder.Binding>;
 public class Binder
 {
     private readonly Source source;
-    public List<Diagnostic> Diagnostics { get; } = [];
+    private List<Diagnostic> Diagnostics { get; } = [];
+
+    private class Scope(Tree.Chunk? chunk) : Dictionary<string, Binding>
+    {
+        public Tree.Chunk? Chunk => chunk;
+    }
 
     /// <summary>
     /// A list of lexical scopes, where each scope is a dictionary of names with their symbols.
@@ -21,15 +22,16 @@ public class Binder
     /// <summary>
     /// Any name in the source code might refer to a value, or a type, or both.
     /// </summary>
-    internal class Binding(Symbol? value, Symbol? type)
+    private class Binding(Symbol? value, Symbol? type)
     {
         public Symbol? ValueSymbol { get; set; } = value;
         public Symbol? TypeSymbol { get; set; } = type;
+        public Symbol.Label? Label { get; set; }
     }
 
     private Scope CurrentScope => scopes[^1];
 
-    private static readonly Scope InitialScope = new()
+    private static readonly Scope InitialScope = new(null)
     {
         [Type.Any.Name!] = new(null, Symbol.AnyType),
         [Type.Boolean.Name!] = new(null, Symbol.BooleanType),
@@ -40,16 +42,18 @@ public class Binder
 
     private readonly Stack<AssignmentPath> assignmentPathStack = [];
 
-    private record FunctionInfo(Stack<Tree.Statement> LoopStack);
+    private record ChunkInfo(Tree.Chunk Chunk, Stack<Tree.Statement> LoopStack);
 
-    private readonly Stack<FunctionInfo> functionStack = [];
+    private readonly Stack<ChunkInfo> chunkStack = [];
+
+    private readonly Dictionary<Tree.LabelName, FlowNode> labelFlowNodes = [];
 
     private Binder(Source source)
     {
         this.source = source;
 
         scopes.Add(InitialScope);
-        scopes.Add(new Scope());
+        scopes.Add(new Scope(source.Chunk));
     }
 
     private void Report(Diagnostic diagnostic)
@@ -57,9 +61,14 @@ public class Binder
         Diagnostics.Add(diagnostic);
     }
 
+    private void PushScope(Tree.Chunk chunk)
+    {
+        scopes.Add(new Scope(chunk));
+    }
+
     private void PushScope()
     {
-        scopes.Add(new Scope());
+        PushScope(chunkStack.Peek().Chunk);
     }
 
     private void PopScope()
@@ -72,44 +81,45 @@ public class Binder
     /// </summary>
     /// <param name="name">The name of the symbol to look for.</param>
     /// <param name="context">The context in which the name appears.</param>
-    /// <param name="symbol">Out variable to store the symbol at.</param>
-    /// <param name="scope">Out variable to store the scope where the symbol was found.</param>
-    /// <returns>True if a symbol with this name was found, false otherwise.</returns>
-    private bool TryGetBinding(string name, Tree.NameContext context, [NotNullWhen(true)] out Symbol? symbol,
-        [NotNullWhen(true)] out Scope? scope)
+    /// <returns>The symbol and scope it resides in if it exists, or `null` if it wasn't found.</returns>
+    private (Symbol? symbol, Scope? scope) TryGetBinding(string name, Tree.NameContext context)
     {
         for (var i = scopes.Count - 1; i >= 0; i--)
         {
             if (scopes[i].TryGetValue(name, out var binding))
             {
-                symbol = context == Tree.NameContext.Value ? binding.ValueSymbol : binding.TypeSymbol;
+                var symbol = context switch
+                {
+                    Tree.NameContext.Value => binding.ValueSymbol,
+                    Tree.NameContext.Type => binding.TypeSymbol,
+                    Tree.NameContext.Label => binding.Label,
+                    _ => null
+                };
+
                 if (symbol != null)
                 {
-                    scope = scopes[i];
-                    return true;
+                    return (symbol, scopes[i]);
                 }
             }
         }
 
-        scope = null;
-        symbol = null;
-        return false;
+        return default;
     }
 
     /// <summary>
     /// Finds the value symbol that a name refers to.
     /// </summary>
-    private bool TryGetBinding(Tree.Expression.Name name, [NotNullWhen(true)] out Symbol? symbol)
+    private Symbol? TryGetBinding(Tree.Expression.Name name)
     {
-        return TryGetBinding(name.Value, Tree.NameContext.Value, out symbol, out _);
+        return TryGetBinding(name.Value, Tree.NameContext.Value).symbol;
     }
 
     /// <summary>
     /// Finds the type symbol that a type name refers to.
     /// </summary>
-    private bool TryGetBinding(Tree.Type.Name name, [NotNullWhen(true)] out Symbol? symbol)
+    private Symbol? TryGetBinding(Tree.Type.Name name)
     {
-        return TryGetBinding(name.Value, Tree.NameContext.Type, out symbol, out _);
+        return TryGetBinding(name.Value, Tree.NameContext.Type).symbol;
     }
 
     /// <summary>
@@ -119,17 +129,9 @@ public class Binder
     private void AddSymbol(Tree node, string name, Tree.NameContext context, Symbol symbol)
     {
         // TODO report warning if a name is shadowed
-        if (TryGetBinding(name, context, out _, out var existingScope) &&
-            existingScope == CurrentScope)
+        if (TryGetBinding(name, context) is (not null, { } existingScope) && existingScope == CurrentScope)
         {
-            if (context == Tree.NameContext.Value)
-            {
-                Report(new Diagnostic.ValueAlreadyDeclared(node.Range, name));
-            }
-            else
-            {
-                Report(new Diagnostic.TypeAlreadyDeclared(node.Range, name));
-            }
+            Report(new Diagnostic.NameAlreadyDeclared(node.Range, context, name));
         }
 
         if (!CurrentScope.TryGetValue(name, out var currentBinding))
@@ -142,9 +144,13 @@ public class Binder
         {
             currentBinding.ValueSymbol = symbol;
         }
-        else
+        else if (context == Tree.NameContext.Type)
         {
             currentBinding.TypeSymbol = symbol;
+        }
+        else
+        {
+            currentBinding.Label = symbol as Symbol.Label;
         }
 
         source.AttachSymbol(node, symbol, true);
@@ -175,6 +181,12 @@ public class Binder
             Visit(typeDeclaration.Type);
         }
 
+        foreach (var label in block.Labels)
+        {
+            AddSymbol(label.Name, label.Name.Value, Tree.NameContext.Label, new Symbol.Label(label.Name));
+            labelFlowNodes[label.Name] = new FlowNode([]);
+        }
+
         var stopped = false;
 
         foreach (var statement in block.Statements)
@@ -198,9 +210,9 @@ public class Binder
     {
         var startNode = new FlowNode([]);
 
-        functionStack.Push(new([]));
+        chunkStack.Push(new(chunk, []));
         var descendent = VisitBlock(chunk, startNode);
-        functionStack.Pop();
+        chunkStack.Pop();
 
         chunk.AllPathsReturn = descendent == null;
     }
@@ -242,6 +254,10 @@ public class Binder
             case Tree.Statement.Break @break:
                 VisitStatement(@break);
                 return null;
+            case Tree.Statement.LabelDefinition label:
+                return VisitStatement(label, antecedent);
+            case Tree.Statement.Goto @goto:
+                return VisitStatement(@goto, antecedent);
         }
 
         return antecedent;
@@ -429,7 +445,7 @@ public class Binder
             function.AssignmentPath = path with { TableFields = [..path.TableFields] };
         }
 
-        PushScope();
+        PushScope(function.Chunk);
         VisitFunction(function);
         PopScope();
     }
@@ -449,7 +465,7 @@ public class Binder
 
     private void Visit(Tree.Expression.Name name)
     {
-        if (TryGetBinding(name, out var symbol))
+        if (TryGetBinding(name) is { } symbol)
         {
             source.AttachSymbol(name, symbol);
         }
@@ -462,7 +478,7 @@ public class Binder
 
     private void Visit(Tree.Type.Name name)
     {
-        if (TryGetBinding(name, out var symbol))
+        if (TryGetBinding(name) is { } symbol)
         {
             source.AttachSymbol(name, symbol);
         }
@@ -495,7 +511,7 @@ public class Binder
     private void VisitStatement(Tree.Statement.LocalFunctionDeclaration declaration)
     {
         AddSymbol(declaration.Name, new Symbol.LocalFunction(declaration));
-        PushScope();
+        PushScope(declaration.Function.Chunk);
         VisitFunction(declaration.Function);
         PopScope();
     }
@@ -524,12 +540,12 @@ public class Binder
 
     private FlowNode? VisitStatement(Tree.Statement.RepeatUntil repeatUntil, FlowNode antecedent)
     {
-        functionStack.Peek().LoopStack.Push(repeatUntil);
+        chunkStack.Peek().LoopStack.Push(repeatUntil);
         PushScope();
         var descendent = VisitBlock(repeatUntil.Body, antecedent);
         Visit(repeatUntil.Condition);
         PopScope();
-        functionStack.Peek().LoopStack.Pop();
+        chunkStack.Peek().LoopStack.Pop();
 
         return descendent;
     }
@@ -539,11 +555,11 @@ public class Binder
         var descendents = new List<FlowNode> { antecedent };
 
         Visit(whileLoop.Condition);
-        functionStack.Peek().LoopStack.Push(whileLoop);
+        chunkStack.Peek().LoopStack.Push(whileLoop);
         PushScope();
         AddIfNotNull(descendents, VisitBlock(whileLoop.Body, antecedent));
         PopScope();
-        functionStack.Peek().LoopStack.Pop();
+        chunkStack.Peek().LoopStack.Pop();
 
         return new FlowNode(descendents);
     }
@@ -554,7 +570,7 @@ public class Binder
 
         Visit(forLoop.Iterator);
 
-        functionStack.Peek().LoopStack.Push(forLoop);
+        chunkStack.Peek().LoopStack.Push(forLoop);
         PushScope();
 
         for (var i = 0; i < forLoop.Declarations.Count; i++)
@@ -566,7 +582,7 @@ public class Binder
         AddIfNotNull(descendents, VisitBlock(forLoop.Body, antecedent));
 
         PopScope();
-        functionStack.Peek().LoopStack.Pop();
+        chunkStack.Peek().LoopStack.Pop();
 
         return new FlowNode(descendents);
     }
@@ -575,7 +591,7 @@ public class Binder
     {
         var descendents = new List<FlowNode> { antecedent };
 
-        functionStack.Peek().LoopStack.Push(numericalFor);
+        chunkStack.Peek().LoopStack.Push(numericalFor);
         PushScope();
         Visit(numericalFor.Start);
         Visit(numericalFor.Limit);
@@ -587,7 +603,7 @@ public class Binder
         AddSymbol(numericalFor.Counter, new Symbol.NumericForCounter(numericalFor));
         AddIfNotNull(descendents, VisitBlock(numericalFor.Body, antecedent));
         PopScope();
-        functionStack.Peek().LoopStack.Pop();
+        chunkStack.Peek().LoopStack.Pop();
 
         return new FlowNode(descendents);
     }
@@ -632,10 +648,47 @@ public class Binder
 
     private void VisitStatement(Tree.Statement.Break brk)
     {
-        if (functionStack.Peek().LoopStack.Count == 0)
+        if (chunkStack.Peek().LoopStack.Count == 0)
         {
             Report(new Diagnostic.BreakOutsideOfLoop(brk.Range));
         }
+    }
+
+    private FlowNode? VisitStatement(Tree.Statement.LabelDefinition label, FlowNode? antecedent)
+    {
+        if (!labelFlowNodes.TryGetValue(label.Name, out var flowNode))
+        {
+            return null;
+        }
+
+        if (antecedent != null)
+        {
+            flowNode.Antecedents.Add(antecedent);
+        }
+
+        return flowNode;
+    }
+
+    private FlowNode? VisitStatement(Tree.Statement.Goto @goto, FlowNode? antecedent)
+    {
+        var name = @goto.Name;
+        FlowNode? flowNode = null;
+
+        if (TryGetBinding(name.Value, Tree.NameContext.Label) is ({ } symbol, { } scope) &&
+            scope.Chunk == chunkStack.Peek().Chunk)
+        {
+            source.AttachSymbol(name, symbol);
+            if (labelFlowNodes.TryGetValue(name, out flowNode))
+            {
+                AddIfNotNull(flowNode.Antecedents, antecedent);
+            }
+        }
+        else
+        {
+            Report(new Diagnostic.NameNotFound(name.Range, name.Value, Tree.NameContext.Label));
+        }
+
+        return flowNode;
     }
 
     /// <summary>
