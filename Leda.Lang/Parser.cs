@@ -901,7 +901,7 @@ public class Parser
     /// </summary>
     private Tree.Expression ParseExpression(Tree.Expression left, int minPrecedence)
     {
-        while (Token.IsBinary(token, out var opPrecedence) && opPrecedence > minPrecedence)
+        while (Token.IsBinary(token, out var opPrecedence) && opPrecedence >= minPrecedence)
         {
             StartTree(left.Range.Start);
 
