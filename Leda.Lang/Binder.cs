@@ -541,7 +541,7 @@ public class Binder
             AddIfNotNull(descendents, antecedent);
         }
 
-        return descendents.Count > 0 ? new(descendents) : null;
+        return FlowNodeOrNull(descendents);
     }
 
     private FlowNode? VisitStatement(Tree.Statement.RepeatUntil repeatUntil, FlowNode? antecedent)
@@ -554,7 +554,7 @@ public class Binder
         return descendent;
     }
 
-    private FlowNode VisitStatement(Tree.Statement.While whileLoop, FlowNode? antecedent)
+    private FlowNode? VisitStatement(Tree.Statement.While whileLoop, FlowNode? antecedent)
     {
         var descendents = new List<FlowNode>();
         AddIfNotNull(descendents, antecedent);
@@ -564,10 +564,10 @@ public class Binder
         AddIfNotNull(descendents, VisitBlock(whileLoop.Body, antecedent));
         PopScope();
 
-        return new FlowNode(descendents);
+        return FlowNodeOrNull(descendents);
     }
 
-    private FlowNode VisitStatement(Tree.Statement.IteratorFor forLoop, FlowNode? antecedent)
+    private FlowNode? VisitStatement(Tree.Statement.IteratorFor forLoop, FlowNode? antecedent)
     {
         var descendents = new List<FlowNode>();
         AddIfNotNull(descendents, antecedent);
@@ -586,10 +586,10 @@ public class Binder
 
         PopScope();
 
-        return new FlowNode(descendents);
+        return FlowNodeOrNull(descendents);
     }
 
-    private FlowNode VisitStatement(Tree.Statement.NumericalFor numericalFor, FlowNode? antecedent)
+    private FlowNode? VisitStatement(Tree.Statement.NumericalFor numericalFor, FlowNode? antecedent)
     {
         var descendents = new List<FlowNode>();
         AddIfNotNull(descendents, antecedent);
@@ -606,7 +606,7 @@ public class Binder
         AddIfNotNull(descendents, VisitBlock(numericalFor.Body, antecedent));
         PopScope();
 
-        return new FlowNode(descendents);
+        return FlowNodeOrNull(descendents);
     }
 
     private void VisitStatement(Tree.Statement.Break brk)
@@ -730,5 +730,13 @@ public class Binder
         {
             list.Add(item);
         }
+    }
+
+    /// <summary>
+    /// Returns a new FlowNode with the given antecedents only if there's at least one; otherwise returns null.
+    /// </summary>
+    private static FlowNode? FlowNodeOrNull(List<FlowNode> antecedents)
+    {
+        return antecedents.Count > 0 ? new FlowNode(antecedents) : null;
     }
 }
