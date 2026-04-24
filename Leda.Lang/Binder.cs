@@ -184,116 +184,6 @@ public class Binder
         AddSymbol(name, name.Value, Tree.NameContext.Type, symbol);
     }
 
-    /// <summary>
-    /// Visits all of a block's statements.
-    /// </summary>
-    private FlowNode? VisitBlock(Tree.Block block, FlowNode? antecedent)
-    {
-        foreach (var typeDeclaration in block.TypeDeclarations)
-        {
-            AddSymbol(typeDeclaration.Name, new Symbol.TypeAlias(typeDeclaration));
-        }
-
-        foreach (var typeDeclaration in block.TypeDeclarations)
-        {
-            Visit(typeDeclaration.Type);
-        }
-
-        foreach (var label in block.Labels)
-        {
-            AddSymbol(label.Name, label.Name.Value, Tree.NameContext.Label, new Symbol.Label(label.Name));
-            labelFlowNodes[label.Name] = new FlowNode([]);
-        }
-
-        // If multiple consecutive statements are unreachable, we report just one diagnostic for all of them.
-        Range? unreachableRange = null;
-        // If the block's antecedent is null, the entire block is unreachable. In this case, the unreachable diagnostic
-        // will be reported by the parent block, so we don't have to here.
-        var entireBlockUnreachable = antecedent == null;
-
-        var descendant = antecedent;
-
-        foreach (var statement in block.Statements)
-        {
-            var previous = descendant;
-            descendant = VisitStatement(statement, descendant);
-
-            if (!entireBlockUnreachable)
-            {
-                if (descendant == null && previous == null)
-                {
-                    unreachableRange = unreachableRange is { } range ? range.Union(statement.Range) : statement.Range;
-                }
-                else if (unreachableRange is { } range)
-                {
-                    Report(new Diagnostic.UnreachableCode(range));
-                    unreachableRange = null;
-                }
-            }
-        }
-
-        if (unreachableRange is { } warnRange)
-        {
-            Report(new Diagnostic.UnreachableCode(warnRange));
-        }
-
-        return descendant;
-    }
-
-    private void VisitChunk(Tree.Chunk chunk)
-    {
-        var startNode = new FlowNode([]);
-        var descendent = VisitBlock(chunk, startNode);
-        chunk.AllPathsReturn = descendent == null;
-    }
-
-    private FlowNode? VisitStatement(Tree.Statement stmt, FlowNode? antecedent)
-    {
-        switch (stmt)
-        {
-            case Tree.Statement.Call call:
-                Visit(call.CallExpr);
-                break;
-            case Tree.Statement.MethodCall methodCall:
-                Visit(methodCall.CallExpr);
-                break;
-            case Tree.Statement.Assignment assignment:
-                return VisitStatement(assignment, antecedent);
-            case Tree.Statement.Do @do:
-                return VisitStatement(@do, antecedent);
-            case Tree.Statement.GlobalDeclaration globalDeclaration:
-                return VisitStatement(globalDeclaration, antecedent);
-            case Tree.Statement.If @if:
-                return VisitStatement(@if, antecedent);
-            case Tree.Statement.IteratorFor iteratorFor:
-                return VisitStatement(iteratorFor, antecedent);
-            case Tree.Statement.LocalDeclaration localDeclaration:
-                return VisitStatement(localDeclaration, antecedent);
-            case Tree.Statement.LocalFunctionDeclaration localFunctionDeclaration:
-                VisitStatement(localFunctionDeclaration);
-                break;
-            case Tree.Statement.NumericalFor numericalFor:
-                return VisitStatement(numericalFor, antecedent);
-            case Tree.Statement.RepeatUntil repeatUntil:
-                return VisitStatement(repeatUntil, antecedent);
-            case Tree.Statement.While @while:
-                return VisitStatement(@while, antecedent);
-            case Tree.Statement.Return @return:
-                VisitStatement(@return);
-                return null;
-            case Tree.Statement.Break @break:
-                VisitStatement(@break);
-                return null;
-            case Tree.Statement.LabelDefinition label:
-                return VisitStatement(label, antecedent);
-            case Tree.Statement.Goto @goto:
-                VisitStatement(@goto, antecedent);
-                return null;
-        }
-
-        return antecedent;
-    }
-
     private void Visit(Tree.Expression expr)
     {
         switch (expr)
@@ -321,24 +211,6 @@ public class Binder
                 break;
             case Tree.Expression.Unary unary:
                 Visit(unary);
-                break;
-        }
-    }
-
-    private void Visit(Tree.Type type)
-    {
-        switch (type)
-        {
-            case Tree.Type.Function function:
-                PushScope(); // For type parameters.
-                Visit(function);
-                PopScope();
-                break;
-            case Tree.Type.Name name:
-                Visit(name);
-                break;
-            case Tree.Type.Table table:
-                Visit(table);
                 break;
         }
     }
@@ -375,65 +247,6 @@ public class Binder
 
             assignmentPathStack.Pop();
         }
-    }
-
-    private void Visit(List<Tree.Type> types)
-    {
-        foreach (var type in types)
-        {
-            Visit(type);
-        }
-    }
-
-    private FlowNode? VisitStatement(Tree.Statement.Do block, FlowNode? antecedent)
-    {
-        PushScope();
-        var descendent = VisitBlock(block.Body, antecedent);
-        PopScope();
-
-        return descendent;
-    }
-
-    private FlowNode? VisitIfBranch(Tree.IfBranch branch, FlowNode? antecedent)
-    {
-        Visit(branch.Condition);
-        PushScope();
-        var descendent = VisitBlock(branch.Body, antecedent);
-        PopScope();
-
-        return descendent;
-    }
-
-    private FlowNode? VisitStatement(Tree.Statement.If ifStatement, FlowNode? antecedent)
-    {
-        var descendents = new List<FlowNode>();
-
-        AddIfNotNull(descendents, VisitIfBranch(ifStatement.Primary, antecedent));
-
-        foreach (var branch in ifStatement.ElseIfs)
-        {
-            AddIfNotNull(descendents, VisitIfBranch(branch, antecedent));
-        }
-
-        if (ifStatement.ElseBody != null)
-        {
-            PushScope();
-            AddIfNotNull(descendents, VisitBlock(ifStatement.ElseBody, antecedent));
-            PopScope();
-        }
-        else
-        {
-            AddIfNotNull(descendents, antecedent);
-        }
-
-        return descendents.Count > 0 ? new(descendents) : null;
-    }
-
-    private FlowNode? VisitStatement(Tree.Statement.Assignment assignment, FlowNode? antecedent)
-    {
-        Visit(assignment.Targets);
-        Visit(assignment.Values, assignment);
-        return antecedent;
     }
 
     private void Visit(Tree.Expression.MethodCall methodCall)
@@ -507,6 +320,46 @@ public class Binder
         }
     }
 
+    private void Visit(Tree.Expression.Table table)
+    {
+        foreach (var field in table.Fields)
+        {
+            assignmentPathStack.TryPeek(out var assignmentPath);
+            assignmentPath?.TableFields.Add(field.Key);
+
+            Visit(field.Key);
+            Visit(field.Value);
+
+            assignmentPath?.TableFields.RemoveAt(assignmentPath.TableFields.Count - 1);
+        }
+    }
+
+    private void Visit(Tree.Type type)
+    {
+        switch (type)
+        {
+            case Tree.Type.Function function:
+                PushScope(); // For type parameters.
+                Visit(function);
+                PopScope();
+                break;
+            case Tree.Type.Name name:
+                Visit(name);
+                break;
+            case Tree.Type.Table table:
+                Visit(table);
+                break;
+        }
+    }
+
+    private void Visit(List<Tree.Type> types)
+    {
+        foreach (var type in types)
+        {
+            Visit(type);
+        }
+    }
+
     private void Visit(Tree.Type.Name name)
     {
         if (TryGetBinding(name) is { } symbol)
@@ -520,18 +373,105 @@ public class Binder
         }
     }
 
-    private void Visit(Tree.Expression.Table table)
+    private void Visit(Tree.Type.Function functionType)
+    {
+        if (functionType.TypeParameters != null)
+        {
+            VisitTypeParameterDeclaration(functionType.TypeParameters);
+        }
+
+        foreach (var parameter in functionType.Parameters)
+        {
+            if (parameter.Type != null)
+            {
+                Visit(parameter.Type);
+            }
+        }
+
+        if (functionType.ReturnTypes != null)
+        {
+            Visit(functionType.ReturnTypes);
+        }
+    }
+
+    private void Visit(Tree.Type.Table table)
     {
         foreach (var field in table.Fields)
         {
-            assignmentPathStack.TryPeek(out var assignmentPath);
-            assignmentPath?.TableFields.Add(field.Key);
-
             Visit(field.Key);
             Visit(field.Value);
-
-            assignmentPath?.TableFields.RemoveAt(assignmentPath.TableFields.Count - 1);
         }
+    }
+
+    private void VisitTypeParameterDeclaration(List<Tree.Type.Name> typeParameters)
+    {
+        foreach (var typeParameter in typeParameters)
+        {
+            AddSymbol(typeParameter, new Symbol.TypeParameter(typeParameter));
+        }
+    }
+
+    private FlowNode? VisitStatement(Tree.Statement stmt, FlowNode? antecedent)
+    {
+        switch (stmt)
+        {
+            case Tree.Statement.Call call:
+                Visit(call.CallExpr);
+                break;
+            case Tree.Statement.MethodCall methodCall:
+                Visit(methodCall.CallExpr);
+                break;
+            case Tree.Statement.Assignment assignment:
+                return VisitStatement(assignment, antecedent);
+            case Tree.Statement.Do @do:
+                return VisitStatement(@do, antecedent);
+            case Tree.Statement.GlobalDeclaration globalDeclaration:
+                return VisitStatement(globalDeclaration, antecedent);
+            case Tree.Statement.If @if:
+                return VisitStatement(@if, antecedent);
+            case Tree.Statement.IteratorFor iteratorFor:
+                return VisitStatement(iteratorFor, antecedent);
+            case Tree.Statement.LocalDeclaration localDeclaration:
+                return VisitStatement(localDeclaration, antecedent);
+            case Tree.Statement.LocalFunctionDeclaration localFunctionDeclaration:
+                VisitStatement(localFunctionDeclaration);
+                break;
+            case Tree.Statement.NumericalFor numericalFor:
+                return VisitStatement(numericalFor, antecedent);
+            case Tree.Statement.RepeatUntil repeatUntil:
+                return VisitStatement(repeatUntil, antecedent);
+            case Tree.Statement.While @while:
+                return VisitStatement(@while, antecedent);
+            case Tree.Statement.Return @return:
+                VisitStatement(@return);
+                return null;
+            case Tree.Statement.Break @break:
+                VisitStatement(@break);
+                return null;
+            case Tree.Statement.LabelDefinition label:
+                return VisitStatement(label, antecedent);
+            case Tree.Statement.Goto @goto:
+                VisitStatement(@goto, antecedent);
+                return null;
+        }
+
+        return antecedent;
+    }
+
+    private FlowNode? VisitStatement(Tree.Statement.Do block, FlowNode? antecedent)
+    {
+        PushScope();
+        var descendent = VisitBlock(block.Body, antecedent);
+        PopScope();
+
+        return descendent;
+    }
+
+    private FlowNode? VisitStatement(Tree.Statement.Assignment assignment, FlowNode? antecedent)
+    {
+        Visit(assignment.Targets);
+        Visit(assignment.Values, assignment);
+        return antecedent;
     }
 
     private void VisitStatement(Tree.Statement.Return returnStatement)
@@ -567,6 +507,41 @@ public class Binder
         }
 
         return antecedent;
+    }
+
+    private FlowNode? VisitIfBranch(Tree.IfBranch branch, FlowNode? antecedent)
+    {
+        Visit(branch.Condition);
+        PushScope();
+        var descendent = VisitBlock(branch.Body, antecedent);
+        PopScope();
+
+        return descendent;
+    }
+
+    private FlowNode? VisitStatement(Tree.Statement.If ifStatement, FlowNode? antecedent)
+    {
+        var descendents = new List<FlowNode>();
+
+        AddIfNotNull(descendents, VisitIfBranch(ifStatement.Primary, antecedent));
+
+        foreach (var branch in ifStatement.ElseIfs)
+        {
+            AddIfNotNull(descendents, VisitIfBranch(branch, antecedent));
+        }
+
+        if (ifStatement.ElseBody != null)
+        {
+            PushScope();
+            AddIfNotNull(descendents, VisitBlock(ifStatement.ElseBody, antecedent));
+            PopScope();
+        }
+        else
+        {
+            AddIfNotNull(descendents, antecedent);
+        }
+
+        return descendents.Count > 0 ? new(descendents) : null;
     }
 
     private FlowNode? VisitStatement(Tree.Statement.RepeatUntil repeatUntil, FlowNode? antecedent)
@@ -634,44 +609,6 @@ public class Binder
         return new FlowNode(descendents);
     }
 
-    private void VisitTypeParameterDeclaration(List<Tree.Type.Name> typeParameters)
-    {
-        foreach (var typeParameter in typeParameters)
-        {
-            AddSymbol(typeParameter, new Symbol.TypeParameter(typeParameter));
-        }
-    }
-
-    private void Visit(Tree.Type.Function functionType)
-    {
-        if (functionType.TypeParameters != null)
-        {
-            VisitTypeParameterDeclaration(functionType.TypeParameters);
-        }
-
-        foreach (var parameter in functionType.Parameters)
-        {
-            if (parameter.Type != null)
-            {
-                Visit(parameter.Type);
-            }
-        }
-
-        if (functionType.ReturnTypes != null)
-        {
-            Visit(functionType.ReturnTypes);
-        }
-    }
-
-    private void Visit(Tree.Type.Table table)
-    {
-        foreach (var field in table.Fields)
-        {
-            Visit(field.Key);
-            Visit(field.Value);
-        }
-    }
-
     private void VisitStatement(Tree.Statement.Break brk)
     {
         if (scopes[^1].Loop == null)
@@ -712,6 +649,66 @@ public class Binder
         {
             Report(new Diagnostic.NameNotFound(name.Range, name.Value, Tree.NameContext.Label));
         }
+    }
+
+    private FlowNode? VisitBlock(Tree.Block block, FlowNode? antecedent)
+    {
+        foreach (var typeDeclaration in block.TypeDeclarations)
+        {
+            AddSymbol(typeDeclaration.Name, new Symbol.TypeAlias(typeDeclaration));
+        }
+
+        foreach (var typeDeclaration in block.TypeDeclarations)
+        {
+            Visit(typeDeclaration.Type);
+        }
+
+        foreach (var label in block.Labels)
+        {
+            AddSymbol(label.Name, label.Name.Value, Tree.NameContext.Label, new Symbol.Label(label.Name));
+            labelFlowNodes[label.Name] = new FlowNode([]);
+        }
+
+        // If multiple consecutive statements are unreachable, we report just one diagnostic for all of them.
+        Range? unreachableRange = null;
+        // If the block's antecedent is null, the entire block is unreachable. In this case, the unreachable diagnostic
+        // will be reported by the parent block, so we don't have to here.
+        var entireBlockUnreachable = antecedent == null;
+
+        var descendant = antecedent;
+
+        foreach (var statement in block.Statements)
+        {
+            var previous = descendant;
+            descendant = VisitStatement(statement, descendant);
+
+            if (!entireBlockUnreachable)
+            {
+                if (descendant == null && previous == null)
+                {
+                    unreachableRange = unreachableRange is { } range ? range.Union(statement.Range) : statement.Range;
+                }
+                else if (unreachableRange is { } range)
+                {
+                    Report(new Diagnostic.UnreachableCode(range));
+                    unreachableRange = null;
+                }
+            }
+        }
+
+        if (unreachableRange is { } warnRange)
+        {
+            Report(new Diagnostic.UnreachableCode(warnRange));
+        }
+
+        return descendant;
+    }
+
+    private void VisitChunk(Tree.Chunk chunk)
+    {
+        var startNode = new FlowNode([]);
+        var descendent = VisitBlock(chunk, startNode);
+        chunk.AllPathsReturn = descendent == null;
     }
 
     /// <summary>
