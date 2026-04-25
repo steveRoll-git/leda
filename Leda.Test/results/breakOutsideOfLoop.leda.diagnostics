@@ -1,0 +1,4 @@
+BreakOutsideOfLoop(4:7 4:12)
+`break` cannot be used outside of loops.
+BreakOutsideOfLoop(8:3 8:8)
+`break` cannot be used outside of loops.

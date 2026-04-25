@@ -1,0 +1,5 @@
+local asdf: number = 123
+
+local x: string = 123 -- Type 'number' is not assignable to type 'string'.
+
+asdf = {} -- Type '{}' is not assignable to type 'number'.

@@ -17,19 +17,24 @@ public class DiagnosticTest
         diagnostics.AddRange(source.Bind());
         diagnostics.AddRange(source.Check());
 
-        Assert.Equal(diagnostics.Count, testScenario.ExpectedDiagnostics.Count);
-        for (var i = 0; i < diagnostics.Count; i++)
+        var actualDiagnostics = DiagnosticPrinter.DiagnosticsOutput(diagnostics);
+
+        if (testScenario.ExpectedDiagnostics != actualDiagnostics)
         {
-            var diagnostic = diagnostics[i];
-            Assert.Equal(diagnostic.Range, testScenario.ExpectedDiagnostics[i].Range);
-            Assert.Equal(diagnostic.Message, testScenario.ExpectedDiagnostics[i].Message);
+            Assert.Fail(
+                $"""
+                 Diagnostics differ
+
+                 Expected:
+                 {testScenario.ExpectedDiagnostics}
+                 Actual:
+                 {actualDiagnostics}
+                 """);
         }
     }
 }
 
-public record DiagnosticResult(Range Range, string Message);
-
-public record TestScenario(string Filename, string Code, List<DiagnosticResult> ExpectedDiagnostics)
+public record TestScenario(string Filename, string Code, string ExpectedDiagnostics)
 {
     public override string ToString()
     {
@@ -39,34 +44,17 @@ public record TestScenario(string Filename, string Code, List<DiagnosticResult> 
 
 public class DiagnosticTestData : TheoryData<TestScenario>
 {
-    private static readonly Regex DiagnosticRegex = new(@"^\s*(\^+) (.+)");
+    private const string ProjectPath = "../../../";
 
     public DiagnosticTestData()
     {
-        foreach (var file in Directory.EnumerateFiles("../../../diagnosticTests"))
+        foreach (var file in Directory.EnumerateFiles(Path.Join(ProjectPath, "tests")))
         {
-            using var reader = new StreamReader(file);
-            var code = "";
-            var diagnostics = new List<DiagnosticResult>();
-            var lineNumber = -1;
-            while (reader.ReadLine() is { } line)
-            {
-                if (DiagnosticRegex.Match(line) is { Success: true, Groups: var groups })
-                {
-                    var rangeGroup = groups[1];
-                    var range = new Range(
-                        new(lineNumber, rangeGroup.Index),
-                        new(lineNumber, rangeGroup.Index + rangeGroup.Length));
-                    diagnostics.Add(new(range, groups[2].Value));
-                }
-                else
-                {
-                    code += line + "\n";
-                    lineNumber++;
-                }
-            }
+            var filename = Path.GetFileName(file);
+            var code = File.ReadAllText(file);
+            var expectedDiagnostics = File.ReadAllText(Path.Join(ProjectPath, "results", filename + ".diagnostics"));
 
-            Add(new(Path.GetFileNameWithoutExtension(file), code, diagnostics));
+            Add(new(filename, code, expectedDiagnostics));
         }
     }
 }
