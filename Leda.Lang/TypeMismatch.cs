@@ -1,5 +1,25 @@
 namespace Leda.Lang;
 
+public class MismatchList : List<TypeMismatch>
+{
+    public override bool Equals(object? obj)
+    {
+        return obj is MismatchList list && this.SequenceEqual(list);
+    }
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+
+        for (var i = 0; i < Count; i++)
+        {
+            hash.Add(this[i]);
+        }
+
+        return hash.ToHashCode();
+    }
+}
+
 /// <summary>
 /// Represents the reason a type is incompatible with another type.
 /// </summary>
@@ -10,7 +30,7 @@ public abstract record TypeMismatch
     /// <summary>
     /// Additional mismatches that provide detail to this mismatch.
     /// </summary>
-    public List<TypeMismatch> Children = [];
+    public MismatchList Children = [];
 
     public record Primitive(string Target, string Source) : TypeMismatch
     {

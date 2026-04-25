@@ -662,7 +662,7 @@ public class Checker
     private bool IsAssignableFrom(Type.Table targetTable, Type.Table sourceTable,
         [NotNullWhen(false)] out TypeMismatch? reason)
     {
-        List<TypeMismatch> reasons = [];
+        MismatchList reasons = [];
 
         foreach (var (targetKey, targetStringField) in targetTable.StringLiterals)
         {
@@ -696,7 +696,7 @@ public class Checker
     private bool IsAssignableFrom(Type.Function targetFunction, Type.Function sourceFunction,
         [NotNullWhen(false)] out TypeMismatch? reason)
     {
-        List<TypeMismatch> reasons = [];
+        MismatchList reasons = [];
         if (!IsAssignableFrom(sourceFunction.Parameters, targetFunction.Parameters, out var parameterReasons,
                 TypeListKind.FunctionTypeParameter))
         {
@@ -721,7 +721,7 @@ public class Checker
     }
 
     private bool IsAssignableFrom(TypeList targets, TypeList sources,
-        [NotNullWhen(false)] out List<TypeMismatch>? reasons,
+        [NotNullWhen(false)] out MismatchList? reasons,
         TypeListKind kind,
         int targetIndex = 0)
     {
