@@ -1,0 +1,20 @@
+local x, y, z = true, false, true
+local function f()
+  if x then
+    return 123, "abc"
+  elseif y then
+    return 456, "def"
+  else
+    if z then
+      return 321, "xyz"
+    end
+    return 789, "ghi"
+  end
+end
+local function g()
+  if x then
+    return 123, "abc"
+  elseif y then
+    return 456, "def"
+  end
+end

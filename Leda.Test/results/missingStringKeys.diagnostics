@@ -1,0 +1,2 @@
+MissingStringKeys(5:7 5:8)
+Type '{ a: number, }' is missing the following keys from type 'T': "b", "c"

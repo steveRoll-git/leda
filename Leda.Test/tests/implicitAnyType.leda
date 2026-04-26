@@ -1,0 +1,7 @@
+local function f(a: number, b: string) end
+
+local function g(a: number, b, c: boolean) end
+
+local t = {
+    f = function(a) end
+}

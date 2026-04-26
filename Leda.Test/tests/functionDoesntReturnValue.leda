@@ -1,0 +1,6 @@
+local function f(): number, string
+  return 123, "abc"
+end
+
+local function g(): number, string
+end

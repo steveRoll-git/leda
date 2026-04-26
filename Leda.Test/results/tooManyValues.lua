@@ -1,0 +1,7 @@
+local a, b = 1, 2
+a, b = 2, 3
+a, b = 4, 5, 6
+local function f(a, b)
+  return a, b, true
+end
+f("abc", 123, {})

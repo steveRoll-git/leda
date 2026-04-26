@@ -2,5 +2,5 @@ type T = {a: number, b: string, c: boolean}
 
 local t: T = {a = 123, b = "456", c = true}
 
-local x: T = {a = 123, b = "456", c = true, asdf = {}}
+local x: T = {a = 123}
 

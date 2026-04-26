@@ -1,0 +1,2 @@
+FunctionDoesntReturnValue(5:16 5:17)
+Functions with a return type annotation must return a value.
