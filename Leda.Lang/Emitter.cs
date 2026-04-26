@@ -1,7 +1,6 @@
 using System.Text;
-using Leda.Lang;
 
-namespace Leda;
+namespace Leda.Lang;
 
 /// <summary>
 /// Given an AST, emits its corresponding Lua code as a string.

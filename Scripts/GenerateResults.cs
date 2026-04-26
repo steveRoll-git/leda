@@ -8,9 +8,11 @@ using Leda.Test;
 const string ledaTestPath = "Leda.Test/";
 
 var filename = args[0];
+var filenameWithoutExtension = Path.GetFileNameWithoutExtension(filename);
 
 var testCodePath = Path.Join(ledaTestPath, "tests", filename);
-var testResultPath = Path.Join(ledaTestPath, "results", filename + ".diagnostics");
+var testDiagnosticsPath = Path.Join(ledaTestPath, "results", filenameWithoutExtension + ".diagnostics");
+var testEmittedPath = Path.Join(ledaTestPath, "results", filenameWithoutExtension + ".lua");
 
 var testCode = File.ReadAllText(testCodePath);
 var source = new Source(filename, testCode);
@@ -20,6 +22,9 @@ diagnostics.AddRange(source.Bind());
 diagnostics.AddRange(source.Check());
 
 var diagnosticsOutput = DiagnosticPrinter.DiagnosticsOutput(diagnostics);
-File.WriteAllText(testResultPath, diagnosticsOutput);
+File.WriteAllText(testDiagnosticsPath, diagnosticsOutput);
+Console.WriteLine("Generated results file at " + testDiagnosticsPath);
 
-Console.WriteLine("Generated results file at " + testResultPath);
+var emittedCode = Emitter.Emit(source.Chunk);
+File.WriteAllText(testEmittedPath, emittedCode);
+Console.WriteLine("Generated emitted file at " + testEmittedPath);

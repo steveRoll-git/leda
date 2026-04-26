@@ -31,10 +31,20 @@ public class DiagnosticTest
                  {actualDiagnostics}
                  """);
         }
+
+        var actualCode = Emitter.Emit(source.Chunk);
+        if (testScenario.ExpectedCode != actualCode)
+        {
+            Assert.Fail($"""
+                         Emitted code differs
+
+                         {actualCode}
+                         """);
+        }
     }
 }
 
-public record TestScenario(string Filename, string Code, string ExpectedDiagnostics)
+public record TestScenario(string Filename, string Code, string ExpectedDiagnostics, string ExpectedCode)
 {
     public override string ToString()
     {
@@ -50,11 +60,12 @@ public class DiagnosticTestData : TheoryData<TestScenario>
     {
         foreach (var file in Directory.EnumerateFiles(Path.Join(ProjectPath, "tests")))
         {
-            var filename = Path.GetFileName(file);
+            var filename = Path.GetFileNameWithoutExtension(file);
             var code = File.ReadAllText(file);
             var expectedDiagnostics = File.ReadAllText(Path.Join(ProjectPath, "results", filename + ".diagnostics"));
+            var expectedCode = File.ReadAllText(Path.Join(ProjectPath, "results", filename + ".lua"));
 
-            Add(new(filename, code, expectedDiagnostics));
+            Add(new(filename, code, expectedDiagnostics, expectedCode));
         }
     }
 }
