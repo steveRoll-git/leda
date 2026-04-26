@@ -217,7 +217,7 @@ public class Emitter
 
             EmitExpression(unary.Expression, indent, unary.Expression is Tree.Expression.Binary);
         }
-        else
+        else if (expression is not Tree.Expression.Error)
         {
             throw new Exception();
         }
@@ -418,7 +418,7 @@ public class Emitter
             Emit("goto ");
             Emit(@goto.Name.Value);
         }
-        else
+        else if (statement is not Tree.Statement.Error)
         {
             throw new ArgumentOutOfRangeException(nameof(statement));
         }

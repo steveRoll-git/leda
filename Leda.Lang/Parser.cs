@@ -116,6 +116,15 @@ public class Parser
         return got;
     }
 
+    private void ReportUnexpectedToken()
+    {
+        var got = Consume();
+        if (got.Kind != TokenKind.Unknown)
+        {
+            Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got.Kind));
+        }
+    }
+
     /// <summary>
     /// Makes this position the start position of the currently parsed tree.
     /// </summary>
@@ -364,10 +373,9 @@ public class Parser
             return EndTree(new Tree.Statement.Assignment(targets, expressions));
         }
 
-        var got = Consume();
-        Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got.Kind));
+        ReportUnexpectedToken();
 
-        return new Tree.Statement.Error();
+        return EndTree(new Tree.Statement.Error());
     }
 
     private Tree.Statement.Do ParseDo()
@@ -773,8 +781,7 @@ public class Parser
             return ParsePrefixExpression(EndTree(new Tree.Expression.Name(name.Value)));
         }
 
-        var got = Consume();
-        Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got.Kind));
+        ReportUnexpectedToken();
 
         return EndTree(new Tree.Expression.Error());
     }
