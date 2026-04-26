@@ -88,7 +88,7 @@ public class TypeEvaluator(Source source)
             {
                 var newKey = new Type.Table.ValueStringField(new Symbol.StringField(type, literal), field);
                 type.StringLiterals[literal] = newKey;
-                if (field.Key is Tree.Expression.String)
+                if (field.Key is Tree.Expression.String && !source.TryGetTreeSymbol(field.Key, out _))
                 {
                     source.AttachSymbol(field.Key, newKey.Symbol, true);
                 }
