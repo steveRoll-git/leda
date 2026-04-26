@@ -22,12 +22,12 @@ public class LedaServer
     /// <summary>
     /// Maps DocumentUris to the source they reference.
     /// </summary>
-    public readonly Dictionary<DocumentUri, Source> UriSources = [];
+    private readonly Dictionary<DocumentUri, Source> uriSources = [];
 
     /// <summary>
     /// Maps sources to their respective DocumentUri.
     /// </summary>
-    public readonly Dictionary<Source, DocumentUri> SourceUris = [];
+    private readonly Dictionary<Source, DocumentUri> sourceUris = [];
 
     public LedaServer()
     {
@@ -46,7 +46,7 @@ public class LedaServer
                 project = Project.FromFilesInDirectory(uri.FileSystemPath);
                 foreach (var source in project.Sources)
                 {
-                    AddSource(source, source.Path);
+                    MapSourceToUri(source, source.Path);
                 }
             }
             else
@@ -59,9 +59,9 @@ public class LedaServer
 
         server.OnInitialized(async _ =>
         {
-            var r = await server.Client.GetConfiguration(new ConfigurationParams()
+            var r = await server.Client.GetConfiguration(new ConfigurationParams
             {
-                Items = []
+                Items = [],
             }, CancellationToken.None);
 
             project.CheckAll(PushDiagnostics);
@@ -72,6 +72,7 @@ public class LedaServer
         server.AddHandler(new DefinitionHandler(this));
         server.AddHandler(new ReferenceHandler(this));
         server.AddHandler(new DocumentHighlightHandler(this));
+        server.AddHandler(new DidChangeWatchedFilesHandler(this));
     }
 
     public Task Run()
@@ -84,13 +85,39 @@ public class LedaServer
     /// </summary>
     public Location ToLsLocation(Leda.Lang.Location location)
     {
-        return new(SourceUris[location.Source!], location.Range.ToLs());
+        return new(sourceUris[location.Source!], location.Range.ToLs());
     }
 
-    private void AddSource(Source source, DocumentUri uri)
+    /// <summary>
+    /// Adds a new empty source at the given URI.
+    /// </summary>
+    public void AddSource(DocumentUri uri)
     {
-        UriSources[uri] = source;
-        SourceUris[source] = uri;
+        var source = new Source(uri.FileSystemPath, "");
+        project.AddSource(source);
+        MapSourceToUri(source, uri);
+    }
+
+    public void RemoveSource(DocumentUri uri)
+    {
+        var source = uriSources[uri];
+        project.RemoveSource(source);
+        uriSources.Remove(uri);
+        sourceUris.Remove(source);
+    }
+
+    /// <summary>
+    /// Maps a source to the URI it's located in.
+    /// </summary>
+    private void MapSourceToUri(Source source, DocumentUri uri)
+    {
+        uriSources[uri] = source;
+        sourceUris[source] = uri;
+    }
+
+    public Source GetSourceByUri(DocumentUri uri)
+    {
+        return uriSources[uri];
     }
 
     /// <summary>
@@ -106,18 +133,17 @@ public class LedaServer
     {
         server.Client.PublishDiagnostics(new PublishDiagnosticsParams
         {
-            Uri = SourceUris[source],
-            Diagnostics = diagnostics.Select(d => d.ToLs()).ToList()
+            Uri = sourceUris[source],
+            Diagnostics = diagnostics.Select(d => d.ToLs()).ToList(),
         });
     }
-
 
     /// <summary>
     /// Tries to find the symbol that the `TextDocumentPosition` request is pointing to.
     /// </summary>
     public Symbol? GetRequestSymbol(TextDocumentPositionParams request)
     {
-        var source = UriSources[request.TextDocument.Uri];
+        var source = uriSources[request.TextDocument.Uri];
         return SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()).symbol;
     }
 

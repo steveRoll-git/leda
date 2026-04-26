@@ -12,7 +12,7 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
 {
     protected override Task<HoverResponse?> Handle(HoverParams request, CancellationToken token)
     {
-        var source = server.UriSources[request.TextDocument.Uri];
+        var source = server.GetSourceByUri(request.TextDocument.Uri);
 
         if (SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()) is ({ } symbol, var range))
         {

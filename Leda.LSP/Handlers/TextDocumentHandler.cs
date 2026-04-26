@@ -17,7 +17,7 @@ public class TextDocumentHandler(LedaServer server) : TextDocumentHandlerBase
     protected override Task Handle(DidChangeTextDocumentParams request, CancellationToken token)
     {
         // TODO use incremental sync
-        server.UpdateAndRecheckSource(server.UriSources[request.TextDocument.Uri], request.ContentChanges[0].Text);
+        server.UpdateAndRecheckSource(server.GetSourceByUri(request.TextDocument.Uri), request.ContentChanges[0].Text);
 
         return Task.CompletedTask;
     }
