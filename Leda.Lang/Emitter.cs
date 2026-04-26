@@ -13,6 +13,7 @@ public class Emitter
 
     private static readonly Dictionary<char, string> EscapeChars = new()
     {
+        { '\0', @"\0" },
         { '\a', @"\a" },
         { '\b', @"\b" },
         { '\f', @"\f" },
