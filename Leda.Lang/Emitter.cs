@@ -107,7 +107,7 @@ public class Emitter
         {
             Emit("...");
         }
-        else if (expression is Tree.Expression.LongString longString)
+        else if (expression is Tree.Expression.LongString longString && longString.Level > -1)
         {
             Emit('[');
             Emit('=', longString.Level);
