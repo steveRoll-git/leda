@@ -403,6 +403,25 @@ public class Emitter
             Emit(" = ");
             EmitExpressionList(assignment.Values, indent);
         }
+        else if (statement is Tree.Statement.Break)
+        {
+            Emit("break");
+        }
+        else if (statement is Tree.Statement.LabelDefinition labelDefinition)
+        {
+            Emit("::");
+            Emit(labelDefinition.Name.Value);
+            Emit("::");
+        }
+        else if (statement is Tree.Statement.Goto @goto)
+        {
+            Emit("goto ");
+            Emit(@goto.Name.Value);
+        }
+        else
+        {
+            throw new ArgumentOutOfRangeException(nameof(statement));
+        }
 
         Emit('\n');
     }
