@@ -1,0 +1,4 @@
+TypeNotIndexable(5:11 5:14)
+Type 'number' cannot be indexed.
+TypeNotIndexable(7:11 7:16)
+Type 'nil' cannot be indexed.

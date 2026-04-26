@@ -1,0 +1,2 @@
+TypeDoesntHaveKey(3:13 3:17)
+Type '{ a: number, b: string, c: { x: number, }, }' doesn't have key of type '"asdf"'.

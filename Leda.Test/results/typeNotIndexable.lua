@@ -1,0 +1,4 @@
+local t = {a = 1, b = "2", c = true}
+local x = t.a
+local y = t.a.z
+local z = (nil)[3]

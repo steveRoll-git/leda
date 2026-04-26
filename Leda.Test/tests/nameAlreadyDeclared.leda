@@ -1,0 +1,18 @@
+local x = 123
+do
+    local x = "a"
+end
+local x = 456
+
+type T = number
+type T = string
+
+local function f()
+    type T = {}
+end
+
+::A::
+do
+    ::A::
+end
+::A::

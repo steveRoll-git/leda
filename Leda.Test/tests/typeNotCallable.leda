@@ -1,0 +1,5 @@
+local function f(a: number, b: string, c: boolean) end
+
+f(1, "2", true);
+
+({})()

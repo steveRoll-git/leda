@@ -1,0 +1,5 @@
+local function f()
+end
+local x = f()
+local y = f()
+local z = f()

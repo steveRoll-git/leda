@@ -1,0 +1,6 @@
+NameNotFound(3:4 3:5)
+Cannot find value named 'y'.
+NameNotFound(5:13 5:16)
+Cannot find type named 'Foo'.
+NameNotFound(10:6 10:7)
+Cannot find label named 'Z'.

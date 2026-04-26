@@ -1,0 +1,3 @@
+local good = [[wow cool !@#$%^]]
+local bad = [=[ asdf
+asdf

@@ -1,0 +1,5 @@
+local a = 123.456
+local b = 0xbeef
+local c = 0xazd -- Malformed number.
+local d = 123a -- Malformed number.
+local e = 123..456 -- Malformed number.

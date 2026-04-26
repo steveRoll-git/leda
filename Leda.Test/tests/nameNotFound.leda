@@ -1,0 +1,10 @@
+local x = 1
+
+x, y = 1, 2
+
+local asdf: Foo = 123
+
+goto A
+::A::
+
+goto Z

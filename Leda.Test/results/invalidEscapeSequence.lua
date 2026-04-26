@@ -1,0 +1,2 @@
+local good = "very\0cool\nstring\a\b\f\r\t\v\\\"'"
+local bad = "asdf     "

@@ -76,8 +76,7 @@ public abstract record Diagnostic(Range Range)
         public override string Message => "Unfinished long comment.";
     }
 
-    public record ExpectedToken(Range Range, TokenKind Expected)
-        : Diagnostic(Range)
+    public record ExpectedToken(Range Range, TokenKind Expected) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => $"Expected {Token.KindName(Expected)}.";
@@ -167,12 +166,6 @@ public abstract record Diagnostic(Range Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => "This expression is not callable.";
-    }
-
-    public record NotEnoughArguments(Range Range, int Expected, int Got) : Diagnostic(Range)
-    {
-        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"Expected {Expected} arguments, but got {Got}.";
     }
 
     public record TypeNotIndexable(Range Range, string Type) : Diagnostic(Range)
