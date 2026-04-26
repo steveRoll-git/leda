@@ -857,12 +857,12 @@ public class Parser
     {
         // Function call: '(' [explist] ')'
 
-        Expect(TokenKind.LParen);
+        var lParen = Expect(TokenKind.LParen);
 
         // If the '(' is on a new line, it could be a new statement that starts with it - report ambiguous syntax.
-        if (previous.Range.End.Line < token.Range.Start.Line)
+        if (previous.Range.End.Line < lParen.Range.Start.Line)
         {
-            Report(new Diagnostic.AmbiguousSyntax(token.Range));
+            Report(new Diagnostic.AmbiguousSyntax(lParen.Range));
         }
 
         if (Accept(TokenKind.RParen))
