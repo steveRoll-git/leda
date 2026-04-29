@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace Leda.Lang;
@@ -484,6 +485,216 @@ public class TypeEvaluator(Source source)
         // TODO handle vararg
 
         return null;
+    }
+
+    /// <summary>
+    /// If the type points to another type, returns the pointed-to type.
+    /// </summary>
+    internal Type Dereference(Type type)
+    {
+        return type;
+    }
+
+    private static bool IsTriviallyAssignableFrom(Type targetType, Type sourceType)
+    {
+        if (targetType == Type.Unknown || sourceType == Type.Unknown)
+        {
+            return true;
+        }
+
+        return targetType == sourceType;
+    }
+
+    internal bool IsAssignableFrom(Type targetType, Type sourceType, [NotNullWhen(false)] out TypeMismatch? reason)
+    {
+        reason = null;
+        if (IsTriviallyAssignableFrom(targetType, sourceType))
+        {
+            return true;
+        }
+
+        targetType = Dereference(targetType);
+        sourceType = Dereference(sourceType);
+        if (IsTriviallyAssignableFrom(targetType, sourceType))
+        {
+            return true;
+        }
+
+        if (targetType is Type.PrimitiveType primitive)
+        {
+            if (primitive.AssignableFunc(sourceType))
+            {
+                return true;
+            }
+
+            reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType));
+            return false;
+        }
+
+        // ReSharper disable once CompareOfFloatsByEqualityOperator
+        if (targetType is Type.NumberLiteral numberLiteral)
+        {
+            if (sourceType is Type.NumberLiteral sourceLiteral &&
+                numberLiteral.Literal == sourceLiteral.Literal)
+            {
+                return true;
+            }
+
+            reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType));
+            return false;
+        }
+
+        if (targetType is Type.StringLiteral stringLiteral)
+        {
+            if (sourceType is Type.StringLiteral sourceLiteral &&
+                stringLiteral.Literal == sourceLiteral.Literal)
+            {
+                return true;
+            }
+
+            reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType));
+            return false;
+        }
+
+        if (targetType is Type.Table targetTable && sourceType is Type.Table sourceTable)
+        {
+            return IsAssignableFrom(targetTable, sourceTable, out reason);
+        }
+
+        if (targetType is Type.Function targetFunction && sourceType is Type.Function sourceFunction)
+        {
+            return IsAssignableFrom(targetFunction, sourceFunction, out reason);
+        }
+
+        reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType));
+        return false;
+    }
+
+    internal bool IsAssignableFrom(Type targetType, Type sourceType)
+    {
+        return IsAssignableFrom(targetType, sourceType, out _);
+    }
+
+    internal bool IsAssignableFrom(Type.Table targetTable, Type.Table sourceTable,
+        [NotNullWhen(false)] out TypeMismatch? reason)
+    {
+        MismatchList reasons = [];
+
+        foreach (var (targetKey, targetStringField) in targetTable.StringLiterals)
+        {
+            var sourceType = GetTypeOfStringFieldInTable(sourceTable, targetKey);
+            if (sourceType == null)
+            {
+                reasons.Add(new TypeMismatch.SourceMissingKey(TypeToString(targetTable),
+                    TypeToString(sourceTable),
+                    '"' + targetKey + '"'));
+                continue;
+            }
+
+            if (!IsAssignableFrom(GetTypeOfStringField(targetStringField), sourceType, out var valueReason))
+            {
+                reasons.Add(new TypeMismatch.TableKeyIncompatible('"' + targetKey + '"') { Children = [valueReason] });
+            }
+        }
+        // TODO check number literals too
+
+        if (reasons.Count > 0)
+        {
+            reason = new TypeMismatch.Primitive(TypeToString(targetTable),
+                TypeToString(sourceTable)) { Children = reasons };
+            return false;
+        }
+
+        reason = null;
+        return true;
+    }
+
+    internal bool IsAssignableFrom(Type.Function targetFunction, Type.Function sourceFunction,
+        [NotNullWhen(false)] out TypeMismatch? reason)
+    {
+        MismatchList reasons = [];
+        if (!IsAssignableFrom(sourceFunction.Parameters, targetFunction.Parameters, out var parameterReasons,
+                TypeListKind.FunctionTypeParameter))
+        {
+            reasons.AddRange(parameterReasons);
+        }
+
+        if (!IsAssignableFrom(targetFunction.Return, sourceFunction.Return, out var returnReasons,
+                TypeListKind.FunctionTypeReturn))
+        {
+            reasons.AddRange(returnReasons);
+        }
+
+        if (reasons.Count > 0)
+        {
+            reason = new TypeMismatch.Primitive(TypeToString(targetFunction),
+                TypeToString(sourceFunction)) { Children = reasons };
+            return false;
+        }
+
+        reason = null;
+        return true;
+    }
+
+    internal bool IsAssignableFrom(TypeList targets, TypeList sources,
+        [NotNullWhen(false)] out MismatchList? reasons,
+        TypeListKind kind,
+        int targetIndex = 0)
+    {
+        reasons = [];
+
+        var targetMinimum = GetTypeListMinimum(targets) - targetIndex;
+        var sourceMinimum = GetTypeListMinimum(sources);
+        if (sourceMinimum < targetMinimum)
+        {
+            reasons.Add(new TypeMismatch.NotEnoughValues(targetMinimum, sourceMinimum, kind));
+            return false;
+        }
+
+        var sourcesHaveRest = DoesTypeListHaveRest(sources);
+        var targetsHaveRest = DoesTypeListHaveRest(targets);
+
+        int maximum;
+        if (sourcesHaveRest && !targetsHaveRest)
+        {
+            maximum = GetTypeListMaximum(targets);
+        }
+        else if (!sourcesHaveRest && targetsHaveRest)
+        {
+            maximum = GetTypeListMaximum(sources) + targetIndex;
+        }
+        else
+        {
+            maximum = Math.Min(GetTypeListMaximum(targets),
+                GetTypeListMaximum(sources) + targetIndex);
+        }
+
+        var sourceIndex = 0;
+        for (; targetIndex < maximum; targetIndex++)
+        {
+            var sourceType = GetTypeInTypeList(sources, sourceIndex);
+            var targetType = GetTypeInTypeList(targets, targetIndex);
+
+            if (!IsAssignableFrom(targetType, sourceType, out var subReason))
+            {
+                reasons.Add(new TypeMismatch.ValueInListIncompatible(sourceIndex, kind) { Children = [subReason] });
+            }
+
+            sourceIndex++;
+        }
+
+        if (targetsHaveRest && sourcesHaveRest)
+        {
+            // TODO compare rest types
+        }
+
+        if (reasons.Count > 0)
+        {
+            return false;
+        }
+
+        reasons = null;
+        return true;
     }
 
     /// <summary>

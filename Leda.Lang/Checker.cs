@@ -52,7 +52,7 @@ public class Checker
         }
 
         // TODO we could store a simple flag for whether a type is callable instead of checking like this.
-        if (!IsAssignableFrom(Type.FunctionPrimitive, target)) // TODO handle __call metamethod
+        if (!evaluator.IsAssignableFrom(Type.FunctionPrimitive, target)) // TODO handle __call metamethod
         {
             Report(new Diagnostic.TypeNotCallable(call.Target.Range));
             return;
@@ -209,13 +209,13 @@ public class Checker
     private void VisitStatement(Tree.Statement.NumericalFor numericalFor)
     {
         var startType = evaluator.GetTypeOfExpression(numericalFor.Start);
-        if (!IsAssignableFrom(Type.NumberPrimitive, startType))
+        if (!evaluator.IsAssignableFrom(Type.NumberPrimitive, startType))
         {
             Report(new Diagnostic.ForLoopStartNotNumber(numericalFor.Start.Range, evaluator.TypeToString(startType)));
         }
 
         var limitType = evaluator.GetTypeOfExpression(numericalFor.Limit);
-        if (!IsAssignableFrom(Type.NumberPrimitive, limitType))
+        if (!evaluator.IsAssignableFrom(Type.NumberPrimitive, limitType))
         {
             Report(new Diagnostic.ForLoopLimitNotNumber(numericalFor.Limit.Range, evaluator.TypeToString(limitType)));
         }
@@ -223,7 +223,7 @@ public class Checker
         if (numericalFor.Step != null)
         {
             var stepType = evaluator.GetTypeOfExpression(numericalFor.Step);
-            if (!IsAssignableFrom(Type.NumberPrimitive, stepType))
+            if (!evaluator.IsAssignableFrom(Type.NumberPrimitive, stepType))
             {
                 Report(new Diagnostic.ForLoopStepNotNumber(numericalFor.Step.Range, evaluator.TypeToString(stepType)));
             }
@@ -290,12 +290,13 @@ public class Checker
         {
             var value = sources[i];
             // If the last expression is one that returns a TypeList (and that TypeList returns more than one value),
-            // check it with `IsAssignableFrom`.
+            // check it with `evaluator.IsAssignableFrom`.
             if (i == sources.Count - 1 && i < maximum - 1 &&
                 evaluator.GetTypeListOfExpression(value) is { } sourceTypeList &&
                 evaluator.GetTypeListMinimum(sourceTypeList) > 1)
             {
-                if (!IsAssignableFrom(targets, sourceTypeList, out var reasons, TypeListKind.Return, targetIndex: i))
+                if (!evaluator.IsAssignableFrom(targets, sourceTypeList, out var reasons, TypeListKind.Return,
+                        targetIndex: i))
                 {
                     Report(new Diagnostic.TypeMismatch(value.Range,
                         new TypeMismatch.TrailingValuesIncompatible { Children = reasons }));
@@ -503,7 +504,7 @@ public class Checker
     {
         var errorRange = (targetValue ?? sourceValue).Range;
 
-        targetType = Dereference(targetType);
+        targetType = evaluator.Dereference(targetType);
 
         if (sourceValue is Tree.Expression.Table sourceTable && targetType is Type.Table targetTable)
         {
@@ -526,7 +527,8 @@ public class Checker
                 }
                 else
                 {
-                    targetValueType = targetTable.Indexers.FirstOrDefault(p => IsAssignableFrom(p.Key, sourceKeyType))
+                    targetValueType = targetTable.Indexers
+                        .FirstOrDefault(p => evaluator.IsAssignableFrom(p.Key, sourceKeyType))
                         .Value;
                 }
 
@@ -565,221 +567,12 @@ public class Checker
     /// <param name="errorRange">The range where the diagnostic should be shown.</param>
     private void CheckTypeToType(Type targetType, Type sourceType, Range errorRange)
     {
-        if (!IsAssignableFrom(targetType, sourceType, out var reason))
+        if (!evaluator.IsAssignableFrom(targetType, sourceType, out var reason))
         {
             Report(new Diagnostic.TypeMismatch(errorRange, reason));
         }
     }
 
-    /// <summary>
-    /// If the type points to another type, returns the pointed-to type.
-    /// </summary>
-    private Type Dereference(Type type)
-    {
-        return type;
-    }
-
-    private static bool IsTriviallyAssignableFrom(Type targetType, Type sourceType)
-    {
-        if (targetType == Type.Unknown || sourceType == Type.Unknown)
-        {
-            return true;
-        }
-
-        return targetType == sourceType;
-    }
-
-    private bool IsAssignableFrom(Type targetType, Type sourceType, [NotNullWhen(false)] out TypeMismatch? reason)
-    {
-        reason = null;
-        if (IsTriviallyAssignableFrom(targetType, sourceType))
-        {
-            return true;
-        }
-
-        targetType = Dereference(targetType);
-        sourceType = Dereference(sourceType);
-        if (IsTriviallyAssignableFrom(targetType, sourceType))
-        {
-            return true;
-        }
-
-        if (targetType is Type.PrimitiveType primitive)
-        {
-            if (primitive.AssignableFunc(sourceType))
-            {
-                return true;
-            }
-
-            reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetType), evaluator.TypeToString(sourceType));
-            return false;
-        }
-
-        // ReSharper disable once CompareOfFloatsByEqualityOperator
-        if (targetType is Type.NumberLiteral numberLiteral)
-        {
-            if (sourceType is Type.NumberLiteral sourceLiteral &&
-                numberLiteral.Literal == sourceLiteral.Literal)
-            {
-                return true;
-            }
-
-            reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetType), evaluator.TypeToString(sourceType));
-            return false;
-        }
-
-        if (targetType is Type.StringLiteral stringLiteral)
-        {
-            if (sourceType is Type.StringLiteral sourceLiteral &&
-                stringLiteral.Literal == sourceLiteral.Literal)
-            {
-                return true;
-            }
-
-            reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetType), evaluator.TypeToString(sourceType));
-            return false;
-        }
-
-        if (targetType is Type.Table targetTable && sourceType is Type.Table sourceTable)
-        {
-            return IsAssignableFrom(targetTable, sourceTable, out reason);
-        }
-
-        if (targetType is Type.Function targetFunction && sourceType is Type.Function sourceFunction)
-        {
-            return IsAssignableFrom(targetFunction, sourceFunction, out reason);
-        }
-
-        reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetType), evaluator.TypeToString(sourceType));
-        return false;
-    }
-
-    private bool IsAssignableFrom(Type targetType, Type sourceType)
-    {
-        return IsAssignableFrom(targetType, sourceType, out _);
-    }
-
-    private bool IsAssignableFrom(Type.Table targetTable, Type.Table sourceTable,
-        [NotNullWhen(false)] out TypeMismatch? reason)
-    {
-        MismatchList reasons = [];
-
-        foreach (var (targetKey, targetStringField) in targetTable.StringLiterals)
-        {
-            var sourceType = evaluator.GetTypeOfStringFieldInTable(sourceTable, targetKey);
-            if (sourceType == null)
-            {
-                reasons.Add(new TypeMismatch.SourceMissingKey(evaluator.TypeToString(targetTable),
-                    evaluator.TypeToString(sourceTable),
-                    '"' + targetKey + '"'));
-                continue;
-            }
-
-            if (!IsAssignableFrom(evaluator.GetTypeOfStringField(targetStringField), sourceType, out var valueReason))
-            {
-                reasons.Add(new TypeMismatch.TableKeyIncompatible('"' + targetKey + '"') { Children = [valueReason] });
-            }
-        }
-        // TODO check number literals too
-
-        if (reasons.Count > 0)
-        {
-            reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetTable),
-                evaluator.TypeToString(sourceTable)) { Children = reasons };
-            return false;
-        }
-
-        reason = null;
-        return true;
-    }
-
-    private bool IsAssignableFrom(Type.Function targetFunction, Type.Function sourceFunction,
-        [NotNullWhen(false)] out TypeMismatch? reason)
-    {
-        MismatchList reasons = [];
-        if (!IsAssignableFrom(sourceFunction.Parameters, targetFunction.Parameters, out var parameterReasons,
-                TypeListKind.FunctionTypeParameter))
-        {
-            reasons.AddRange(parameterReasons);
-        }
-
-        if (!IsAssignableFrom(targetFunction.Return, sourceFunction.Return, out var returnReasons,
-                TypeListKind.FunctionTypeReturn))
-        {
-            reasons.AddRange(returnReasons);
-        }
-
-        if (reasons.Count > 0)
-        {
-            reason = new TypeMismatch.Primitive(evaluator.TypeToString(targetFunction),
-                evaluator.TypeToString(sourceFunction)) { Children = reasons };
-            return false;
-        }
-
-        reason = null;
-        return true;
-    }
-
-    private bool IsAssignableFrom(TypeList targets, TypeList sources,
-        [NotNullWhen(false)] out MismatchList? reasons,
-        TypeListKind kind,
-        int targetIndex = 0)
-    {
-        reasons = [];
-
-        var targetMinimum = evaluator.GetTypeListMinimum(targets) - targetIndex;
-        var sourceMinimum = evaluator.GetTypeListMinimum(sources);
-        if (sourceMinimum < targetMinimum)
-        {
-            reasons.Add(new TypeMismatch.NotEnoughValues(targetMinimum, sourceMinimum, kind));
-            return false;
-        }
-
-        var sourcesHaveRest = evaluator.DoesTypeListHaveRest(sources);
-        var targetsHaveRest = evaluator.DoesTypeListHaveRest(targets);
-
-        int maximum;
-        if (sourcesHaveRest && !targetsHaveRest)
-        {
-            maximum = evaluator.GetTypeListMaximum(targets);
-        }
-        else if (!sourcesHaveRest && targetsHaveRest)
-        {
-            maximum = evaluator.GetTypeListMaximum(sources) + targetIndex;
-        }
-        else
-        {
-            maximum = Math.Min(evaluator.GetTypeListMaximum(targets),
-                evaluator.GetTypeListMaximum(sources) + targetIndex);
-        }
-
-        var sourceIndex = 0;
-        for (; targetIndex < maximum; targetIndex++)
-        {
-            var sourceType = evaluator.GetTypeInTypeList(sources, sourceIndex);
-            var targetType = evaluator.GetTypeInTypeList(targets, targetIndex);
-
-            if (!IsAssignableFrom(targetType, sourceType, out var subReason))
-            {
-                reasons.Add(new TypeMismatch.ValueInListIncompatible(sourceIndex, kind) { Children = [subReason] });
-            }
-
-            sourceIndex++;
-        }
-
-        if (targetsHaveRest && sourcesHaveRest)
-        {
-            // TODO compare rest types
-        }
-
-        if (reasons.Count > 0)
-        {
-            return false;
-        }
-
-        reasons = null;
-        return true;
-    }
 
     private Checker(Source source, TypeEvaluator evaluator)
     {
