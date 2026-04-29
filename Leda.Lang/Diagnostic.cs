@@ -79,13 +79,13 @@ public abstract record Diagnostic(Range Range)
     public record ExpectedToken(Range Range, TokenKind Expected) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"Expected {Token.KindName(Expected)}.";
+        public override string Message => $"Expected {Token.GetKindName(Expected)}.";
     }
 
     public record DidNotExpectTokenHere(Range Range, TokenKind Got) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"Did not expect {Token.KindName(Got)} here.";
+        public override string Message => $"Did not expect {Token.GetKindName(Got)} here.";
     }
 
     public record AmbiguousSyntax(Range Range) : Diagnostic(Range)
@@ -238,6 +238,15 @@ public abstract record Diagnostic(Range Range)
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Warning;
         public override string Message => "Unreachable code.";
         public override bool Unnecessary => true;
+    }
+
+    public record BinaryOperatorCantBeUsed(Range Range, TokenKind Operator, string Left, string Right)
+        : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+
+        public override string Message =>
+            $"Operator {Token.GetKindName(Operator)} cannot be used on types '{Left}' and '{Right}'.";
     }
 }
 

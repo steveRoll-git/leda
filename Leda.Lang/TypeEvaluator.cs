@@ -40,6 +40,8 @@ public class TypeEvaluator(Source source)
                 return GetTypeOfAccess(access) ?? Type.Unknown;
             case Tree.Expression.Call call:
                 return GetTypeInTypeList(GetTypeListOfCall(call), 0);
+            case Tree.Expression.Binary binary:
+                return GetTypeOfBinaryExpression(binary) ?? Type.Unknown;
             case Tree.Expression.False:
                 return isConstant ? Type.False : Type.Boolean;
             case Tree.Expression.True:
@@ -328,6 +330,55 @@ public class TypeEvaluator(Source source)
         }
 
         return Type.Nil;
+    }
+
+    internal Type? GetTypeOfBinaryExpression(Tree.Expression.Binary binary)
+    {
+        var left = GetTypeOfExpression(binary.Left);
+        var right = GetTypeOfExpression(binary.Right);
+
+        // Operator metamethods should be handled here.
+
+        switch (binary.Operator.Kind)
+        {
+            case TokenKind.Plus or TokenKind.Minus or TokenKind.Multiply or TokenKind.Divide or TokenKind.Modulo
+                or TokenKind.Power:
+            {
+                if (IsAssignableFrom(Type.NumberPrimitive, left) && IsAssignableFrom(Type.NumberPrimitive, right))
+                {
+                    return Type.NumberPrimitive;
+                }
+
+                break;
+            }
+
+            case TokenKind.Less or TokenKind.LessEqual or TokenKind.Greater or TokenKind.GreaterEqual:
+            {
+                if (IsAssignableFrom(Type.NumberPrimitive, left) && IsAssignableFrom(Type.NumberPrimitive, right) ||
+                    IsAssignableFrom(Type.StringPrimitive, left) && IsAssignableFrom(Type.StringPrimitive, right))
+                {
+                    return Type.Boolean;
+                }
+
+                break;
+            }
+
+            case TokenKind.Equal or TokenKind.NotEqual:
+                return Type.Boolean;
+
+            case TokenKind.Concat:
+            {
+                if ((IsAssignableFrom(Type.NumberPrimitive, left) || IsAssignableFrom(Type.StringPrimitive, left)) &&
+                    (IsAssignableFrom(Type.NumberPrimitive, right) || IsAssignableFrom(Type.StringPrimitive, right)))
+                {
+                    return Type.StringPrimitive;
+                }
+
+                break;
+            }
+        }
+
+        return null;
     }
 
     private Type GetTypeOfTypeAliasUncached(Symbol.TypeAlias typeAlias)

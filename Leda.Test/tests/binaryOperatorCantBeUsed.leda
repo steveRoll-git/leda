@@ -1,0 +1,27 @@
+local function f(): number return 123 end
+
+local add: number = 1 + f()
+local sub: number = f() - 4
+local mul: number = f() * f()
+local div: number = f() / 5.67
+local mod: number = 123 % f()
+local pow: number = f() ^ 2
+
+local addBad = "a" + 2
+
+local g: boolean = f() > 1
+local ge: boolean = 4 >= f()
+local l: boolean = "a" > "b"
+local le: boolean = f() <= f()
+
+local leBad = 5 < ""
+
+local conc1: string = f() .. "asdf"
+local conc2: string = "hello " .. "world"
+local conc3: string = "asdf" .. f()
+local conc4: string = f() .. f()
+
+local concBad = f() .. {}
+
+local eq: boolean = f() == {}
+local neq: boolean = f() ~= {}

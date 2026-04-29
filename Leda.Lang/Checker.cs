@@ -448,7 +448,16 @@ public class Checker
 
     private void VisitExpression(Tree.Expression.Binary binary)
     {
-        throw new NotImplementedException();
+        VisitExpression(binary.Left);
+        VisitExpression(binary.Right);
+
+        if (evaluator.GetTypeOfBinaryExpression(binary) == null)
+        {
+            Report(new Diagnostic.BinaryOperatorCantBeUsed(binary.Range,
+                binary.Operator.Kind,
+                evaluator.TypeToString(evaluator.GetTypeOfExpression(binary.Left)),
+                evaluator.TypeToString(evaluator.GetTypeOfExpression(binary.Right))));
+        }
     }
 
     private void VisitExpression(Tree.Expression.Unary unary)

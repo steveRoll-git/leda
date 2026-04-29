@@ -147,7 +147,7 @@ public record Token(TokenKind Kind, Range Range, string Value)
     private static readonly Dictionary<TokenKind, string> TokenStringMap =
         new(StringTokenMap.Select(pair => new KeyValuePair<TokenKind, string>(pair.Value, pair.Key)));
 
-    public static string KindName(TokenKind kind) =>
+    public static string GetKindName(TokenKind kind) =>
         kind switch
         {
             TokenKind.Unknown => "unknown",
@@ -156,7 +156,7 @@ public record Token(TokenKind Kind, Range Range, string Value)
             TokenKind.Number => "number",
             TokenKind.String => "string",
             TokenKind.LongString => "long string",
-            _ => '"' + TokenStringMap[kind] + '"'
+            _ => '"' + TokenStringMap[kind] + '"',
         };
 
     /// <summary>
