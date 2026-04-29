@@ -140,13 +140,9 @@ public class TypeEvaluator(Source source)
             {
                 stringField.CachedType = GetTypeOfTypeAnnotation(typeStringField.Field.Value);
             }
-            else
-            {
-                return Type.Unknown; // Unreachable.
-            }
         }
 
-        return stringField.CachedType;
+        return stringField.CachedType!;
     }
 
     public Type? GetTypeOfStringFieldInTable(Type.Table table, string key)
