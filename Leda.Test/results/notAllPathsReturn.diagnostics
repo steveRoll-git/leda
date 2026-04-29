@@ -1,2 +1,2 @@
 NotAllPathsReturn(16:16 16:17)
-Not all code paths return a value.
+Error: Not all code paths return a value.

@@ -1,4 +1,4 @@
 ImplicitAnyType(3:29 3:30)
-Parameter 'b' implicitly has 'any' type.
+Error: Parameter 'b' implicitly has 'any' type.
 ImplicitAnyType(6:18 6:19)
-Parameter 'a' implicitly has 'any' type.
+Error: Parameter 'a' implicitly has 'any' type.

@@ -1,2 +1,2 @@
 CannotAssignToThis(5:4 5:7)
-This expression cannot be assigned to.
+Error: This expression cannot be assigned to.

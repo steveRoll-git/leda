@@ -1,6 +1,6 @@
 NameAlreadyDeclared(8:6 8:7)
-A type named 'T' has already been declared.
+Error: A type named 'T' has already been declared.
 NameAlreadyDeclared(18:3 18:4)
-A label named 'A' has already been declared.
+Error: A label named 'A' has already been declared.
 NameAlreadyDeclared(5:7 5:8)
-A value named 'x' has already been declared.
+Error: A value named 'x' has already been declared.

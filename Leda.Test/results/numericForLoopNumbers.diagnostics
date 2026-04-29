@@ -1,6 +1,6 @@
 ForLoopStartNotNumber(5:9 5:12)
-Starting value of `for` loop must be 'number', but is 'string'.
+Error: Starting value of `for` loop must be 'number', but is 'string'.
 ForLoopLimitNotNumber(7:12 7:14)
-Limit value of `for` loop must be 'number', but is '{}'.
+Error: Limit value of `for` loop must be 'number', but is '{}'.
 ForLoopStepNotNumber(9:16 9:19)
-Step value of `for` loop must be 'number', but is 'nil'.
+Error: Step value of `for` loop must be 'number', but is 'nil'.

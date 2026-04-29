@@ -1,2 +1,2 @@
 TableLiteralOnlyKnownKeys(5:45 5:49)
-Table literal may only specify known keys, and '"asdf"' does not exist in type 'T'.
+Error: Table literal may only specify known keys, and '"asdf"' does not exist in type 'T'.

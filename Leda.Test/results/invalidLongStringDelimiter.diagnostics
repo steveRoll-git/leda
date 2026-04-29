@@ -1,2 +1,2 @@
 InvalidLongStringDelimiter(2:11 2:14)
-Invalid long string delimiter.
+Error: Invalid long string delimiter.

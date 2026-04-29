@@ -1,6 +1,6 @@
 BinaryOperatorCantBeUsed(10:16 10:23)
-Operator "+" cannot be used on types 'string' and 'number'.
+Error: Operator "+" cannot be used on types 'string' and 'number'.
 BinaryOperatorCantBeUsed(17:15 17:21)
-Operator "<" cannot be used on types 'number' and 'string'.
+Error: Operator "<" cannot be used on types 'number' and 'string'.
 BinaryOperatorCantBeUsed(24:17 24:26)
-Operator ".." cannot be used on types 'number' and '{}'.
+Error: Operator ".." cannot be used on types 'number' and '{}'.

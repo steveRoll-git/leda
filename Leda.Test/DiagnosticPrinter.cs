@@ -15,7 +15,7 @@ public static class DiagnosticPrinter
         {
             output += $"""
                        {diagnostic.GetType().Name}{diagnostic.Range}
-                       {diagnostic.Message}
+                       {diagnostic.Severity}: {diagnostic.Message}
 
                        """;
         }
