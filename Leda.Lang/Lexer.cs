@@ -173,6 +173,13 @@ public class Lexer(Source source)
             return ReadName();
         }
 
+        // "~=" is an exception because we don't have the "~" operator yet.
+        if (CurChar == '~' && CharAt(index + 1) == '=')
+        {
+            AdvanceChar(2);
+            return new Token(TokenKind.NotEqual, new(start, position), "~=");
+        }
+
         // Otherwise, see if the current character matches any known tokens.
         if (Token.StringTokenMap.TryGetValue(CurChar.ToString(), out var tokenKind))
         {
