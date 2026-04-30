@@ -2,3 +2,7 @@ TypeMismatch(3:11 3:12)
 Error: Type 'number' is not assignable to type 'string'.
 TypeMismatch(6:8 6:11)
 Error: Type 'number' is not assignable to type 'string'.
+TypeMismatch(12:3 12:6)
+Error: The values returned here are incompatible.
+  Type of return value #2 is incompatible:
+    Type 'boolean' is not assignable to type 'string'.

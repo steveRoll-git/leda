@@ -2,3 +2,5 @@ UnreachableCode(16:5 16:18)
 Warning: Unreachable code.
 UnreachableCode(22:3 22:16)
 Warning: Unreachable code.
+UnreachableCode(31:3 31:6)
+Warning: Unreachable code.

@@ -1,0 +1,16 @@
+type T1 = {
+  a: number,
+  b: string,
+}
+
+local good: T1 = {a = 123, b = "456"}
+
+local bad: T1 = {a = 123}
+local bad2: T1 = {}
+local bad3: T1 = {a = 123, b = "abc", asdf = {}}
+
+local inferred = {a = 123, b = "abc"}
+good = inferred
+
+local bad4: {a: number, b: string, c: boolean} = good
+local bad5: {a: boolean, b: string} = good

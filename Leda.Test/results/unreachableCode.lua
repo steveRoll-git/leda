@@ -19,3 +19,11 @@ local function g()
   end
   local x = 123
 end
+repeat
+  if g() == 123 then
+    break
+  else
+    break
+  end
+  g()
+until f() == 123

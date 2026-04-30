@@ -1,0 +1,13 @@
+MissingStringKeys(8:7 8:10)
+Error: Key "b" is missing in type '{ a: number, }' but required in type 'T1'.
+MissingStringKeys(9:7 9:11)
+Error: Type '{}' is missing the following keys from type 'T1': "a", "b"
+TableLiteralOnlyKnownKeys(10:39 10:43)
+Error: Table literal may only specify known keys, and '"asdf"' does not exist in type 'T1'.
+TypeMismatch(15:7 15:11)
+Error: Type 'T1' is not assignable to type '{ a: number, b: string, c: boolean, }'.
+  Type 'T1' does not have a key of type '"c"' required by type '{ a: number, b: string, c: boolean, }'.
+TypeMismatch(16:7 16:11)
+Error: Type 'T1' is not assignable to type '{ a: boolean, b: string, }'.
+  Values at key '"a"' are incompatible.
+    Type 'number' is not assignable to type 'boolean'.

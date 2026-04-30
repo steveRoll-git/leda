@@ -1,0 +1,13 @@
+type F1 = function(a: number, b: string): number, string
+
+local good: F1 = function(a, b)
+  if a > 10 then
+    return 123, "abc"
+  else
+    return 456, "def"
+  end
+end
+
+local bad: F1 = function(a: number, b: string, c: boolean) end
+
+local bad2: F1 = function(a, b, c) return 123, {} end

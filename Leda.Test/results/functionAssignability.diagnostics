@@ -1,0 +1,9 @@
+TypeMismatch(11:7 11:10)
+Error: Type 'function(a: number, b: string, c: boolean)' is not assignable to type 'function(a: number, b: string): number, string'.
+  Target type doesn't provide enough parameters. Expected at least 3, got 2.
+  Not enough return value(s) are given. Expected at least 2 but got 0.
+TypeMismatch(13:7 13:11)
+Error: Type 'function(a: number, b: string, c: nil): number, {}' is not assignable to type 'function(a: number, b: string): number, string'.
+  Target type doesn't provide enough parameters. Expected at least 3, got 2.
+  Type of return value #2 is incompatible:
+    Type '{}' is not assignable to type 'string'.
