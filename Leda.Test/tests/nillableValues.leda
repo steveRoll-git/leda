@@ -1,0 +1,16 @@
+local function f(): number?
+  return 123
+end
+
+local y: number = f()
+
+y = 456
+
+local z: number? = y
+
+z = f()
+z = nil
+
+local s: string = z
+
+local s2: string? = z

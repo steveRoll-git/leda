@@ -156,6 +156,8 @@ public static class SymbolFinder
 
             Tree.Type.Table table => GetNameAtPosition(table.Fields, position),
 
+            Tree.Type.Nillable nillable => GetNameAtPosition(nillable.Inner, position),
+
             Tree.Statement.While whileStatement => GetNameAtPosition(whileStatement.Condition, position) ??
                                                    GetNameAtPosition(whileStatement.Body, position),
 

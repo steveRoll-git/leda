@@ -58,6 +58,14 @@ public abstract class Tree
             public List<Name>? TypeParameters => typeParameters;
         }
 
+        /// <summary>
+        /// A type followed by a '?'.
+        /// </summary>
+        public class Nillable(Type inner) : Type
+        {
+            public Type Inner => inner;
+        }
+
         // public class Union(List<Type> types) : Type
         // {
         //     public List<Type> Types => types;

@@ -57,6 +57,7 @@ public enum TokenKind
     Dot,
     Concat,
     Vararg,
+    QuestionMark,
 }
 
 /// <summary>
@@ -142,6 +143,7 @@ public record Token(TokenKind Kind, Range Range, string Value)
         { ".", TokenKind.Dot },
         { "..", TokenKind.Concat },
         { "...", TokenKind.Vararg },
+        { "?", TokenKind.QuestionMark },
     };
 
     private static readonly Dictionary<TokenKind, string> TokenStringMap =

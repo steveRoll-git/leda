@@ -349,6 +349,9 @@ public class Binder
             case Tree.Type.Table table:
                 Visit(table);
                 break;
+            case Tree.Type.Nillable { Inner: var inner }:
+                Visit(inner);
+                break;
         }
     }
 

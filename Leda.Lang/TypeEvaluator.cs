@@ -416,7 +416,8 @@ public class TypeEvaluator(Source source)
             Tree.Type.Name name => GetTypeOfTypeName(name),
             Tree.Type.Table table => GetTypeOfTableAnnotation(table),
             Tree.Type.Function function => GetTypeOfFunctionAnnotation(function),
-            _ => Type.Unknown
+            Tree.Type.Nillable { Inner: var inner } => new Type.Nillable(GetTypeOfTypeAnnotation(inner)),
+            _ => Type.Unknown,
         };
     }
 
@@ -571,6 +572,54 @@ public class TypeEvaluator(Source source)
             return true;
         }
 
+        if (targetType is Type.Nillable { Inner: var inner })
+        {
+            if (sourceType == Type.Nil)
+            {
+                return true;
+            }
+
+            if (!IsAssignableFrom(inner,
+                    // If the target type is nillable, we don't care about the source type's nillability.
+                    sourceType is Type.Nillable { Inner: var sourceInner, } ? sourceInner : sourceType,
+                    out var subReason))
+            {
+                reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType))
+                {
+                    Children = [subReason],
+                };
+                return false;
+            }
+
+            return true;
+        }
+
+        {
+            if (sourceType is Type.Nillable { Inner: var sourceInner })
+            {
+                if (!IsAssignableFrom(targetType, Type.Nil))
+                {
+                    var targetString = TypeToString(targetType);
+                    reason = new TypeMismatch.Primitive(targetString, TypeToString(sourceType))
+                    {
+                        Children = [new TypeMismatch.Primitive(targetString, "nil")],
+                    };
+                    return false;
+                }
+
+                if (!IsAssignableFrom(targetType, sourceInner, out var subReason))
+                {
+                    reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType))
+                    {
+                        Children = [subReason],
+                    };
+                    return false;
+                }
+
+                return true;
+            }
+        }
+
         if (targetType is Type.PrimitiveType primitive)
         {
             if (primitive.AssignableFunc(sourceType))
@@ -626,7 +675,7 @@ public class TypeEvaluator(Source source)
         return IsAssignableFrom(targetType, sourceType, out _);
     }
 
-    internal bool IsAssignableFrom(Type.Table targetTable, Type.Table sourceTable,
+    private bool IsAssignableFrom(Type.Table targetTable, Type.Table sourceTable,
         [NotNullWhen(false)] out TypeMismatch? reason)
     {
         MismatchList reasons = [];
@@ -876,7 +925,8 @@ public class TypeEvaluator(Source source)
             Type.PrimitiveType or Type.TypeParameter => type.Name!,
             Type.Table table => TableToString(table, multiline, indent),
             Type.Function function => FunctionToString(function),
-            _ => throw new ArgumentOutOfRangeException(nameof(type))
+            Type.Nillable { Inner: var inner } => TypeToStringIndent(inner, typeContents, multiline, indent) + "?",
+            _ => throw new ArgumentOutOfRangeException(nameof(type)),
         };
     }
 }

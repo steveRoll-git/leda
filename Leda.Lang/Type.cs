@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace Leda.Lang;
 
 /// <summary>
@@ -169,6 +167,14 @@ public abstract class Type
         {
             TypeTree = typeTree;
         }
+    }
+
+    /// <summary>
+    /// A wrapper around another type that also accepts `nil`.
+    /// </summary>
+    public class Nillable(Type inner) : Type
+    {
+        public Type Inner => inner;
     }
 
     /// <summary>

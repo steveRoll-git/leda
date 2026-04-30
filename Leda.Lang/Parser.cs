@@ -515,33 +515,45 @@ public class Parser
     {
         StartTree();
 
+        Tree.Type type;
+
         if (Accept(TokenKind.String, out var str))
         {
-            return EndTree(new Tree.Type.StringLiteral(str.Value));
+            type = StartEndTree(new Tree.Type.StringLiteral(str.Value));
         }
-
-        if (Accept(TokenKind.Function))
+        else if (Accept(TokenKind.Function))
         {
             if (token.Kind == TokenKind.LParen)
             {
-                return EndTree(ParseFunctionType());
+                type = ParseFunctionType();
             }
-
-            return EndTree(new Tree.Type.Name("function"));
+            else
+            {
+                type = StartEndTree(new Tree.Type.Name("function"));
+            }
         }
-
-        if (token.Kind == TokenKind.LCurly)
+        else if (token.Kind == TokenKind.LCurly)
         {
-            return EndTree(ParseTableType());
+            type = ParseTableType();
+        }
+        else
+        {
+            type = ParseTypeName();
         }
 
-        // TODO incomplete
-        return EndTree(ParseTypeName());
+        if (Accept(TokenKind.QuestionMark))
+        {
+            type = StartEndTree(new Tree.Type.Nillable(type));
+        }
+
+        return EndTree(type);
     }
 
     private Tree.Type.Table ParseTableType()
     {
         // '{' [typepair {',' typepair}] '}'
+
+        StartTree();
 
         Expect(TokenKind.LCurly);
 
@@ -580,7 +592,7 @@ public class Parser
             }
         }
 
-        return new Tree.Type.Table(fields);
+        return EndTree(new Tree.Type.Table(fields));
     }
 
     private List<Tree.Type> ParseTypeList()
