@@ -22,37 +22,134 @@ public class TypeEvaluator(Source source)
     private readonly Dictionary<Tree.Type.Function, Type.Function> functionAnnotationCache = [];
     private readonly Dictionary<Symbol.TypeAlias, Type> typeAliasCache = [];
 
-    internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
+    /// <summary>
+    /// Returns whether a type may need to be narrowed using FlowNodes.
+    /// </summary>
+    private static bool IsTypeNarrowable(Type type)
     {
-        switch (expression)
+        return type is Type.Nillable;
+    }
+
+    private static bool IsExpressionNarrowable(Tree.Expression expression)
+    {
+        if (expression is Tree.Expression.Name)
         {
-            case Tree.Expression.Name name:
-                return GetTypeOfVariable(name);
-            case Tree.Expression.Number number:
-                return isConstant ? new Type.NumberLiteral(number.NumberValue) : Type.NumberPrimitive;
-            case Tree.Expression.String s:
-                return isConstant ? new Type.StringLiteral(s.Value) : Type.StringPrimitive;
-            case Tree.Expression.Function function:
-                return GetTypeOfFunction(function);
-            case Tree.Expression.Table table:
-                return GetTypeOfTableValue(table);
-            case Tree.Expression.Access access:
-                return GetTypeOfAccess(access) ?? Type.Unknown;
-            case Tree.Expression.Call call:
-                return GetTypeInTypeList(GetTypeListOfCall(call), 0);
-            case Tree.Expression.Binary binary:
-                return GetTypeOfBinaryExpression(binary) ?? Type.Unknown;
-            case Tree.Expression.False:
-                return isConstant ? Type.False : Type.Boolean;
-            case Tree.Expression.True:
-                return isConstant ? Type.True : Type.Boolean;
-            case Tree.Expression.Nil:
-                return Type.Nil;
-            case Tree.Expression.Error:
-                return Type.Unknown;
+            return true;
         }
 
-        throw new ArgumentOutOfRangeException(nameof(expression));
+        if (expression is Tree.Expression.Access { Target: var target, Key: var key })
+        {
+            return IsExpressionNarrowable(target) && key is Tree.Expression.String;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Returns whether two narrowable expressions are equal.
+    /// </summary>
+    private static bool AreNarrowableExpressionsEqual(Tree.Expression a, Tree.Expression b)
+    {
+        if (a is Tree.Expression.Name { Value: var nameA } &&
+            b is Tree.Expression.Name { Value: var nameB })
+        {
+            return nameA == nameB;
+        }
+
+        if (a is Tree.Expression.String { Value: var stringA } &&
+            b is Tree.Expression.String { Value: var stringB })
+        {
+            return stringA == stringB;
+        }
+
+        if (a is Tree.Expression.Access { Target: var targetA, Key: var keyA } &&
+            b is Tree.Expression.Access { Target: var targetB, Key: var keyB })
+        {
+            return AreNarrowableExpressionsEqual(targetA, targetB) && AreNarrowableExpressionsEqual(keyA, keyB);
+        }
+
+        return false;
+    }
+
+    private static Type NarrowTypeByTruthiness(Type type, bool isTrue)
+    {
+        if (type is Type.Nillable { Inner: var inner })
+        {
+            return isTrue ? inner : Type.Nil;
+        }
+
+        return type;
+    }
+
+    private Type GetTypeOfExpressionAtFlowNode(Tree.Expression expression, Type declaredType, FlowNode flowNode)
+    {
+        if (flowNode is FlowNode.Start)
+        {
+            return declaredType;
+        }
+
+        if (flowNode is FlowNode.Label { Antecedents: var antecedents })
+        {
+            Type? result = null;
+            // A union will be constructed here.
+            foreach (var antecedent in antecedents)
+            {
+                var current = GetTypeOfExpressionAtFlowNode(expression, declaredType, antecedent);
+                if (result == null || current is Type.Nillable)
+                {
+                    result = current;
+                }
+                else if (current == Type.Nil && declaredType is Type.Nillable)
+                {
+                    // If one of the branches gives us `nil` and the declared type is nillable, set it back to the
+                    // declared type.
+                    result = declaredType;
+                }
+            }
+
+            return result ?? declaredType;
+        }
+
+        var basic = (flowNode as FlowNode.Basic)!;
+        var previous = basic.Antecedent != null
+            ? GetTypeOfExpressionAtFlowNode(expression, declaredType, basic.Antecedent)
+            : declaredType;
+
+        if (flowNode is FlowNode.Condition condition && AreNarrowableExpressionsEqual(expression, condition.Expression))
+        {
+            return NarrowTypeByTruthiness(previous, condition.IsTrue);
+        }
+
+        return previous;
+    }
+
+    internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
+    {
+        var result = expression switch
+        {
+            Tree.Expression.Name name => GetTypeOfVariable(name),
+            Tree.Expression.Number number => isConstant
+                ? new Type.NumberLiteral(number.NumberValue)
+                : Type.NumberPrimitive,
+            Tree.Expression.String s => isConstant ? new Type.StringLiteral(s.Value) : Type.StringPrimitive,
+            Tree.Expression.Function function => GetTypeOfFunction(function),
+            Tree.Expression.Table table => GetTypeOfTableValue(table),
+            Tree.Expression.Access access => GetTypeOfAccess(access) ?? Type.Unknown,
+            Tree.Expression.Call call => GetTypeInTypeList(GetTypeListOfCall(call), 0),
+            Tree.Expression.Binary binary => GetTypeOfBinaryExpression(binary) ?? Type.Unknown,
+            Tree.Expression.False => isConstant ? Type.False : Type.Boolean,
+            Tree.Expression.True => isConstant ? Type.True : Type.Boolean,
+            Tree.Expression.Nil => Type.Nil,
+            Tree.Expression.Error => Type.Unknown,
+            _ => throw new ArgumentOutOfRangeException(nameof(expression)),
+        };
+
+        if (IsExpressionNarrowable(expression) && IsTypeNarrowable(result) && expression.FlowNode != null)
+        {
+            return GetTypeOfExpressionAtFlowNode(expression, result, expression.FlowNode);
+        }
+
+        return result;
     }
 
     private static Type.Function GetTypeOfFunctionUncached(Tree.Expression.Function function)

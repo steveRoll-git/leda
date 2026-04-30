@@ -46,12 +46,12 @@ public class Binder
         [Type.Boolean.Name!] = new(null, Symbol.BooleanType),
         [Type.NumberPrimitive.Name!] = new(null, Symbol.NumberType),
         [Type.StringPrimitive.Name!] = new(null, Symbol.StringType), // TODO stringlib should be a value here
-        [Type.FunctionPrimitive.Name!] = new(null, Symbol.FunctionType)
+        [Type.FunctionPrimitive.Name!] = new(null, Symbol.FunctionType),
     };
 
     private readonly Stack<AssignmentPath> assignmentPathStack = [];
 
-    private readonly Dictionary<Tree.LabelName, FlowNode> labelFlowNodes = [];
+    private readonly Dictionary<Tree.LabelName, FlowNode.Label> labelFlowNodes = [];
 
     private Binder(Source source)
     {
@@ -515,39 +515,42 @@ public class Binder
         return antecedent;
     }
 
-    private FlowNode? VisitIfBranch(Tree.IfBranch branch, FlowNode? antecedent)
+    private (FlowNode? falseBranch, FlowNode? trueBranch) VisitIfBranch(Tree.IfBranch branch, FlowNode? antecedent)
     {
         Visit(branch.Condition, antecedent);
+
         PushScope();
-        var descendent = VisitBlock(branch.Body, antecedent);
+        var bodyDescendent = VisitBlock(branch.Body, new FlowNode.Condition(antecedent, branch.Condition, true));
         PopScope();
 
-        return descendent;
+        return (new FlowNode.Condition(antecedent, branch.Condition, false), bodyDescendent);
     }
 
-    private FlowNode? VisitStatement(Tree.Statement.If ifStatement, FlowNode? antecedent)
+    private FlowNode.Label? VisitStatement(Tree.Statement.If ifStatement, FlowNode? antecedent)
     {
         var descendents = new List<FlowNode>();
 
-        AddIfNotNull(descendents, VisitIfBranch(ifStatement.Primary, antecedent));
+        var falseBranch = antecedent;
 
-        foreach (var branch in ifStatement.ElseIfs)
+        foreach (var branch in ifStatement.ElseIfs.Prepend(ifStatement.Primary))
         {
-            AddIfNotNull(descendents, VisitIfBranch(branch, antecedent));
+            // Each `IfBranch`'s antecedent is the preceding `false` branch.
+            (falseBranch, var trueBranch) = VisitIfBranch(branch, falseBranch);
+            AddIfNotNull(descendents, trueBranch);
         }
 
         if (ifStatement.ElseBody != null)
         {
             PushScope();
-            AddIfNotNull(descendents, VisitBlock(ifStatement.ElseBody, antecedent));
+            AddIfNotNull(descendents, VisitBlock(ifStatement.ElseBody, falseBranch));
             PopScope();
         }
         else
         {
-            AddIfNotNull(descendents, antecedent);
+            AddIfNotNull(descendents, falseBranch);
         }
 
-        return FlowNodeOrNull(descendents);
+        return LabelOrNull(descendents);
     }
 
     private FlowNode? VisitStatement(Tree.Statement.RepeatUntil repeatUntil, FlowNode? antecedent)
@@ -570,7 +573,7 @@ public class Binder
         AddIfNotNull(descendents, VisitBlock(whileLoop.Body, antecedent));
         PopScope();
 
-        return FlowNodeOrNull(descendents);
+        return LabelOrNull(descendents);
     }
 
     private FlowNode? VisitStatement(Tree.Statement.IteratorFor forLoop, FlowNode? antecedent)
@@ -592,7 +595,7 @@ public class Binder
 
         PopScope();
 
-        return FlowNodeOrNull(descendents);
+        return LabelOrNull(descendents);
     }
 
     private FlowNode? VisitStatement(Tree.Statement.NumericalFor numericalFor, FlowNode? antecedent)
@@ -612,7 +615,7 @@ public class Binder
         AddIfNotNull(descendents, VisitBlock(numericalFor.Body, antecedent));
         PopScope();
 
-        return FlowNodeOrNull(descendents);
+        return LabelOrNull(descendents);
     }
 
     private void VisitStatement(Tree.Statement.Break brk)
@@ -672,7 +675,7 @@ public class Binder
         foreach (var label in block.Labels)
         {
             AddSymbol(label.Name, label.Name.Value, Tree.NameContext.Label, new Symbol.Label(label.Name));
-            labelFlowNodes[label.Name] = new FlowNode([]);
+            labelFlowNodes[label.Name] = new FlowNode.Label([]);
         }
 
         // If multiple consecutive statements are unreachable, we report just one diagnostic for all of them.
@@ -712,13 +715,14 @@ public class Binder
 
     private void VisitChunk(Tree.Chunk chunk)
     {
-        var startNode = new FlowNode([]);
+        var startNode = new FlowNode.Start();
         var descendent = VisitBlock(chunk, startNode);
         chunk.AllPathsReturn = descendent == null;
     }
 
     /// <summary>
-    /// Visits all nodes in the given tree and updates the infoStore with the relevant information.
+    /// Visits all nodes in the given tree to assign Symbols to top-level Name nodes, and to generate the control flow
+    /// graph.
     /// </summary>
     public static List<Diagnostic> Bind(Source source, Tree.Chunk chunk)
     {
@@ -741,8 +745,8 @@ public class Binder
     /// <summary>
     /// Returns a new FlowNode with the given antecedents only if there's at least one; otherwise returns null.
     /// </summary>
-    private static FlowNode? FlowNodeOrNull(List<FlowNode> antecedents)
+    private static FlowNode.Label? LabelOrNull(List<FlowNode> antecedents)
     {
-        return antecedents.Count > 0 ? new FlowNode(antecedents) : null;
+        return antecedents.Count > 0 ? new FlowNode.Label(antecedents) : null;
     }
 }
