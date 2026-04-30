@@ -557,6 +557,37 @@ public class TypeEvaluator(Source source)
         return targetType == sourceType;
     }
 
+    private bool IsNillableAssignableFrom(Type.Nillable targetNillable, Type sourceType,
+        [NotNullWhen(false)] out TypeMismatch? reason)
+    {
+        if (sourceType == Type.Nil)
+        {
+            reason = null;
+            return true;
+        }
+
+        return IsAssignableFrom(targetNillable.Inner,
+            // If the target type is nillable, we don't care about the source type's nillability.
+            sourceType is Type.Nillable { Inner: var sourceInner, } ? sourceInner : sourceType,
+            out reason);
+    }
+
+    private bool IsAssignableFromNillable(Type targetType, Type.Nillable sourceNillable,
+        [NotNullWhen(false)] out TypeMismatch? reason)
+    {
+        if (!IsAssignableFrom(targetType, Type.Nil, out reason))
+        {
+            return false;
+        }
+
+        if (!IsAssignableFrom(targetType, sourceNillable.Inner, out reason))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     internal bool IsAssignableFrom(Type targetType, Type sourceType, [NotNullWhen(false)] out TypeMismatch? reason)
     {
         reason = null;
@@ -572,90 +603,6 @@ public class TypeEvaluator(Source source)
             return true;
         }
 
-        if (targetType is Type.Nillable { Inner: var inner })
-        {
-            if (sourceType == Type.Nil)
-            {
-                return true;
-            }
-
-            if (!IsAssignableFrom(inner,
-                    // If the target type is nillable, we don't care about the source type's nillability.
-                    sourceType is Type.Nillable { Inner: var sourceInner, } ? sourceInner : sourceType,
-                    out var subReason))
-            {
-                reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType))
-                {
-                    Children = [subReason],
-                };
-                return false;
-            }
-
-            return true;
-        }
-
-        {
-            if (sourceType is Type.Nillable { Inner: var sourceInner })
-            {
-                if (!IsAssignableFrom(targetType, Type.Nil))
-                {
-                    var targetString = TypeToString(targetType);
-                    reason = new TypeMismatch.Primitive(targetString, TypeToString(sourceType))
-                    {
-                        Children = [new TypeMismatch.Primitive(targetString, "nil")],
-                    };
-                    return false;
-                }
-
-                if (!IsAssignableFrom(targetType, sourceInner, out var subReason))
-                {
-                    reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType))
-                    {
-                        Children = [subReason],
-                    };
-                    return false;
-                }
-
-                return true;
-            }
-        }
-
-        if (targetType is Type.PrimitiveType primitive)
-        {
-            if (primitive.AssignableFunc(sourceType))
-            {
-                return true;
-            }
-
-            reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType));
-            return false;
-        }
-
-        // ReSharper disable once CompareOfFloatsByEqualityOperator
-        if (targetType is Type.NumberLiteral numberLiteral)
-        {
-            if (sourceType is Type.NumberLiteral sourceLiteral &&
-                numberLiteral.Literal == sourceLiteral.Literal)
-            {
-                return true;
-            }
-
-            reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType));
-            return false;
-        }
-
-        if (targetType is Type.StringLiteral stringLiteral)
-        {
-            if (sourceType is Type.StringLiteral sourceLiteral &&
-                stringLiteral.Literal == sourceLiteral.Literal)
-            {
-                return true;
-            }
-
-            reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType));
-            return false;
-        }
-
         if (targetType is Type.Table targetTable && sourceType is Type.Table sourceTable)
         {
             return IsAssignableFrom(targetTable, sourceTable, out reason);
@@ -666,7 +613,51 @@ public class TypeEvaluator(Source source)
             return IsAssignableFrom(targetFunction, sourceFunction, out reason);
         }
 
-        reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType));
+        TypeMismatch? subReason = null;
+
+        if (targetType is Type.Nillable targetNillable)
+        {
+            if (IsNillableAssignableFrom(targetNillable, sourceType, out subReason))
+            {
+                return true;
+            }
+        }
+        else if (sourceType is Type.Nillable sourceNillable)
+        {
+            if (IsAssignableFromNillable(targetType, sourceNillable, out subReason))
+            {
+                return true;
+            }
+        }
+        else if (targetType is Type.PrimitiveType primitive)
+        {
+            if (primitive.AssignableFunc(sourceType))
+            {
+                return true;
+            }
+        }
+        else if (targetType is Type.NumberLiteral numberLiteral)
+        {
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if (sourceType is Type.NumberLiteral sourceLiteral &&
+                numberLiteral.Literal == sourceLiteral.Literal)
+            {
+                return true;
+            }
+        }
+        else if (targetType is Type.StringLiteral stringLiteral)
+        {
+            if (sourceType is Type.StringLiteral sourceLiteral &&
+                stringLiteral.Literal == sourceLiteral.Literal)
+            {
+                return true;
+            }
+        }
+
+        reason = new TypeMismatch.Primitive(TypeToString(targetType), TypeToString(sourceType))
+        {
+            Children = subReason != null ? [subReason] : [],
+        };
         return false;
     }
 
