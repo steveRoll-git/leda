@@ -11,6 +11,11 @@ public abstract class Tree
     public Range Range { get; internal set; }
 
     /// <summary>
+    /// The FlowNode that this tree node is executed on. Initialized by the Binder.
+    /// </summary>
+    public FlowNode? FlowNode { get; internal set; }
+
+    /// <summary>
     /// A tree that defines a type.
     /// </summary>
     public abstract class Type : Tree
