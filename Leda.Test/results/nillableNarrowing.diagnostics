@@ -1,0 +1,5 @@
+TypeMismatch(2:9 2:10)
+Error: Type 'number?' is not assignable to type 'number'.
+  Type 'nil' is not assignable to type 'number'.
+BinaryOperatorCantBeUsed(10:14 10:19)
+Error: Operator "+" cannot be used on types 'number?' and 'number'.
