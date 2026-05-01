@@ -1,4 +1,4 @@
-local function f(x: number?)
+local function f(x: number?, y: number?)
   local r: number = x
 
   if x then
@@ -12,9 +12,20 @@ local function f(x: number?)
 
   if x then
     local r1: number = x + 1
+    if 123 then
+      local a: number = y
+    end
     return
   end
 
   local r4: nil = x
 end
 
+local function g(t: {x: number?})
+  local r: number? = t.x
+  if t.x then
+    local r2: number = t.x
+  else
+    local r2: nil = t.x
+  end
+end

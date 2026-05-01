@@ -3,3 +3,6 @@ Error: Type 'number?' is not assignable to type 'number'.
   Type 'nil' is not assignable to type 'number'.
 BinaryOperatorCantBeUsed(10:14 10:19)
 Error: Operator "+" cannot be used on types 'number?' and 'number'.
+TypeMismatch(16:13 16:14)
+Error: Type 'number?' is not assignable to type 'number'.
+  Type 'nil' is not assignable to type 'number'.
