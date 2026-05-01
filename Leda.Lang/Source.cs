@@ -146,11 +146,11 @@ public class Source
     }
 
     /// <summary>
-    /// Finds the symbol that this tree refers to.
+    /// Finds the symbol that this tree refers to if it exists.
     /// </summary>
-    /// <returns>True if this tree has a corresponding value symbol, false otherwise.</returns>
-    public bool TryGetTreeSymbol(Tree tree, [NotNullWhen(true)] out Symbol? symbol)
+    public Symbol? GetTreeSymbol(Tree tree)
     {
-        return treeSymbolMap.TryGetValue(tree, out symbol);
+        treeSymbolMap.TryGetValue(tree, out var symbol);
+        return symbol;
     }
 }

@@ -192,8 +192,7 @@ public static class SymbolFinder
         var name = GetNameAtPosition(source.Chunk, position);
         if (name != null)
         {
-            source.TryGetTreeSymbol(name, out var symbol);
-            return (symbol, name.Range);
+            return (source.GetTreeSymbol(name), name.Range);
         }
 
         return default;

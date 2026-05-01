@@ -188,7 +188,7 @@ public class TypeEvaluator(Source source)
             {
                 var newKey = new Type.Table.ValueStringField(new Symbol.StringField(type, literal), field);
                 type.StringLiterals[literal] = newKey;
-                if (field.Key is Tree.Expression.String && !source.TryGetTreeSymbol(field.Key, out _))
+                if (field.Key is Tree.Expression.String && source.GetTreeSymbol(field.Key) == null)
                 {
                     source.AttachSymbol(field.Key, newKey.Symbol, true);
                 }
@@ -402,7 +402,7 @@ public class TypeEvaluator(Source source)
 
     private Type GetTypeOfVariable(Tree.Expression.Name name)
     {
-        if (source.TryGetTreeSymbol(name, out var symbol))
+        if (source.GetTreeSymbol(name) is { } symbol)
         {
             return GetTypeOfSymbol(symbol);
         }
@@ -496,7 +496,7 @@ public class TypeEvaluator(Source source)
 
     private Type GetTypeOfTypeName(Tree.Type.Name name)
     {
-        if (source.TryGetTreeSymbol(name, out var symbol))
+        if (source.GetTreeSymbol(name) is { } symbol)
         {
             return GetTypeOfSymbol(symbol);
         }
