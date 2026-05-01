@@ -43,6 +43,7 @@ public class Binder
     private static readonly Scope InitialScope = new(null, null)
     {
         [Type.Any.Name!] = new(null, Symbol.AnyType),
+        [Type.Nil.Name!] = new(null, Symbol.NilType),
         [Type.Boolean.Name!] = new(null, Symbol.BooleanType),
         [Type.NumberPrimitive.Name!] = new(null, Symbol.NumberType),
         [Type.StringPrimitive.Name!] = new(null, Symbol.StringType), // TODO stringlib should be a value here

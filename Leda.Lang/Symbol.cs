@@ -94,6 +94,11 @@ public abstract class Symbol(string name)
     public static readonly IntrinsicType AnyType = new(Type.Any);
 
     /// <summary>
+    /// The built-in nil type.
+    /// </summary>
+    public static readonly IntrinsicType NilType = new(Type.Nil);
+
+    /// <summary>
     /// The built-in boolean type.
     /// </summary>
     public static readonly IntrinsicType BooleanType = new(Type.Boolean);

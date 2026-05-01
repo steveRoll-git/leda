@@ -517,7 +517,11 @@ public class Parser
 
         Tree.Type type;
 
-        if (Accept(TokenKind.String, out var str))
+        if (Accept(TokenKind.Nil))
+        {
+            type = StartEndTree(new Tree.Type.Name("nil"));
+        }
+        else if (Accept(TokenKind.String, out var str))
         {
             type = StartEndTree(new Tree.Type.StringLiteral(str.Value));
         }
