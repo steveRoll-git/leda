@@ -48,12 +48,11 @@ public class TypeEvaluator(Source source)
     /// <summary>
     /// Returns whether two narrowable expressions are equal.
     /// </summary>
-    private static bool AreNarrowableExpressionsEqual(Tree.Expression a, Tree.Expression b)
+    private bool AreNarrowableExpressionsEqual(Tree.Expression a, Tree.Expression b)
     {
-        if (a is Tree.Expression.Name { Value: var nameA } &&
-            b is Tree.Expression.Name { Value: var nameB })
+        if (a is Tree.Expression.Name && b is Tree.Expression.Name)
         {
-            return nameA == nameB;
+            return source.GetTreeSymbol(a) == source.GetTreeSymbol(b);
         }
 
         if (a is Tree.Expression.String { Value: var stringA } &&
