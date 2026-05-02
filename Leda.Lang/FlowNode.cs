@@ -40,4 +40,17 @@ public abstract class FlowNode
         public Tree.Expression Expression => expression;
         public bool IsTrue => isTrue;
     }
+
+    /// <summary>
+    /// Returns a new FlowNode with the given antecedents only if there's at least one; otherwise returns null.
+    /// </summary>
+    internal static FlowNode? FromAntecedents(List<FlowNode> antecedents)
+    {
+        if (antecedents.Count > 0)
+        {
+            return antecedents.Count == 1 ? antecedents[0] : new Label(antecedents);
+        }
+
+        return null;
+    }
 }
