@@ -82,18 +82,11 @@ public class TypeEvaluator(Source source)
 
     private Type NarrowTypeByCondition(Tree.Expression expression, Type type, FlowNode.Condition condition)
     {
-        var invert = false;
         var sourceExpression = condition.Expression;
-
-        while (sourceExpression is Tree.Expression.Unary { Expression: var inner, Operator.Kind: TokenKind.Not })
-        {
-            sourceExpression = inner;
-            invert = !invert;
-        }
 
         if (AreNarrowableExpressionsEqual(expression, sourceExpression))
         {
-            return NarrowTypeByTruthiness(type, condition.IsTrue == !invert);
+            return NarrowTypeByTruthiness(type, condition.IsTrue);
         }
 
         return type;

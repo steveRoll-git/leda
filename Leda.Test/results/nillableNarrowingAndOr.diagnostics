@@ -1,0 +1,8 @@
+BinaryOperatorCantBeUsed(2:13 2:18)
+Error: Operator "+" cannot be used on types 'number?' and 'number?'.
+BinaryOperatorCantBeUsed(5:16 5:21)
+Error: Operator "+" cannot be used on types 'number' and 'number?'.
+BinaryOperatorCantBeUsed(9:16 9:21)
+Error: Operator "+" cannot be used on types 'number?' and 'number?'.
+BinaryOperatorCantBeUsed(21:16 21:21)
+Error: Operator "+" cannot be used on types 'number' and 'nil'.

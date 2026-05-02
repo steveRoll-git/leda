@@ -451,7 +451,8 @@ public class Checker
         VisitExpression(binary.Left);
         VisitExpression(binary.Right);
 
-        if (evaluator.GetTypeOfBinaryExpression(binary) == null)
+        if (binary.Operator.Kind is not (TokenKind.And or TokenKind.Or) &&
+            evaluator.GetTypeOfBinaryExpression(binary) == null)
         {
             Report(new Diagnostic.BinaryOperatorCantBeUsed(binary.Range,
                 binary.Operator.Kind,

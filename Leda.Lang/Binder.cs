@@ -54,6 +54,8 @@ public class Binder
 
     private readonly Dictionary<Tree.LabelName, FlowNode.Label> labelFlowNodes = [];
 
+    private record struct ConditionBranch(FlowNode? FalseBranch, FlowNode? TrueBranch);
+
     private Binder(Source source)
     {
         this.source = source;
@@ -218,6 +220,45 @@ public class Binder
         }
     }
 
+    /// <summary>
+    /// Visits the expression and returns its true and false branches,
+    /// and correctly sets the inner expressions' FlowNodes.
+    /// </summary>
+    private ConditionBranch VisitExpressionFlowNodes(Tree.Expression expression, FlowNode? antecedent)
+    {
+        if (expression is Tree.Expression.Unary { Operator.Kind: TokenKind.Not, Expression: var notInner })
+        {
+            var (falseBranch, trueBranch) = VisitExpressionFlowNodes(notInner, antecedent);
+            return new(trueBranch, falseBranch);
+        }
+
+        if (expression is Tree.Expression.Binary { Operator.Kind: TokenKind.And or TokenKind.Or } binary)
+        {
+            var (leftFalse, leftTrue) = VisitExpressionFlowNodes(binary.Left, antecedent);
+            if (binary.Operator.Kind == TokenKind.And)
+            {
+                var (rightFalse, rightTrue) = VisitExpressionFlowNodes(binary.Right, leftTrue);
+                var falseAntecedents = new List<FlowNode>();
+                AddIfNotNull(falseAntecedents, leftFalse);
+                AddIfNotNull(falseAntecedents, rightFalse);
+                return new(FlowNode.FromAntecedents(falseAntecedents), rightTrue);
+            }
+            else
+            {
+                var (rightFalse, rightTrue) = VisitExpressionFlowNodes(binary.Right, leftFalse);
+                var trueAntecedents = new List<FlowNode>();
+                AddIfNotNull(trueAntecedents, leftTrue);
+                AddIfNotNull(trueAntecedents, rightTrue);
+                return new(rightFalse, FlowNode.FromAntecedents(trueAntecedents));
+            }
+        }
+
+        VisitExpression(expression, antecedent);
+        return new(
+            new FlowNode.Condition(antecedent, expression, false),
+            new FlowNode.Condition(antecedent, expression, true));
+    }
+
     private void Visit(List<Tree.Expression> expressions, FlowNode? flowNode)
     {
         foreach (var expression in expressions)
@@ -276,8 +317,15 @@ public class Binder
 
     private void VisitExpression(Tree.Expression.Binary binary, FlowNode? flowNode)
     {
-        VisitExpression(binary.Left, flowNode);
-        VisitExpression(binary.Right, flowNode);
+        if (binary.Operator.Kind is TokenKind.And or TokenKind.Or)
+        {
+            VisitExpressionFlowNodes(binary, flowNode);
+        }
+        else
+        {
+            VisitExpression(binary.Left, flowNode);
+            VisitExpression(binary.Right, flowNode);
+        }
     }
 
     private void VisitExpression(Tree.Expression.Unary unary, FlowNode? flowNode)
@@ -516,15 +564,15 @@ public class Binder
         return antecedent;
     }
 
-    private (FlowNode? falseBranch, FlowNode? trueBranch) VisitIfBranch(Tree.IfBranch branch, FlowNode? antecedent)
+    private ConditionBranch VisitIfBranch(Tree.IfBranch branch, FlowNode? antecedent)
     {
-        VisitExpression(branch.Condition, antecedent);
+        var (conditionFalse, conditionTrue) = VisitExpressionFlowNodes(branch.Condition, antecedent);
 
         PushScope();
-        var bodyDescendent = VisitBlock(branch.Body, new FlowNode.Condition(antecedent, branch.Condition, true));
+        var bodyDescendent = VisitBlock(branch.Body, conditionTrue);
         PopScope();
 
-        return (new FlowNode.Condition(antecedent, branch.Condition, false), bodyDescendent);
+        return new(conditionFalse, bodyDescendent);
     }
 
     private FlowNode? VisitStatement(Tree.Statement.If ifStatement, FlowNode? antecedent)
