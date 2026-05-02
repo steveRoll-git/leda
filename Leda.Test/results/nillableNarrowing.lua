@@ -23,4 +23,11 @@ local function g(t)
   else
     local r2 = t.x
   end
+  if not not t.x then
+    local a = t.x
+  end
+  if not t.x then
+    return
+  end
+  local r3 = t.x
 end

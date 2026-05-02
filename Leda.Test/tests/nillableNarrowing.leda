@@ -28,4 +28,14 @@ local function g(t: {x: number?})
   else
     local r2: nil = t.x
   end
+  
+  if not not t.x then
+    local a: number = t.x
+  end
+  
+  if not t.x then
+    return
+  end
+  
+  local r3: number = t.x
 end

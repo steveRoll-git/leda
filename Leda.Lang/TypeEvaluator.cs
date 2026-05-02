@@ -80,6 +80,25 @@ public class TypeEvaluator(Source source)
         return type;
     }
 
+    private Type NarrowTypeByCondition(Tree.Expression expression, Type type, FlowNode.Condition condition)
+    {
+        var invert = false;
+        var sourceExpression = condition.Expression;
+
+        while (sourceExpression is Tree.Expression.Unary { Expression: var inner, Operator.Kind: TokenKind.Not })
+        {
+            sourceExpression = inner;
+            invert = !invert;
+        }
+
+        if (AreNarrowableExpressionsEqual(expression, sourceExpression))
+        {
+            return NarrowTypeByTruthiness(type, condition.IsTrue == !invert);
+        }
+
+        return type;
+    }
+
     private Type GetTypeOfExpressionAtFlowNode(Tree.Expression expression, Type declaredType, FlowNode flowNode)
     {
         if (flowNode is FlowNode.Start)
@@ -114,9 +133,9 @@ public class TypeEvaluator(Source source)
             ? GetTypeOfExpressionAtFlowNode(expression, declaredType, basic.Antecedent)
             : declaredType;
 
-        if (flowNode is FlowNode.Condition condition && AreNarrowableExpressionsEqual(expression, condition.Expression))
+        if (flowNode is FlowNode.Condition condition)
         {
-            return NarrowTypeByTruthiness(previous, condition.IsTrue);
+            return NarrowTypeByCondition(expression, previous, condition);
         }
 
         return previous;
