@@ -186,34 +186,34 @@ public class Binder
         AddSymbol(name, name.Value, Tree.NameContext.Type, symbol);
     }
 
-    private void Visit(Tree.Expression expression, FlowNode? flowNode)
+    private void VisitExpression(Tree.Expression expression, FlowNode? flowNode)
     {
         expression.FlowNode = flowNode;
         switch (expression)
         {
             case Tree.Expression.Access access:
-                Visit(access, flowNode);
+                VisitExpression(access, flowNode);
                 break;
             case Tree.Expression.Binary binary:
-                Visit(binary, flowNode);
+                VisitExpression(binary, flowNode);
                 break;
             case Tree.Expression.Call call:
-                Visit(call, flowNode);
+                VisitExpression(call, flowNode);
                 break;
             case Tree.Expression.Function function:
-                Visit(function);
+                VisitExpression(function);
                 break;
             case Tree.Expression.MethodCall methodCall:
-                Visit(methodCall, flowNode);
+                VisitExpression(methodCall, flowNode);
                 break;
             case Tree.Expression.Name name:
-                Visit(name);
+                VisitExpression(name);
                 break;
             case Tree.Expression.Table table:
-                Visit(table, flowNode);
+                VisitExpression(table, flowNode);
                 break;
             case Tree.Expression.Unary unary:
-                Visit(unary, flowNode);
+                VisitExpression(unary, flowNode);
                 break;
         }
     }
@@ -222,7 +222,7 @@ public class Binder
     {
         foreach (var expression in expressions)
         {
-            Visit(expression, flowNode);
+            VisitExpression(expression, flowNode);
         }
     }
 
@@ -246,21 +246,21 @@ public class Binder
             );
 
             var expression = expressions[i];
-            Visit(expression, flowNode);
+            VisitExpression(expression, flowNode);
 
             assignmentPathStack.Pop();
         }
     }
 
-    private void Visit(Tree.Expression.MethodCall methodCall, FlowNode? flowNode)
+    private void VisitExpression(Tree.Expression.MethodCall methodCall, FlowNode? flowNode)
     {
-        Visit(methodCall.Target, flowNode);
+        VisitExpression(methodCall.Target, flowNode);
         Visit(methodCall.Parameters, methodCall, flowNode);
     }
 
-    private void Visit(Tree.Expression.Call call, FlowNode? flowNode)
+    private void VisitExpression(Tree.Expression.Call call, FlowNode? flowNode)
     {
-        Visit(call.Target, flowNode);
+        VisitExpression(call.Target, flowNode);
         Visit(call.Parameters, call, flowNode);
         if (call.TypeParameters != null)
         {
@@ -268,24 +268,24 @@ public class Binder
         }
     }
 
-    private void Visit(Tree.Expression.Access access, FlowNode? flowNode)
+    private void VisitExpression(Tree.Expression.Access access, FlowNode? flowNode)
     {
-        Visit(access.Target, flowNode);
-        Visit(access.Key, flowNode);
+        VisitExpression(access.Target, flowNode);
+        VisitExpression(access.Key, flowNode);
     }
 
-    private void Visit(Tree.Expression.Binary binary, FlowNode? flowNode)
+    private void VisitExpression(Tree.Expression.Binary binary, FlowNode? flowNode)
     {
-        Visit(binary.Left, flowNode);
-        Visit(binary.Right, flowNode);
+        VisitExpression(binary.Left, flowNode);
+        VisitExpression(binary.Right, flowNode);
     }
 
-    private void Visit(Tree.Expression.Unary unary, FlowNode? flowNode)
+    private void VisitExpression(Tree.Expression.Unary unary, FlowNode? flowNode)
     {
-        Visit(unary.Expression, flowNode);
+        VisitExpression(unary.Expression, flowNode);
     }
 
-    private void Visit(Tree.Expression.Function function)
+    private void VisitExpression(Tree.Expression.Function function)
     {
         if (assignmentPathStack.TryPeek(out var path))
         {
@@ -310,7 +310,7 @@ public class Binder
         VisitChunk(function.Chunk);
     }
 
-    private void Visit(Tree.Expression.Name name)
+    private void VisitExpression(Tree.Expression.Name name)
     {
         if (TryGetBinding(name) is { } symbol)
         {
@@ -323,15 +323,15 @@ public class Binder
         }
     }
 
-    private void Visit(Tree.Expression.Table table, FlowNode? flowNode)
+    private void VisitExpression(Tree.Expression.Table table, FlowNode? flowNode)
     {
         foreach (var field in table.Fields)
         {
             assignmentPathStack.TryPeek(out var assignmentPath);
             assignmentPath?.TableFields.Add(field.Key);
 
-            Visit(field.Key, flowNode);
-            Visit(field.Value, flowNode);
+            VisitExpression(field.Key, flowNode);
+            VisitExpression(field.Value, flowNode);
 
             assignmentPath?.TableFields.RemoveAt(assignmentPath.TableFields.Count - 1);
         }
@@ -423,10 +423,10 @@ public class Binder
         switch (statement)
         {
             case Tree.Statement.Call call:
-                Visit(call.CallExpr, antecedent);
+                VisitExpression(call.CallExpr, antecedent);
                 break;
             case Tree.Statement.MethodCall methodCall:
-                Visit(methodCall.CallExpr, antecedent);
+                VisitExpression(methodCall.CallExpr, antecedent);
                 break;
             case Tree.Statement.Assignment assignment:
                 return VisitStatement(assignment, antecedent);
@@ -518,7 +518,7 @@ public class Binder
 
     private (FlowNode? falseBranch, FlowNode? trueBranch) VisitIfBranch(Tree.IfBranch branch, FlowNode? antecedent)
     {
-        Visit(branch.Condition, antecedent);
+        VisitExpression(branch.Condition, antecedent);
 
         PushScope();
         var bodyDescendent = VisitBlock(branch.Body, new FlowNode.Condition(antecedent, branch.Condition, true));
@@ -527,7 +527,7 @@ public class Binder
         return (new FlowNode.Condition(antecedent, branch.Condition, false), bodyDescendent);
     }
 
-    private FlowNode.Label? VisitStatement(Tree.Statement.If ifStatement, FlowNode? antecedent)
+    private FlowNode? VisitStatement(Tree.Statement.If ifStatement, FlowNode? antecedent)
     {
         var descendents = new List<FlowNode>();
 
@@ -558,7 +558,7 @@ public class Binder
     {
         PushLoopScope(repeatUntil);
         var descendent = VisitBlock(repeatUntil.Body, antecedent);
-        Visit(repeatUntil.Condition, antecedent);
+        VisitExpression(repeatUntil.Condition, antecedent);
         PopScope();
 
         return descendent;
@@ -569,7 +569,7 @@ public class Binder
         var descendents = new List<FlowNode>();
         AddIfNotNull(descendents, antecedent);
 
-        Visit(whileLoop.Condition, antecedent);
+        VisitExpression(whileLoop.Condition, antecedent);
         PushLoopScope(whileLoop);
         AddIfNotNull(descendents, VisitBlock(whileLoop.Body, antecedent));
         PopScope();
@@ -582,7 +582,7 @@ public class Binder
         var descendents = new List<FlowNode>();
         AddIfNotNull(descendents, antecedent);
 
-        Visit(forLoop.Iterator, antecedent);
+        VisitExpression(forLoop.Iterator, antecedent);
 
         PushLoopScope(forLoop);
 
@@ -605,11 +605,11 @@ public class Binder
         AddIfNotNull(descendents, antecedent);
 
         PushLoopScope(numericalFor);
-        Visit(numericalFor.Start, antecedent);
-        Visit(numericalFor.Limit, antecedent);
+        VisitExpression(numericalFor.Start, antecedent);
+        VisitExpression(numericalFor.Limit, antecedent);
         if (numericalFor.Step != null)
         {
-            Visit(numericalFor.Step, antecedent);
+            VisitExpression(numericalFor.Step, antecedent);
         }
 
         AddSymbol(numericalFor.Counter, new Symbol.NumericForCounter(numericalFor));
