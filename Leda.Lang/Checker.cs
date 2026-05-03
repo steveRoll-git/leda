@@ -18,6 +18,20 @@ public class Checker
 
     private readonly TypeEvaluator evaluator;
 
+    /// <summary>
+    /// Returns the name and range that a diagnostic should display for a certain value.
+    /// </summary>
+    private static (string?, Range) GetValueNameAndRange(Tree.Expression value)
+    {
+        return value switch
+        {
+            Tree.Expression.Name name => (name.Value, name.Range),
+            Tree.Expression.String str => (str.Value, str.Range),
+            Tree.Expression.Access access => GetValueNameAndRange(access.Key),
+            _ => default,
+        };
+    }
+
     private void Report(Diagnostic diagnostic)
     {
         Diagnostics.Add(diagnostic);
@@ -417,11 +431,29 @@ public class Checker
         VisitExpression(access.Target);
         VisitExpression(access.Key);
 
+        var possiblyNil = false;
         var targetType = evaluator.GetTypeOfExpression(access.Target);
+
+        if (targetType is Type.Nillable { Inner: var inner })
+        {
+            possiblyNil = true;
+            targetType = inner;
+        }
+
         if (targetType is not Type.Table)
         {
-            Report(new Diagnostic.TypeNotIndexable(access.Target.Range, evaluator.TypeToString(targetType)));
+            if (targetType != Type.Unknown)
+            {
+                Report(new Diagnostic.TypeNotIndexable(access.Target.Range, evaluator.TypeToString(targetType)));
+            }
+
             return;
+        }
+
+        if (possiblyNil)
+        {
+            var (name, range) = GetValueNameAndRange(access.Target);
+            Report(new Diagnostic.ValuePossiblyNil(range, name != null ? "'" + name + "'" : null));
         }
 
         var found = false;

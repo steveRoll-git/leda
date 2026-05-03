@@ -281,6 +281,12 @@ public class TypeEvaluator(Source source)
     internal Type? GetTypeOfAccess(Tree.Expression.Access access)
     {
         var targetType = GetTypeOfExpression(access.Target);
+
+        if (targetType is Type.Nillable { Inner: var inner })
+        {
+            targetType = inner;
+        }
+
         if (targetType is Type.Table table)
         {
             return GetTypeOfTableAccess(table, access.Key);

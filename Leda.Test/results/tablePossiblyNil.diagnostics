@@ -1,0 +1,10 @@
+ValuePossiblyNil(9:21 9:22)
+Error: 't' is possibly 'nil'.
+ValuePossiblyNil(12:25 12:26)
+Error: 'a' is possibly 'nil'.
+ValuePossiblyNil(17:22 17:23)
+Error: 't' is possibly 'nil'.
+ValuePossiblyNil(17:24 17:25)
+Error: 'a' is possibly 'nil'.
+ValuePossiblyNil(18:22 18:23)
+Error: 't' is possibly 'nil'.

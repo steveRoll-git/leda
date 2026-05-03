@@ -1,0 +1,22 @@
+type T = {
+  x: number,
+  a: {
+    b: string
+  }?,
+}
+
+local function f(t: T?)
+  local x: number = t.x
+  if t then
+    local r: number = t.x
+    local b: string = t.a.b
+    if t.a then
+      local b2: string = t.a.b
+    end
+  end
+  local b2: string = t.a.b
+  local x2: number = t.x
+  if t and t.a then
+    local b2: string = t.a.b
+  end
+end

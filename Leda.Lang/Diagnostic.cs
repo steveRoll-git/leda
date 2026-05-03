@@ -248,6 +248,12 @@ public abstract record Diagnostic(Range Range)
         public override string Message =>
             $"Operator {Token.GetKindName(Operator)} cannot be used on types '{Left}' and '{Right}'.";
     }
+
+    public record ValuePossiblyNil(Range Range, string? Value) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"{Value ?? "Value"} is possibly 'nil'.";
+    }
 }
 
 public enum DiagnosticSeverity
