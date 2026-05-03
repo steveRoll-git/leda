@@ -14,26 +14,32 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
     {
         var source = server.GetSourceByUri(request.TextDocument.Uri);
 
-        if (SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()) is ({ } symbol, var range))
+        if (SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()) is
+            ({ } symbol, var range, var expression))
         {
             string? content;
+
+            var expressionType = expression != null
+                ? source.Evaluator.GetTypeOfExpression(expression)
+                : null;
+
             switch (symbol)
             {
                 case Symbol.StringField { Table: var table, Key: var key }:
                     content =
-                        $"(field) {key}: {source.Evaluator.TypeToString(source.Evaluator.GetTypeOfStringFieldInTable(table, key) ?? Type.Unknown)}";
+                        $"(field) {key}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfStringFieldInTable(table, key) ?? Type.Unknown)}";
                     break;
                 case Symbol.LocalVariable:
                     content =
-                        $"local {symbol.Name}: {source.Evaluator.TypeToString(source.Evaluator.GetTypeOfSymbol(symbol))}";
+                        $"local {symbol.Name}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfSymbol(symbol))}";
                     break;
                 case Symbol.Parameter:
                     content =
-                        $"(parameter) {symbol.Name}: {source.Evaluator.TypeToString(source.Evaluator.GetTypeOfSymbol(symbol))}";
+                        $"(parameter) {symbol.Name}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfSymbol(symbol))}";
                     break;
                 case Symbol.LocalFunction:
                 {
-                    var type = source.Evaluator.GetTypeOfSymbol(symbol);
+                    var type = expressionType ?? source.Evaluator.GetTypeOfSymbol(symbol);
                     content =
                         $"local function {symbol.Name}{(type is Type.Function function ? source.Evaluator.FunctionSignatureToString(function) : "")}";
                     break;

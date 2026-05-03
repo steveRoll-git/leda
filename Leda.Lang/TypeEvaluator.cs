@@ -134,7 +134,7 @@ public class TypeEvaluator(Source source)
         return previous;
     }
 
-    internal Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
+    public Type GetTypeOfExpression(Tree.Expression expression, bool isConstant = false)
     {
         var result = expression switch
         {
