@@ -498,7 +498,7 @@ public class TypeEvaluator(Source source)
     private Type GetTypeOfTypeAliasUncached(Symbol.TypeAlias typeAlias)
     {
         var type = GetTypeOfTypeAnnotation(typeAlias.Declaration.Type);
-        if (type.Name == null && type is Type.Table)
+        if (typeAlias.Declaration.Type is Tree.Type.Table)
         {
             type.Name = typeAlias.Declaration.Name.Value;
         }
