@@ -7,3 +7,4 @@ local function g()
   return 123, true
 end
 f(g())
+f(123)

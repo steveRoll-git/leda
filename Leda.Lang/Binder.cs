@@ -296,16 +296,16 @@ public class Binder
     private void VisitExpression(Tree.Expression.MethodCall methodCall, FlowNode? flowNode)
     {
         VisitExpression(methodCall.Target, flowNode);
-        Visit(methodCall.Parameters, methodCall, flowNode);
+        Visit(methodCall.Arguments, methodCall, flowNode);
     }
 
     private void VisitExpression(Tree.Expression.Call call, FlowNode? flowNode)
     {
         VisitExpression(call.Target, flowNode);
-        Visit(call.Parameters, call, flowNode);
-        if (call.TypeParameters != null)
+        Visit(call.Arguments, call, flowNode);
+        if (call.TypeArguments != null)
         {
-            Visit(call.TypeParameters);
+            Visit(call.TypeArguments);
         }
     }
 

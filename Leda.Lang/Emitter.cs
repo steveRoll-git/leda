@@ -257,7 +257,7 @@ public class Emitter
     {
         EmitPrefixExpression(call.Target, isStatement, indent);
         Emit('(');
-        EmitExpressionList(call.Parameters, indent);
+        EmitExpressionList(call.Arguments, indent);
         Emit(')');
     }
 
@@ -267,7 +267,7 @@ public class Emitter
         Emit(':');
         Emit(call.FuncName.Value);
         Emit('(');
-        EmitExpressionList(call.Parameters, indent);
+        EmitExpressionList(call.Arguments, indent);
         Emit(')');
     }
 

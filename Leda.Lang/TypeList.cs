@@ -84,9 +84,10 @@ public abstract class TypeList
     /// </summary>
     public static string ItemNoun(TypeListKind kind) => kind switch
     {
-        TypeListKind.Parameter or TypeListKind.FunctionTypeParameter => "parameter",
+        TypeListKind.Argument => "argument",
+        TypeListKind.FunctionTypeParameter => "parameter",
         TypeListKind.Return or TypeListKind.FunctionTypeReturn => "return value",
-        _ => "value"
+        _ => "value",
     };
 }
 
@@ -96,9 +97,9 @@ public abstract class TypeList
 public enum TypeListKind
 {
     /// <summary>
-    /// The values given as parameters to a function call.
+    /// Arguments in a function call.
     /// </summary>
-    Parameter,
+    Argument,
 
     /// <summary>
     /// The values returned by a function.
@@ -118,5 +119,5 @@ public enum TypeListKind
     /// <summary>
     /// Any other use of TypeLists.
     /// </summary>
-    Value
+    Value,
 }

@@ -109,7 +109,7 @@ public static class SymbolFinder
                                                     GetNameAtPosition(assignment.Values, position),
 
             Tree.Expression.Call call => GetNameAtPosition(call.Target, position) ??
-                                         GetNameAtPosition(call.Parameters, position),
+                                         GetNameAtPosition(call.Arguments, position),
 
             Tree.Declaration declaration => GetNameAtPosition(declaration.Name, position) ??
                                             GetNameAtPosition(declaration.Type, position),
@@ -145,7 +145,7 @@ public static class SymbolFinder
 
             Tree.Expression.MethodCall methodCall => GetNameAtPosition(methodCall.Target, position) ??
                                                      GetNameAtPosition(methodCall.FuncName, position) ??
-                                                     GetNameAtPosition(methodCall.Parameters, position),
+                                                     GetNameAtPosition(methodCall.Arguments, position),
 
             Tree.Statement.NumericalFor numericalFor => GetNameAtPosition(numericalFor.Counter, position) ??
                                                         GetNameAtPosition(numericalFor.Start, position) ??

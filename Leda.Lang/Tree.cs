@@ -431,21 +431,21 @@ public abstract class Tree
         /// <summary>
         /// A function call.
         /// </summary>
-        public class Call(Expression target, List<Expression> parameters, List<Type>? typeParameters) : Expression
+        public class Call(Expression target, List<Expression> arguments, List<Type>? typeArguments) : Expression
         {
             public Expression Target => target;
-            public List<Expression> Parameters => parameters;
-            public List<Type>? TypeParameters => typeParameters;
+            public List<Expression> Arguments => arguments;
+            public List<Type>? TypeArguments => typeArguments;
         }
 
         /// <summary>
         /// A method call using `:` syntax.
         /// </summary>
-        public class MethodCall(Expression target, String funcName, List<Expression> parameters) : Expression
+        public class MethodCall(Expression target, String funcName, List<Expression> arguments) : Expression
         {
             public Expression Target => target;
             public String FuncName => funcName;
-            public List<Expression> Parameters => parameters;
+            public List<Expression> Arguments => arguments;
         }
     }
 

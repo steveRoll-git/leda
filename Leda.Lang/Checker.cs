@@ -56,7 +56,7 @@ public class Checker
     private void VisitCall(Tree.Expression.Call call)
     {
         VisitExpression(call.Target);
-        VisitExpressionList(call.Parameters);
+        VisitExpressionList(call.Arguments);
 
         var target = evaluator.GetTypeOfExpression(call.Target);
 
@@ -75,7 +75,7 @@ public class Checker
         if (target is Type.Function function)
         {
             // TODO support overloads
-            CheckAssignment(function.Parameters, call.Parameters, TypeListKind.Parameter, call.Target.Range);
+            CheckAssignment(function.Parameters, call.Arguments, TypeListKind.Argument, call.Target.Range);
         }
     }
 

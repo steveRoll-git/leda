@@ -10,3 +10,5 @@ local function g()
 end
 
 f(g())
+
+f(123)
