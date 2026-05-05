@@ -17,8 +17,12 @@ var pattern = args[0];
 Matcher matcher = new();
 matcher.AddInclude(pattern);
 
+var empty = true;
+
 foreach (var testCodePath in matcher.GetResultsInFullPath(testFilesPath))
 {
+    empty = false;
+
     var filenameWithoutExtension = Path.GetFileNameWithoutExtension(testCodePath);
     var testDiagnosticsPath = Path.Join(resultFilesPath, filenameWithoutExtension + ".diagnostics");
     var testEmittedPath = Path.Join(resultFilesPath, filenameWithoutExtension + ".lua");
@@ -37,4 +41,9 @@ foreach (var testCodePath in matcher.GetResultsInFullPath(testFilesPath))
     var emittedCode = Emitter.Emit(source.Chunk);
     File.WriteAllText(testEmittedPath, emittedCode);
     Console.WriteLine("Generated emitted file at " + testEmittedPath);
+}
+
+if (empty)
+{
+    Console.WriteLine($"No files matching {pattern} were found");
 }
