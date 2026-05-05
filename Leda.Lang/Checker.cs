@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace Leda.Lang;
 
 /// <summary>
@@ -12,7 +10,7 @@ public class Checker
     private readonly Source source;
     private List<Diagnostic> Diagnostics { get; } = [];
 
-    private record FunctionInfo(Type.Function Function, bool InferReturn);
+    private record FunctionInfo(Type.Function Function, bool InferReturn, Tree.Chunk Chunk);
 
     private readonly Stack<FunctionInfo> functionStack = [];
 
@@ -35,6 +33,59 @@ public class Checker
     private void Report(Diagnostic diagnostic)
     {
         Diagnostics.Add(diagnostic);
+    }
+
+    /// <summary>
+    /// Returns whether a local variable is definitely assigned a value at the given FlowNode.
+    /// </summary>
+    private bool IsLocalVariableAssignedAtFlowNode(Symbol.LocalVariable variable, FlowNode? flowNode)
+    {
+        if (flowNode == null)
+        {
+            return true;
+        }
+
+        if (flowNode is FlowNode.Start ||
+            // This function is called only if `variable.Uninitialized` is true in the first place,
+            // so it's definitely not assigned if we reached its declaration.
+            (flowNode is FlowNode.LocalDeclaration { Declaration: var declaration } &&
+             declaration == variable.Declaration))
+        {
+            return false;
+        }
+
+        if (flowNode is FlowNode.Assignment { AssignmentStatement.Targets: var targets } assignment)
+        {
+            foreach (var target in targets)
+            {
+                if (source.GetTreeSymbol(target) == variable)
+                {
+                    return true;
+                }
+            }
+
+            return IsLocalVariableAssignedAtFlowNode(variable, assignment.Antecedent);
+        }
+
+        if (flowNode is FlowNode.Label { Antecedents: var antecedents })
+        {
+            foreach (var antecedent in antecedents)
+            {
+                if (!IsLocalVariableAssignedAtFlowNode(variable, antecedent))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        if (flowNode is FlowNode.Basic basic)
+        {
+            return IsLocalVariableAssignedAtFlowNode(variable, basic.Antecedent);
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -115,7 +166,9 @@ public class Checker
             }
         }
 
-        functionStack.Push(new(evaluator.GetTypeOfFunction(function), function.Type.ReturnTypes == null));
+        functionStack.Push(new(evaluator.GetTypeOfFunction(function),
+            function.Type.ReturnTypes == null,
+            function.Chunk));
         VisitBlock(function.Chunk);
         functionStack.Pop();
     }
@@ -174,7 +227,8 @@ public class Checker
         }
     }
 
-    private void VisitExpression(Tree.Expression expr, bool generateFieldSymbols = false)
+    private void VisitExpression(Tree.Expression expr, bool generateFieldSymbols = false,
+        bool isAssignmentTarget = false)
     {
         switch (expr)
         {
@@ -198,6 +252,9 @@ public class Checker
                 break;
             case Tree.Expression.Unary unary:
                 VisitExpression(unary);
+                break;
+            case Tree.Expression.Name name:
+                VisitExpression(name, isAssignmentTarget);
                 break;
         }
     }
@@ -265,6 +322,11 @@ public class Checker
 
     private void VisitStatement(Tree.Statement.Assignment assignment)
     {
+        foreach (var target in assignment.Targets)
+        {
+            VisitExpression(target, isAssignmentTarget: true);
+        }
+
         foreach (var value in assignment.Values)
         {
             VisitExpression(value);
@@ -336,7 +398,7 @@ public class Checker
 
     private void VisitStatement(Tree.Statement.Return returnStatement)
     {
-        var (function, inferReturn) = functionStack.Peek();
+        var (function, inferReturn, _) = functionStack.Peek();
         if (!inferReturn)
         {
             CheckAssignment(function.Return, returnStatement.Values, TypeListKind.Return, returnStatement.Range);
@@ -513,6 +575,18 @@ public class Checker
         }
     }
 
+    private void VisitExpression(Tree.Expression.Name name, bool isAssignmentTarget)
+    {
+        if (!isAssignmentTarget &&
+            source.GetTreeSymbol(name) is Symbol.LocalVariable localVariable &&
+            localVariable.Uninitialized &&
+            localVariable.Chunk == functionStack.Peek().Chunk &&
+            !IsLocalVariableAssignedAtFlowNode(localVariable, name.FlowNode))
+        {
+            Report(new Diagnostic.VariableUsedBeforeAssignment(name.Range, name.Value));
+        }
+    }
+
     private void VisitType(Tree.Type.Function functionType)
     {
         foreach (var parameter in functionType.Parameters)
@@ -625,7 +699,7 @@ public class Checker
     public static List<Diagnostic> Check(Source source, TypeEvaluator evaluator)
     {
         var checker = new Checker(source, evaluator);
-        checker.functionStack.Push(new(new Type.Function(TypeList.Any, TypeList.Any, []), false)); // TODO
+        checker.functionStack.Push(new(new Type.Function(TypeList.Any, TypeList.Any, []), false, source.Chunk));
         checker.VisitBlock(source.Chunk);
         return checker.Diagnostics;
     }

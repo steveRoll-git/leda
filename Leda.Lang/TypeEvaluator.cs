@@ -122,9 +122,7 @@ public class TypeEvaluator(Source source)
         }
 
         var basic = (flowNode as FlowNode.Basic)!;
-        var previous = basic.Antecedent != null
-            ? GetTypeOfExpressionAtFlowNode(expression, declaredType, basic.Antecedent)
-            : declaredType;
+        var previous = GetTypeOfExpressionAtFlowNode(expression, declaredType, basic.Antecedent);
 
         if (flowNode is FlowNode.Condition condition)
         {

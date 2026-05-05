@@ -15,11 +15,17 @@ public abstract class Symbol(string name)
     /// <summary>
     /// A local variable.
     /// </summary>
-    public class LocalVariable(Tree.Statement.LocalDeclaration declaration, int index)
+    public class LocalVariable(
+        Tree.Statement.LocalDeclaration declaration,
+        int index,
+        bool uninitialized,
+        Tree.Chunk chunk)
         : Symbol(declaration.Declarations[index].Name.Value)
     {
         public Tree.Statement.LocalDeclaration Declaration => declaration;
         public int Index => index;
+        public bool Uninitialized => uninitialized;
+        public Tree.Chunk Chunk => chunk;
     }
 
     /// <summary>

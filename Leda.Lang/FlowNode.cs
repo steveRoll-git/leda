@@ -24,21 +24,37 @@ public abstract class FlowNode
     /// <summary>
     /// A FlowNode that has an antecedent node.
     /// </summary>
-    public class Basic(FlowNode? antecedent) : FlowNode
+    public class Basic(FlowNode antecedent) : FlowNode
     {
         /// <summary>
         /// The FlowNode whose execution leads to this node.
         /// </summary>
-        public FlowNode? Antecedent => antecedent;
+        public FlowNode Antecedent => antecedent;
     }
 
     /// <summary>
     /// A FlowNode where a certain condition is known to be true or false.
     /// </summary>
-    public class Condition(FlowNode? antecedent, Tree.Expression expression, bool isTrue) : Basic(antecedent)
+    public class Condition(FlowNode antecedent, Tree.Expression expression, bool isTrue) : Basic(antecedent)
     {
         public Tree.Expression Expression => expression;
         public bool IsTrue => isTrue;
+    }
+
+    /// <summary>
+    /// A FlowNode where local variables are declared.
+    /// </summary>
+    public class LocalDeclaration(FlowNode antecedent, Tree.Statement.LocalDeclaration declaration) : Basic(antecedent)
+    {
+        public Tree.Statement.LocalDeclaration Declaration => declaration;
+    }
+
+    /// <summary>
+    /// A FlowNode where existing variables are assigned a value.
+    /// </summary>
+    public class Assignment(FlowNode antecedent, Tree.Statement.Assignment assignment) : Basic(antecedent)
+    {
+        public Tree.Statement.Assignment AssignmentStatement => assignment;
     }
 
     /// <summary>

@@ -10,15 +10,19 @@ public class Binder
     private readonly Source source;
     private List<Diagnostic> Diagnostics { get; } = [];
 
+    /// <summary>
+    /// Stores information about a scope including which symbols are defined inside it, and which chunk and loop contain
+    /// it.
+    /// </summary>
     private class Scope(Tree.Chunk? chunk, Tree? loop) : Dictionary<string, Binding>
     {
         /// <summary>
-        /// The chunk this scope is inside of.
+        /// The chunk that contains this scope.
         /// </summary>
         public Tree.Chunk? Chunk => chunk;
 
         /// <summary>
-        /// The loop this scope is inside of.
+        /// The loop that contains this scope.
         /// </summary>
         public Tree? Loop => loop;
     }
@@ -254,9 +258,11 @@ public class Binder
         }
 
         VisitExpression(expression, antecedent);
-        return new(
-            new FlowNode.Condition(antecedent, expression, false),
-            new FlowNode.Condition(antecedent, expression, true));
+        return antecedent == null
+            ? default
+            : new(
+                new FlowNode.Condition(antecedent, expression, false),
+                new FlowNode.Condition(antecedent, expression, true));
     }
 
     private void Visit(List<Tree.Expression> expressions, FlowNode? flowNode)
@@ -522,11 +528,11 @@ public class Binder
         return descendent;
     }
 
-    private FlowNode? VisitStatement(Tree.Statement.Assignment assignment, FlowNode? antecedent)
+    private FlowNode.Assignment? VisitStatement(Tree.Statement.Assignment assignment, FlowNode? antecedent)
     {
         Visit(assignment.Targets, antecedent);
         Visit(assignment.Values, assignment, antecedent);
-        return antecedent;
+        return antecedent == null ? null : new FlowNode.Assignment(antecedent, assignment);
     }
 
     private void VisitStatement(Tree.Statement.Return returnStatement, FlowNode? antecedent)
@@ -547,21 +553,30 @@ public class Binder
         throw new NotImplementedException();
     }
 
-    private FlowNode? VisitStatement(Tree.Statement.LocalDeclaration localDeclaration, FlowNode? antecedent)
+    private FlowNode.LocalDeclaration? VisitStatement(Tree.Statement.LocalDeclaration localDeclaration,
+        FlowNode? antecedent)
     {
         Visit(localDeclaration.Values, localDeclaration, antecedent);
 
         for (var i = 0; i < localDeclaration.Declarations.Count; i++)
         {
             var declaration = localDeclaration.Declarations[i];
-            AddSymbol(declaration.Name, new Symbol.LocalVariable(localDeclaration, i));
+
+            AddSymbol(declaration.Name, new Symbol.LocalVariable(
+                declaration: localDeclaration,
+                index: i,
+                uninitialized: i >= localDeclaration.Values.Count &&
+                               (localDeclaration.Values.Count <= 0 ||
+                                localDeclaration.Values[^1] is not Tree.Expression.Call or Tree.Expression.Vararg),
+                chunk: scopes[^1].Chunk!));
+
             if (declaration.Type != null)
             {
                 Visit(declaration.Type);
             }
         }
 
-        return antecedent;
+        return antecedent == null ? null : new FlowNode.LocalDeclaration(antecedent, localDeclaration);
     }
 
     private ConditionBranch VisitIfBranch(Tree.IfBranch branch, FlowNode? antecedent)

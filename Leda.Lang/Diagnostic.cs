@@ -240,6 +240,12 @@ public abstract record Diagnostic(Range Range)
         public override bool Unnecessary => true;
     }
 
+    public record VariableUsedBeforeAssignment(Range Range, string Variable) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Variable '{Variable}' is used before being assigned.";
+    }
+
     public record BinaryOperatorCantBeUsed(Range Range, TokenKind Operator, string Left, string Right)
         : Diagnostic(Range)
     {
