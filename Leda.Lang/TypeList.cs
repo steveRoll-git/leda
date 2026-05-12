@@ -79,6 +79,14 @@ public abstract class TypeList
         public override int Count => targets.Count;
     }
 
+    public class Instantiation(TypeList inner, TypeMap map) : TypeList
+    {
+        public TypeList Inner => inner;
+        public TypeMap Map => map;
+
+        public override int Count => inner.Count;
+    }
+
     /// <summary>
     /// Returns a string that represents an item in this kind of TypeList.
     /// </summary>

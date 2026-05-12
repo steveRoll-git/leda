@@ -80,7 +80,14 @@ public abstract class Symbol(string name)
     /// <summary>
     /// A generic type parameter.
     /// </summary>
-    public class TypeParameter(Tree.Type.Name name) : Symbol(name.Value);
+    public class TypeParameter(Tree.Type.Name name) : Symbol(name.Value)
+    {
+        /// <summary>
+        /// The type of this type parameter.
+        /// </summary>
+        // It is created here and not by TypeEvaluator because it just needs to uniquely represent the type parameter.
+        public Type.TypeParameter Type { get; } = new(name.Value);
+    }
 
     /// <summary>
     /// A string field in a table.

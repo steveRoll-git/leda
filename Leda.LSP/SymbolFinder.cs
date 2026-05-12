@@ -109,7 +109,8 @@ public static class SymbolFinder
                                                     GetNameAtPosition(assignment.Values, position),
 
             Tree.Expression.Call call => GetNameAtPosition(call.Target, position) ??
-                                         GetNameAtPosition(call.Arguments, position),
+                                         GetNameAtPosition(call.Arguments, position) ??
+                                         GetNameAtPosition(call.TypeArguments, position),
 
             Tree.Declaration declaration => GetNameAtPosition(declaration.Name, position) ??
                                             GetNameAtPosition(declaration.Type, position),

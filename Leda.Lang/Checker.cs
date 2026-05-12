@@ -635,7 +635,9 @@ public class Checker
                     missingStrings.Remove(stringLiteral.Literal);
 
                     var stringField = targetTable.StringLiterals.GetValueOrDefault(stringLiteral.Literal);
-                    targetValueType = stringField != null ? evaluator.GetTypeOfStringField(stringField) : null;
+                    targetValueType = stringField != null
+                        ? evaluator.GetTypeOfStringField(targetTable, stringField)
+                        : null;
                     if (stringField != null && sourceField.Key is Tree.Expression.String)
                     {
                         source.AttachSymbol(sourceField.Key, stringField.Symbol);

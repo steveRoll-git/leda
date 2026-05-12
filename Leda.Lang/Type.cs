@@ -1,3 +1,5 @@
+global using TypeMap = System.Collections.Generic.Dictionary<Leda.Lang.Type.TypeParameter, Leda.Lang.Type>;
+
 namespace Leda.Lang;
 
 /// <summary>
@@ -132,12 +134,12 @@ public abstract class Type
         /// <summary>
         /// Cached values of fields whose keys are string literals.
         /// </summary>
-        public Dictionary<string, StringField> StringLiterals { get; } = [];
+        public Dictionary<string, StringField> StringLiterals { get; }
 
         /// <summary>
         /// Cached values of fields whose keys are number literals.
         /// </summary>
-        public Dictionary<double, Type> NumberLiterals { get; } = [];
+        public Dictionary<double, Type> NumberLiterals { get; }
 
         // TODO also store `true` and `false` literals
 
@@ -146,26 +148,26 @@ public abstract class Type
         /// <summary>
         /// Cached values of fields whose key is not a string or number literal.
         /// </summary>
-        public List<Field> Indexers { get; } = [];
+        public List<Field> Indexers { get; }
 
         /// <summary>
-        /// The table value that this table type should be inferred from.
+        /// The type arguments that this table was instantiated with, if this table is an instantiation of a generic
+        /// table.
         /// </summary>
-        public Tree.Expression.Table? InferTree { get; }
+        public TypeMap? TypeMap { get; init; }
 
-        /// <summary>
-        /// The table type definition that defines this table.
-        /// </summary>
-        public Tree.Type.Table? TypeTree { get; }
-
-        public Table(Tree.Expression.Table inferTree)
+        public Table()
         {
-            InferTree = inferTree;
+            StringLiterals = [];
+            NumberLiterals = [];
+            Indexers = [];
         }
 
-        public Table(Tree.Type.Table typeTree)
+        public Table(Table other)
         {
-            TypeTree = typeTree;
+            StringLiterals = other.StringLiterals;
+            NumberLiterals = other.NumberLiterals;
+            Indexers = other.Indexers;
         }
     }
 

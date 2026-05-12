@@ -161,7 +161,7 @@ public class TypeEvaluator(Source source)
         return result;
     }
 
-    private static Type.Function GetTypeOfFunctionUncached(Tree.Expression.Function function)
+    private Type.Function GetTypeOfFunctionUncached(Tree.Expression.Function function)
     {
         var parameters = new TypeList.Parameters(function);
 
@@ -180,7 +180,17 @@ public class TypeEvaluator(Source source)
             returns = TypeList.Empty;
         }
 
-        return new Type.Function(parameters, returns, []);
+        var typeParameters = new List<Type.TypeParameter>();
+
+        if (function.Type.TypeParameters != null)
+        {
+            foreach (var typeParameter in function.Type.TypeParameters)
+            {
+                typeParameters.Add((source.GetTreeSymbol(typeParameter) as Symbol.TypeParameter)!.Type);
+            }
+        }
+
+        return new Type.Function(parameters, returns, typeParameters);
     }
 
     internal Type.Function GetTypeOfFunction(Tree.Expression.Function function)
@@ -190,7 +200,7 @@ public class TypeEvaluator(Source source)
 
     private Type.Table GetTypeOfTableValueUncached(Tree.Expression.Table table)
     {
-        var type = new Type.Table(table);
+        var type = new Type.Table();
         foreach (var field in table.Fields)
         {
             if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral { Literal: var literal })
@@ -218,7 +228,7 @@ public class TypeEvaluator(Source source)
 
     private Type.Table GetTypeOfTableAnnotationUncached(Tree.Type.Table table)
     {
-        var type = new Type.Table(table);
+        var type = new Type.Table();
         foreach (var field in table.Fields)
         {
             if (GetTypeOfTypeAnnotation(field.Key) is Type.StringLiteral { Literal: var literal })
@@ -237,7 +247,7 @@ public class TypeEvaluator(Source source)
         return GetQueryOrCached(GetTypeOfTableAnnotationUncached, table, tableAnnotationCache);
     }
 
-    internal Type GetTypeOfStringField(Type.Table.StringField stringField)
+    internal Type GetTypeOfStringField(Type.Table table, Type.Table.StringField stringField)
     {
         if (stringField.CachedType == null)
         {
@@ -251,6 +261,11 @@ public class TypeEvaluator(Source source)
             }
         }
 
+        if (table.TypeMap != null)
+        {
+            return InstantiateType(stringField.CachedType!, table.TypeMap);
+        }
+
         return stringField.CachedType!;
     }
 
@@ -261,7 +276,7 @@ public class TypeEvaluator(Source source)
             return null;
         }
 
-        return GetTypeOfStringField(field);
+        return GetTypeOfStringField(table, field);
     }
 
     private Type? GetTypeOfTableAccess(Type.Table table, Tree.Expression key)
@@ -406,7 +421,8 @@ public class TypeEvaluator(Source source)
             Symbol.NumericForCounter => Type.NumberPrimitive,
             Symbol.IntrinsicType intrinsicType => intrinsicType.Type,
             Symbol.TypeAlias typeAlias => GetTypeOfTypeAlias(typeAlias),
-            _ => Type.Unknown
+            Symbol.TypeParameter typeParameter => typeParameter.Type,
+            _ => Type.Unknown,
         };
     }
 
@@ -534,6 +550,25 @@ public class TypeEvaluator(Source source)
     }
 
     /// <summary>
+    /// Instantiates a generic type with the given TypeMap.
+    /// </summary>
+    private Type InstantiateType(Type type, TypeMap map)
+    {
+        if (type is Type.TypeParameter typeParameter && map.TryGetValue(typeParameter, out var mappedType))
+        {
+            return mappedType;
+        }
+
+        // TODO check whether the type contains type parameters at all
+        if (type is Type.Table original)
+        {
+            return new Type.Table(original) { TypeMap = map };
+        }
+
+        return type;
+    }
+
+    /// <summary>
     /// Returns the effective minimum number of values produced by this expression list, including trailing values.
     /// </summary>
     internal int GetMinimumNumberOfValues(List<Tree.Expression> expressions)
@@ -623,6 +658,9 @@ public class TypeEvaluator(Source source)
 
                 return Type.Nil;
 
+            case TypeList.Instantiation { Inner: var inner, Map: var map }:
+                return InstantiateType(GetTypeInTypeList(inner, index), map);
+
             default:
                 return Type.Unknown;
         }
@@ -631,8 +669,23 @@ public class TypeEvaluator(Source source)
     private TypeList GetTypeListOfCall(Tree.Expression.Call call)
     {
         var targetType = GetTypeOfExpression(call.Target);
-        if (targetType is Type.Function { Return: var returns })
+        if (targetType is Type.Function { Return: var returns, TypeParameters: var typeParameters })
         {
+            // TODO check whether the return types need to be instantiated at all
+            if (typeParameters.Count > 0)
+            {
+                var typeMap = new TypeMap();
+                if (call.TypeArguments != null)
+                {
+                    for (var i = 0; i < Math.Min(typeParameters.Count, call.TypeArguments.Count); i++)
+                    {
+                        typeMap[typeParameters[i]] = GetTypeOfTypeAnnotation(call.TypeArguments[i]);
+                    }
+                }
+
+                return InstantiateTypeList(returns, typeMap);
+            }
+
             return returns;
         }
 
@@ -649,6 +702,14 @@ public class TypeEvaluator(Source source)
         // TODO handle vararg
 
         return null;
+    }
+
+    /// <summary>
+    /// Instantiates a TypeList containing generic types with the given TypeMap.
+    /// </summary>
+    private TypeList InstantiateTypeList(TypeList typeList, TypeMap map)
+    {
+        return new TypeList.Instantiation(typeList, map);
     }
 
     /// <summary>
@@ -794,7 +855,8 @@ public class TypeEvaluator(Source source)
                 continue;
             }
 
-            if (!IsAssignableFrom(GetTypeOfStringField(targetStringField), sourceType, out var valueReason))
+            if (!IsAssignableFrom(GetTypeOfStringField(targetTable, targetStringField), sourceType,
+                    out var valueReason))
             {
                 reasons.Add(new TypeMismatch.TableKeyIncompatible('"' + targetKey + '"') { Children = [valueReason] });
             }
@@ -957,7 +1019,7 @@ public class TypeEvaluator(Source source)
             }
 
             s +=
-                $"{key}: {TypeToStringIndent(GetTypeOfStringField(value), multiline: multiline, indent: newIndent)},{separator}";
+                $"{key}: {TypeToStringIndent(GetTypeOfStringField(table, value), multiline: multiline, indent: newIndent)},{separator}";
         }
 
         if (multiline)
@@ -994,24 +1056,16 @@ public class TypeEvaluator(Source source)
     public string FunctionSignatureToString(Type.Function function)
     {
         var parameters = TypeListToString(function.Parameters);
+        var typeParameters = function.TypeParameters.Count > 0
+            ? $"<{string.Join(", ", function.TypeParameters.Select(t => t.Name))}>"
+            : "";
         var returns = function.Return == TypeList.Empty ? "" : ": " + TypeListToString(function.Return);
-        return $"({parameters}){returns}";
+        return $"{typeParameters}({parameters}){returns}";
     }
 
     private string FunctionToString(Type.Function function)
     {
         return "function" + FunctionSignatureToString(function);
-    }
-
-    /// <summary>
-    /// Returns a string representation of the type.
-    /// </summary>
-    /// <param name="type">The type to convert to a string.</param>
-    /// <param name="typeContents">Whether to display the type's contents as a string, even if it's behind an alias.</param>
-    /// <param name="multiline">Whether the string should be spread across multiple lines.</param>
-    public string TypeToString(Type type, bool typeContents = false, bool multiline = false)
-    {
-        return TypeToStringIndent(type, typeContents, multiline);
     }
 
     private string TypeToStringIndent(Type type, bool typeContents = false, bool multiline = false, string indent = "")
@@ -1025,11 +1079,23 @@ public class TypeEvaluator(Source source)
         {
             Type.NumberLiteral numberLiteral => numberLiteral.Literal.ToString(CultureInfo.InvariantCulture),
             Type.StringLiteral stringLiteral => '"' + stringLiteral.Literal + '"',
-            Type.PrimitiveType or Type.TypeParameter => type.Name!,
+            Type.PrimitiveType => type.Name!,
             Type.Table table => TableToString(table, multiline, indent),
             Type.Function function => FunctionToString(function),
             Type.Nillable { Inner: var inner } => TypeToStringIndent(inner, typeContents, multiline, indent) + "?",
+            Type.TypeParameter typeParameter => typeParameter.Name!,
             _ => throw new ArgumentOutOfRangeException(nameof(type)),
         };
+    }
+
+    /// <summary>
+    /// Returns a string representation of the type.
+    /// </summary>
+    /// <param name="type">The type to convert to a string.</param>
+    /// <param name="typeContents">Whether to display the type's contents as a string, even if it's behind an alias.</param>
+    /// <param name="multiline">Whether the string should be spread across multiple lines.</param>
+    public string TypeToString(Type type, bool typeContents = false, bool multiline = false)
+    {
+        return TypeToStringIndent(type, typeContents, multiline);
     }
 }
