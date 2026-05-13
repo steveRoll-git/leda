@@ -19,17 +19,17 @@ public abstract class Type
     }
 
     /// <summary>
-    /// The top type - can hold any value.
+    /// A type that can hold any value.
     /// </summary>
     public static readonly Type Any = new PrimitiveType(_ => true) { Name = "any" };
 
     /// <summary>
-    /// The "unknown" type, used as a placeholder before named references are resolved, or left there in case of errors.
+    /// A type that is returned in case of errors. Currently, it behaves similarly to `any`.
     /// </summary>
     public static readonly Type Unknown = new PrimitiveType(_ => true) { Name = "unknown" };
 
     /// <summary>
-    /// The `nil` unit type.
+    /// The `nil` literal.
     /// </summary>
     public static readonly Type Nil = new PrimitiveType(_ => false) { Name = "nil" };
 
@@ -77,8 +77,7 @@ public abstract class Type
     /// <summary>
     /// Supertype of all function types.
     /// </summary>
-    public static readonly Type FunctionPrimitive =
-        new PrimitiveType(other => other is Function) { Name = "function" };
+    public static readonly Type FunctionPrimitive = new PrimitiveType(other => other is Function) { Name = "function" };
 
     public class Function(TypeList parameters, TypeList returns, List<TypeParameter> typeParameters) : Type
     {

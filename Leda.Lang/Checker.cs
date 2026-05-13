@@ -504,7 +504,7 @@ public class Checker
 
         if (targetType is not Type.Table)
         {
-            if (targetType != Type.Unknown)
+            if (targetType != Type.Unknown && targetType != Type.Any)
             {
                 Report(new Diagnostic.TypeNotIndexable(access.Key.Range, evaluator.TypeToString(targetType)));
             }

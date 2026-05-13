@@ -300,6 +300,11 @@ public class TypeEvaluator(Source source)
             targetType = inner;
         }
 
+        if (targetType == Type.Any)
+        {
+            return Type.Any;
+        }
+
         if (targetType is Type.Table table)
         {
             return GetTypeOfTableAccess(table, access.Key);
