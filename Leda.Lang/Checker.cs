@@ -506,7 +506,7 @@ public class Checker
         {
             if (targetType != Type.Unknown)
             {
-                Report(new Diagnostic.TypeNotIndexable(access.Target.Range, evaluator.TypeToString(targetType)));
+                Report(new Diagnostic.TypeNotIndexable(access.Key.Range, evaluator.TypeToString(targetType)));
             }
 
             return;
