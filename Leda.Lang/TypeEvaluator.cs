@@ -385,7 +385,8 @@ public class TypeEvaluator(Source source)
     internal Type? GetInferredParameterType(Tree.Expression.Function function, int index)
     {
         if (function.AssignmentPath != null &&
-            GetAssignmentPathType(function.AssignmentPath) is Type.Function targetFunction)
+            GetAssignmentPathType(function.AssignmentPath) is Type.Function targetFunction &&
+            !(targetFunction.Parameters is TypeList.Parameters { Function: var other } && other == function))
         {
             return GetTypeInTypeList(targetFunction.Parameters, index);
         }
