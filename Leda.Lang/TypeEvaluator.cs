@@ -558,6 +558,8 @@ public class TypeEvaluator(Source source)
     /// <summary>
     /// Instantiates a generic type with the given TypeMap.
     /// </summary>
+    /// <param name="type">The generic type to instantiate.</param>
+    /// <param name="map">The type arguments.</param>
     private Type InstantiateType(Type type, TypeMap map)
     {
         if (type is Type.TypeParameter typeParameter && map.TryGetValue(typeParameter, out var mappedType))
@@ -569,6 +571,14 @@ public class TypeEvaluator(Source source)
         if (type is Type.Table original)
         {
             return new Type.Table(original) { TypeMap = map };
+        }
+
+        if (type is Type.Function function)
+        {
+            // This will not instantiate the function's own type parameters if it has any.
+            return new Type.Function(InstantiateTypeList(function.Parameters, map),
+                InstantiateTypeList(function.Return, map),
+                function.TypeParameters);
         }
 
         return type;
