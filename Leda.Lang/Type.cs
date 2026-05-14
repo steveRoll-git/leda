@@ -89,9 +89,11 @@ public abstract class Type
         /// <summary>
         /// This function's return types.
         /// </summary>
-        public TypeList Return => returns;
+        public TypeList Returns => returns;
 
         public List<TypeParameter> TypeParameters => typeParameters;
+
+        public bool IsGeneric => TypeParameters.Count > 0;
     }
 
     /// <summary>

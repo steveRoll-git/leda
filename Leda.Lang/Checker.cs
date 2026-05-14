@@ -126,7 +126,13 @@ public class Checker
         if (target is Type.Function function)
         {
             // TODO support overloads
-            CheckAssignment(function.Parameters, call.Arguments, TypeListKind.Argument, call.Target.Range);
+            var paramTypes = function.Parameters;
+            if (function.IsGeneric)
+            {
+                paramTypes = evaluator.InstantiateTypeList(paramTypes, evaluator.GetGenericCallTypeMap(call, function));
+            }
+
+            CheckAssignment(paramTypes, call.Arguments, TypeListKind.Argument, call.Target.Range);
         }
     }
 
@@ -401,7 +407,7 @@ public class Checker
         var (function, inferReturn, _) = functionStack.Peek();
         if (!inferReturn)
         {
-            CheckAssignment(function.Return, returnStatement.Values, TypeListKind.Return, returnStatement.Range);
+            CheckAssignment(function.Returns, returnStatement.Values, TypeListKind.Return, returnStatement.Range);
         }
 
         VisitExpressionList(returnStatement.Values);

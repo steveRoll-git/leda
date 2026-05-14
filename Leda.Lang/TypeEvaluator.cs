@@ -366,7 +366,7 @@ public class TypeEvaluator(Source source)
                 GetTypeInTypeList(function.Parameters, argIndex),
             AssignmentPath.ReturnValue { Return: var returnStmt, Index: var returnIndex }
                 when returnStmt.ParentChunk.ParentFunction is { } function =>
-                GetTypeInTypeList(GetTypeOfFunction(function).Return, returnIndex),
+                GetTypeInTypeList(GetTypeOfFunction(function).Returns, returnIndex),
             _ => Type.Unknown
         };
 
@@ -577,7 +577,7 @@ public class TypeEvaluator(Source source)
         {
             // This will not instantiate the function's own type parameters if it has any.
             return new Type.Function(InstantiateTypeList(function.Parameters, map),
-                InstantiateTypeList(function.Return, map),
+                InstantiateTypeList(function.Returns, map),
                 function.TypeParameters);
         }
 
@@ -682,27 +682,49 @@ public class TypeEvaluator(Source source)
         }
     }
 
+    private readonly Dictionary<Tree.Expression.Call, TypeMap> genericCallTypeMapCache = [];
+
+    /// <summary>
+    /// Returns the TypeMap of a generic call - either through explicitly given type arguments, or by inferring them.
+    /// </summary>
+    internal TypeMap GetGenericCallTypeMap(Tree.Expression.Call call, Type.Function calleeType)
+    {
+        if (genericCallTypeMapCache.TryGetValue(call, out var cached))
+        {
+            return cached;
+        }
+
+        var typeMap = new TypeMap();
+        if (call.TypeArguments != null)
+        {
+            for (var i = 0; i < Math.Min(calleeType.TypeParameters.Count, call.TypeArguments.Count); i++)
+            {
+                typeMap[calleeType.TypeParameters[i]] = GetTypeOfTypeAnnotation(call.TypeArguments[i]);
+            }
+        }
+        else
+        {
+            // TODO infer type arguments
+        }
+
+        genericCallTypeMapCache.Add(call, typeMap);
+
+        return typeMap;
+    }
+
     private TypeList GetTypeListOfCall(Tree.Expression.Call call)
     {
         var targetType = GetTypeOfExpression(call.Target);
-        if (targetType is Type.Function { Return: var returns, TypeParameters: var typeParameters })
+        if (targetType is Type.Function calleeType)
         {
             // TODO check whether the return types need to be instantiated at all
-            if (typeParameters.Count > 0)
+            if (calleeType.IsGeneric)
             {
-                var typeMap = new TypeMap();
-                if (call.TypeArguments != null)
-                {
-                    for (var i = 0; i < Math.Min(typeParameters.Count, call.TypeArguments.Count); i++)
-                    {
-                        typeMap[typeParameters[i]] = GetTypeOfTypeAnnotation(call.TypeArguments[i]);
-                    }
-                }
-
-                return InstantiateTypeList(returns, typeMap);
+                var typeMap = GetGenericCallTypeMap(call, calleeType);
+                return InstantiateTypeList(calleeType.Returns, typeMap);
             }
 
-            return returns;
+            return calleeType.Returns;
         }
 
         return TypeList.Unknown;
@@ -723,7 +745,7 @@ public class TypeEvaluator(Source source)
     /// <summary>
     /// Instantiates a TypeList containing generic types with the given TypeMap.
     /// </summary>
-    private TypeList InstantiateTypeList(TypeList typeList, TypeMap map)
+    internal TypeList InstantiateTypeList(TypeList typeList, TypeMap map)
     {
         return new TypeList.Instantiation(typeList, map);
     }
@@ -900,7 +922,7 @@ public class TypeEvaluator(Source source)
             reasons.AddRange(parameterReasons);
         }
 
-        if (!IsAssignableFrom(targetFunction.Return, sourceFunction.Return, out var returnReasons,
+        if (!IsAssignableFrom(targetFunction.Returns, sourceFunction.Returns, out var returnReasons,
                 TypeListKind.FunctionTypeReturn))
         {
             reasons.AddRange(returnReasons);
@@ -1075,7 +1097,7 @@ public class TypeEvaluator(Source source)
         var typeParameters = function.TypeParameters.Count > 0
             ? $"<{string.Join(", ", function.TypeParameters.Select(t => t.Name))}>"
             : "";
-        var returns = function.Return == TypeList.Empty ? "" : ": " + TypeListToString(function.Return);
+        var returns = function.Returns == TypeList.Empty ? "" : ": " + TypeListToString(function.Returns);
         return $"{typeParameters}({parameters}){returns}";
     }
 
