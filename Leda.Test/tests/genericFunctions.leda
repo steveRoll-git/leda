@@ -1,0 +1,7 @@
+local function f<T>()
+  return function<U>(t: T, u: U) return t, u end
+end
+
+local x = f.<{x: number}>()
+local y: {x: number}, z: number = x.<number>({x = 123}, "asdf")
+local u: number = y.x
