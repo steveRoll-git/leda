@@ -687,24 +687,25 @@ public class TypeEvaluator(Source source)
     /// <summary>
     /// Returns the TypeMap of a generic call - either through explicitly given type arguments, or by inferring them.
     /// </summary>
-    internal TypeMap GetGenericCallTypeMap(Tree.Expression.Call call, Type.Function calleeType)
+    internal TypeMap GetGenericCallTypeMap(Tree.Expression.Call call, Type.Function callee)
     {
         if (genericCallTypeMapCache.TryGetValue(call, out var cached))
         {
             return cached;
         }
 
-        var typeMap = new TypeMap();
+        TypeMap typeMap;
         if (call.TypeArguments != null)
         {
-            for (var i = 0; i < Math.Min(calleeType.TypeParameters.Count, call.TypeArguments.Count); i++)
+            typeMap = new();
+            for (var i = 0; i < Math.Min(callee.TypeParameters.Count, call.TypeArguments.Count); i++)
             {
-                typeMap[calleeType.TypeParameters[i]] = GetTypeOfTypeAnnotation(call.TypeArguments[i]);
+                typeMap[callee.TypeParameters[i]] = GetTypeOfTypeAnnotation(call.TypeArguments[i]);
             }
         }
         else
         {
-            // TODO infer type arguments
+            typeMap = InferCallTypeParameters(call, callee);
         }
 
         genericCallTypeMapCache.Add(call, typeMap);
@@ -712,19 +713,34 @@ public class TypeEvaluator(Source source)
         return typeMap;
     }
 
+    private TypeMap InferCallTypeParameters(Tree.Expression.Call call, Type.Function callee)
+    {
+        var typeMap = new TypeMap();
+        for (var i = 0; i < callee.Parameters.Count; i++)
+        {
+            if (GetTypeInTypeList(callee.Parameters, i) is Type.TypeParameter typeParameter &&
+                GetTypeOfExpressionInList(call.Arguments, i) is { } argument)
+            {
+                typeMap.Add(typeParameter, argument);
+            }
+        }
+
+        return typeMap;
+    }
+
     private TypeList GetTypeListOfCall(Tree.Expression.Call call)
     {
         var targetType = GetTypeOfExpression(call.Target);
-        if (targetType is Type.Function calleeType)
+        if (targetType is Type.Function function)
         {
             // TODO check whether the return types need to be instantiated at all
-            if (calleeType.IsGeneric)
+            if (function.IsGeneric)
             {
-                var typeMap = GetGenericCallTypeMap(call, calleeType);
-                return InstantiateTypeList(calleeType.Returns, typeMap);
+                var typeMap = GetGenericCallTypeMap(call, function);
+                return InstantiateTypeList(function.Returns, typeMap);
             }
 
-            return calleeType.Returns;
+            return function.Returns;
         }
 
         return TypeList.Unknown;
