@@ -719,6 +719,7 @@ public class TypeEvaluator(Source source)
         for (var i = 0; i < callee.Parameters.Count; i++)
         {
             if (GetTypeInTypeList(callee.Parameters, i) is Type.TypeParameter typeParameter &&
+                callee.TypeParameters.Contains(typeParameter) &&
                 GetTypeOfExpressionInList(call.Arguments, i) is { } argument)
             {
                 typeMap.Add(typeParameter, argument);
