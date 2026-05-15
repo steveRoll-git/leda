@@ -1,0 +1,12 @@
+local function f<T, U>(t: T, u: U)
+  return {a = t, b = u}
+end
+
+local t: {a: string, b: number} = f("a", 123)
+
+local function g<T>()
+  local function d<U>(t: T, u: U)
+    return t, u
+  end
+  local a: T, b: number = d(123, 456)
+end

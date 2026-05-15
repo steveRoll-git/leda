@@ -5,10 +5,3 @@ end
 local x = f.<{x: number}>()
 local y: {x: number}, z: number = x.<number>({x = 123}, "asdf")
 local u: number = y.x
-
-local function g<T>()
-  local function d<U>(t: T, u: U)
-    return t
-  end
-  local a: T = d(123, 456)
-end

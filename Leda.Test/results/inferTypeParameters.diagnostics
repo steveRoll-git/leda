@@ -1,0 +1,2 @@
+TypeMismatch(11:29 11:32)
+Error: Type 'number' is not assignable to type 'T'.
