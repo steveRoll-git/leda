@@ -39,6 +39,8 @@ public class Parser
 
     private record ChunkInfo(List<Tree.Statement.Return> ReturnStatements);
 
+    private record FileInfo(List<Tree.Statement.GlobalDeclaration> GlobalDeclarations);
+
     private readonly Stack<ChunkInfo> chunkStack = new();
 
     private static bool IsAssignableTo(Tree.Expression tree) => tree is Tree.Expression.Name or Tree.Expression.Access;
@@ -217,7 +219,7 @@ public class Parser
     /// <summary>
     /// Parse a block of statements.
     /// </summary>
-    private Tree.Block ParseBlock()
+    private Tree.Block ParseBlock(FileInfo? fileInfo = null)
     {
         var statements = new List<Tree.Statement>();
         var typeDeclarations = new List<Tree.TypeAliasDeclaration>();
@@ -228,6 +230,19 @@ public class Parser
             if (token is { Kind: TokenKind.Name, Value: "type" } && Lookahead(1).Kind == TokenKind.Name)
             {
                 typeDeclarations.Add(ParseTypeAlias());
+            }
+            else if (token is { Kind: TokenKind.Name, Value: "global" } &&
+                     Lookahead(1).Kind is TokenKind.Name or TokenKind.Function)
+            {
+                var globalDeclaration = ParseGlobalDeclaration();
+                if (fileInfo != null)
+                {
+                    fileInfo.GlobalDeclarations.Add(globalDeclaration);
+                }
+                else
+                {
+                    Report(new Diagnostic.GlobalNotDeclaredInFile(globalDeclaration.Range));
+                }
             }
             else
             {
@@ -253,15 +268,24 @@ public class Parser
         return new Tree.Block(statements, typeDeclarations, labels);
     }
 
-    private Tree.Chunk ParseChunk()
+    private Tree.Chunk ParseChunk(FileInfo? fileInfo)
     {
-        var functionInfo = new ChunkInfo([]);
+        var chunkInfo = new ChunkInfo([]);
 
-        chunkStack.Push(functionInfo);
-        var block = ParseBlock();
+        chunkStack.Push(chunkInfo);
+        var block = ParseBlock(fileInfo);
         chunkStack.Pop();
 
-        return new Tree.Chunk(block.Statements, block.TypeDeclarations, block.Labels, functionInfo.ReturnStatements);
+        return new Tree.Chunk(block.Statements, block.TypeDeclarations, block.Labels, chunkInfo.ReturnStatements);
+    }
+
+    private Tree.File ParseFile()
+    {
+        var fileInfo = new FileInfo([]);
+
+        var chunk = ParseChunk(fileInfo);
+
+        return new Tree.File(chunk, fileInfo.GlobalDeclarations);
     }
 
     /// <summary>
@@ -648,6 +672,34 @@ public class Parser
         return EndTree(new Tree.Statement.LocalDeclaration(declarations, values));
     }
 
+    private Tree.Statement.GlobalDeclaration ParseGlobalDeclaration()
+    {
+        StartTree();
+
+        Expect(TokenKind.Name); // The token expected here is `global`, but this is already caught by `ParseBlock`.
+
+        if (Accept(TokenKind.Function))
+        {
+            // 'global' 'function' name funcbody
+            var name = ParseValueName();
+            var function = ParseFunctionBody(name.Range, false);
+            // A global function declaration is equivalent to a global declaration that assigns a function to one
+            // variable.
+            return EndTree(new Tree.Statement.GlobalDeclaration([new(name, null)], [function]));
+        }
+
+        // 'global' declaration {',' declaration} ['=' explist]
+        var declarations = ParseDeclarationList();
+
+        List<Tree.Expression> values = [];
+        if (Accept(TokenKind.Assign))
+        {
+            values = ParseExpressionList();
+        }
+
+        return EndTree(new Tree.Statement.GlobalDeclaration(declarations, values));
+    }
+
     private Tree.Statement.Assignment ParseFunctionDeclaration()
     {
         StartTree();
@@ -770,7 +822,7 @@ public class Parser
         // functiontype block 'end'
         var functionType = ParseFunctionType(isMethod);
 
-        var chunk = ParseChunk();
+        var chunk = ParseChunk(null);
         Expect(TokenKind.End);
 
         return EndTree(new Tree.Expression.Function(functionType, chunk, nameRange, isMethod));
@@ -1082,10 +1134,10 @@ public class Parser
     /// <summary>
     /// Parse this source's contents and return the file's syntax tree.
     /// </summary>
-    public static (Tree.Chunk chunk, List<Diagnostic> diagnostics) ParseFile(Source source)
+    public static (Tree.File file, List<Diagnostic> diagnostics) ParseFile(Source source)
     {
         var parser = new Parser(source);
-        var chunk = parser.ParseChunk();
-        return (chunk, parser.Diagnostics);
+        var file = parser.ParseFile();
+        return (file, parser.Diagnostics);
     }
 }

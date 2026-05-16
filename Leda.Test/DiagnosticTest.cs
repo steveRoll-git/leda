@@ -30,7 +30,7 @@ public class DiagnosticTest
                  """);
         }
 
-        var actualCode = Emitter.Emit(source.Chunk);
+        var actualCode = Emitter.Emit(source.File);
         if (testScenario.ExpectedCode != actualCode)
         {
             Assert.Fail($"""

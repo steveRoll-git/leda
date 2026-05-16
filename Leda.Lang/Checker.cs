@@ -707,8 +707,8 @@ public class Checker
     public static List<Diagnostic> Check(Source source, TypeEvaluator evaluator)
     {
         var checker = new Checker(source, evaluator);
-        checker.functionStack.Push(new(new Type.Function(TypeList.Any, TypeList.Any, []), false, source.Chunk));
-        checker.VisitBlock(source.Chunk);
+        checker.functionStack.Push(new(new Type.Function(TypeList.Any, TypeList.Any, []), false, source.File));
+        checker.VisitBlock(source.File);
         return checker.Diagnostics;
     }
 }

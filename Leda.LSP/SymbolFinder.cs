@@ -200,7 +200,7 @@ public static class SymbolFinder
     public static (Symbol? symbol, Range range, Tree.Expression? expression) GetSymbolAtPosition(Source source,
         Position position)
     {
-        var result = GetNameAtPosition(source.Chunk, position);
+        var result = GetNameAtPosition(source.File, position);
         if (result is { Name: var name, Expression: var expression })
         {
             return (source.GetTreeSymbol(name), name.Range, expression);

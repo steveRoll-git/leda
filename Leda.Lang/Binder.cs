@@ -65,7 +65,7 @@ public class Binder
         this.source = source;
 
         scopes.Add(InitialScope);
-        PushChunkScope(source.Chunk);
+        PushChunkScope(source.File);
     }
 
     private void Report(Diagnostic diagnostic)

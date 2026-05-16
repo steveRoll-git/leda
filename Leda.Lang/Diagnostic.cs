@@ -100,10 +100,10 @@ public abstract record Diagnostic(Range Range)
         public override string Message => "This expression cannot be assigned to.";
     }
 
-    public record NoImplicitGlobalFunction(Range Range) : Diagnostic(Range)
+    public record GlobalNotDeclaredInFile(Range Range) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => "Function is implicitly global. Prefix 'global' if this is intentional.";
+        public override string Message => "Global variables can only be declared in file scope.";
     }
 
     public record NameNotFound(Range Range, string Name, Tree.NameContext Context) : Diagnostic(Range)

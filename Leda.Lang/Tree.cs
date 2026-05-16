@@ -123,10 +123,24 @@ public abstract class Tree
                 returnStatement.ParentChunk = this;
             }
         }
+    }
 
-        public Chunk() : base([], [], [])
+    /// <summary>
+    /// The contents of a file, containing its chunk and the global declarations in it.
+    /// </summary>
+    public class File : Chunk
+    {
+        public List<Statement.GlobalDeclaration> GlobalDeclarations { get; }
+
+        public File(Chunk chunk, List<Statement.GlobalDeclaration> globalDeclarations)
+            : base(chunk.Statements, chunk.TypeDeclarations, chunk.Labels, chunk.ReturnStatements)
         {
-            ReturnStatements = [];
+            GlobalDeclarations = globalDeclarations;
+        }
+
+        public File() : base([], [], [], [])
+        {
+            GlobalDeclarations = [];
         }
     }
 
@@ -490,7 +504,7 @@ public abstract class Tree
         /// <summary>
         /// The name references a label.
         /// </summary>
-        Label
+        Label,
     }
 
     /// <summary>

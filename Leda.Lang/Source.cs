@@ -25,7 +25,7 @@ public class Source
     /// <summary>
     /// The syntax tree for this file.
     /// </summary>
-    public Tree.Chunk Chunk { get; private set; }
+    public Tree.File File { get; private set; }
 
     /// <summary>
     /// Maps Tree nodes to the symbol they refer to.
@@ -49,7 +49,7 @@ public class Source
     /// </summary>
     public static Source ReadFromFile(string path)
     {
-        return new Source(path, File.ReadAllText(path));
+        return new Source(path, System.IO.File.ReadAllText(path));
     }
 
     /// <summary>
@@ -59,7 +59,7 @@ public class Source
     {
         Path = path;
         Code = code;
-        Chunk = new Tree.Chunk();
+        File = new Tree.File();
         Evaluator = new TypeEvaluator(this);
 
         // Map all newline numbers to the indices they appear at.
@@ -99,7 +99,7 @@ public class Source
     public List<Diagnostic> Parse()
     {
         var (tree, diagnostics) = Parser.ParseFile(this);
-        Chunk = tree;
+        File = tree;
         return diagnostics;
     }
 
@@ -110,7 +110,7 @@ public class Source
     {
         treeSymbolMap = [];
         SymbolReferences = [];
-        return Binder.Bind(this, Chunk);
+        return Binder.Bind(this, File);
     }
 
     /// <summary>
