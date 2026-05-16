@@ -42,11 +42,12 @@ public abstract class FlowNode
     }
 
     /// <summary>
-    /// A FlowNode where local variables are declared.
+    /// A FlowNode where local or global variables are declared.
     /// </summary>
-    public class LocalDeclaration(FlowNode antecedent, Tree.Statement.LocalDeclaration declaration) : Basic(antecedent)
+    public class VariableDeclaration(FlowNode antecedent, Tree.Statement.VariableDeclaration declaration)
+        : Basic(antecedent)
     {
-        public Tree.Statement.LocalDeclaration Declaration => declaration;
+        public Tree.Statement.VariableDeclaration Declaration => declaration;
     }
 
     /// <summary>

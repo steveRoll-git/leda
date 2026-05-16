@@ -243,6 +243,8 @@ public class Parser
                 {
                     Report(new Diagnostic.GlobalNotDeclaredInFile(globalDeclaration.Range));
                 }
+
+                statements.Add(globalDeclaration);
             }
             else
             {

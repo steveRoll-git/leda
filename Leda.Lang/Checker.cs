@@ -36,9 +36,9 @@ public class Checker
     }
 
     /// <summary>
-    /// Returns whether a local variable is definitely assigned a value at the given FlowNode.
+    /// Returns whether a variable is definitely assigned a value at the given FlowNode.
     /// </summary>
-    private bool IsLocalVariableAssignedAtFlowNode(Symbol.LocalVariable variable, FlowNode? flowNode)
+    private bool IsVariableAssignedAtFlowNode(Symbol.Variable variable, FlowNode? flowNode)
     {
         if (flowNode == null)
         {
@@ -48,7 +48,7 @@ public class Checker
         if (flowNode is FlowNode.Start ||
             // This function is called only if `variable.Uninitialized` is true in the first place,
             // so it's definitely not assigned if we reached its declaration.
-            (flowNode is FlowNode.LocalDeclaration { Declaration: var declaration } &&
+            (flowNode is FlowNode.VariableDeclaration { Declaration: var declaration } &&
              declaration == variable.Declaration))
         {
             return false;
@@ -64,14 +64,14 @@ public class Checker
                 }
             }
 
-            return IsLocalVariableAssignedAtFlowNode(variable, assignment.Antecedent);
+            return IsVariableAssignedAtFlowNode(variable, assignment.Antecedent);
         }
 
         if (flowNode is FlowNode.Label { Antecedents: var antecedents })
         {
             foreach (var antecedent in antecedents)
             {
-                if (!IsLocalVariableAssignedAtFlowNode(variable, antecedent))
+                if (!IsVariableAssignedAtFlowNode(variable, antecedent))
                 {
                     return false;
                 }
@@ -82,7 +82,7 @@ public class Checker
 
         if (flowNode is FlowNode.Basic basic)
         {
-            return IsLocalVariableAssignedAtFlowNode(variable, basic.Antecedent);
+            return IsVariableAssignedAtFlowNode(variable, basic.Antecedent);
         }
 
         return false;
@@ -200,17 +200,14 @@ public class Checker
             case Tree.Statement.Do @do:
                 VisitStatement(@do);
                 break;
-            case Tree.Statement.GlobalDeclaration globalDeclaration:
-                VisitStatement(globalDeclaration);
-                break;
             case Tree.Statement.If @if:
                 VisitStatement(@if);
                 break;
             case Tree.Statement.IteratorFor iteratorFor:
                 VisitStatement(iteratorFor);
                 break;
-            case Tree.Statement.LocalDeclaration localDeclaration:
-                VisitStatement(localDeclaration);
+            case Tree.Statement.VariableDeclaration variableDeclaration: // Covers both local and global declarations.
+                VisitStatement(variableDeclaration);
                 break;
             case Tree.Statement.LocalFunctionDeclaration localFunctionDeclaration:
                 VisitStatement(localFunctionDeclaration);
@@ -418,43 +415,38 @@ public class Checker
         VisitFunction(declaration.Function);
     }
 
-    private void VisitStatement(Tree.Statement.GlobalDeclaration declaration)
+    private void VisitStatement(Tree.Statement.VariableDeclaration variableDeclaration)
     {
-        throw new NotImplementedException();
-    }
-
-    private void VisitStatement(Tree.Statement.LocalDeclaration localDeclaration)
-    {
-        for (var i = 0; i < localDeclaration.Values.Count; i++)
+        for (var i = 0; i < variableDeclaration.Values.Count; i++)
         {
-            var value = localDeclaration.Values[i];
+            var value = variableDeclaration.Values[i];
             VisitExpression(value,
                 // Generate symbols for table fields only if the value is inferred.
-                i < localDeclaration.Declarations.Count && localDeclaration.Declarations[i].Type == null);
+                i < variableDeclaration.Declarations.Count && variableDeclaration.Declarations[i].Type == null);
 
-            if (i >= localDeclaration.Declarations.Count)
+            if (i >= variableDeclaration.Declarations.Count)
             {
                 Report(new Diagnostic.ValueNotAssigned(value.Range));
             }
         }
 
-        // For each local variable with a type annotation and a value assigned to it, we check the value with the type.
-        for (var i = 0; i < localDeclaration.Declarations.Count; i++)
+        // For each variable with a type annotation and a value assigned to it, we check the value with the type.
+        for (var i = 0; i < variableDeclaration.Declarations.Count; i++)
         {
-            var declaration = localDeclaration.Declarations[i];
+            var declaration = variableDeclaration.Declarations[i];
             if (declaration.Type != null)
             {
                 var targetType = evaluator.GetTypeOfTypeAnnotation(declaration.Type);
-                if (i < localDeclaration.Values.Count)
+                if (i < variableDeclaration.Values.Count)
                 {
-                    var value = localDeclaration.Values[i];
+                    var value = variableDeclaration.Values[i];
                     CheckValueToType(targetType, value, declaration.Name);
                 }
-                else if (localDeclaration.Values.Count >= 1 &&
-                         evaluator.GetTypeListOfExpression(localDeclaration.Values[^1]) is { } typeList)
+                else if (variableDeclaration.Values.Count >= 1 &&
+                         evaluator.GetTypeListOfExpression(variableDeclaration.Values[^1]) is { } typeList)
                 {
                     CheckTypeToType(targetType,
-                        evaluator.GetTypeInTypeList(typeList, i - localDeclaration.Values.Count + 1),
+                        evaluator.GetTypeInTypeList(typeList, i - variableDeclaration.Values.Count + 1),
                         declaration.Name.Range);
                 }
             }
@@ -584,10 +576,10 @@ public class Checker
     private void VisitExpression(Tree.Expression.Name name, bool isAssignmentTarget)
     {
         if (!isAssignmentTarget &&
-            source.GetTreeSymbol(name) is Symbol.LocalVariable localVariable &&
-            localVariable.Uninitialized &&
-            localVariable.Chunk == functionStack.Peek().Chunk &&
-            !IsLocalVariableAssignedAtFlowNode(localVariable, name.FlowNode))
+            source.GetTreeSymbol(name) is Symbol.Variable variable &&
+            variable.Uninitialized &&
+            variable.Chunk == functionStack.Peek().Chunk &&
+            !IsVariableAssignedAtFlowNode(variable, name.FlowNode))
         {
             Report(new Diagnostic.VariableUsedBeforeAssignment(name.Range, name.Value));
         }

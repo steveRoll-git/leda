@@ -33,7 +33,7 @@ public class Binder
     private readonly List<Scope> scopes = [];
 
     /// <summary>
-    /// Any name in the source code might refer to a value, or a type, or both.
+    /// Stores the different kinds of symbols which a name is bound to at a given scope.
     /// </summary>
     private class Binding(Symbol? value, Symbol? type)
     {
@@ -78,7 +78,7 @@ public class Binder
     /// </summary>
     private void PushScope()
     {
-        scopes.Add(new Scope(scopes[^1].Chunk, scopes[^1].Loop));
+        scopes.Add(new Scope(CurrentScope.Chunk, CurrentScope.Loop));
     }
 
     /// <summary>
@@ -94,7 +94,7 @@ public class Binder
     /// </summary>
     private void PushLoopScope(Tree loop)
     {
-        scopes.Add(new Scope(scopes[^1].Chunk, loop));
+        scopes.Add(new Scope(CurrentScope.Chunk, loop));
     }
 
     private void PopScope()
@@ -119,7 +119,7 @@ public class Binder
                     Tree.NameContext.Value => binding.ValueSymbol,
                     Tree.NameContext.Type => binding.TypeSymbol,
                     Tree.NameContext.Label => binding.Label,
-                    _ => null
+                    _ => null,
                 };
 
                 if (symbol != null)
@@ -279,8 +279,8 @@ public class Binder
         {
             assignmentPathStack.Push(parent switch
                 {
-                    Tree.Statement.LocalDeclaration localDeclaration =>
-                        new AssignmentPath.LocalVariable(localDeclaration, i),
+                    Tree.Statement.VariableDeclaration variableDeclaration =>
+                        new AssignmentPath.Variable(variableDeclaration, i),
                     Tree.Statement.Assignment assignment =>
                         new AssignmentPath.AssignmentValue(assignment, i),
                     Tree.Expression.Call call =>
@@ -288,7 +288,7 @@ public class Binder
                     Tree.Expression.MethodCall => throw new NotImplementedException(),
                     Tree.Statement.Return returnStmt =>
                         new AssignmentPath.ReturnValue(returnStmt, i),
-                    _ => throw new Exception() // Unreachable.
+                    _ => throw new Exception(), // Unreachable.
                 }
             );
 
@@ -548,12 +548,17 @@ public class Binder
         PopScope();
     }
 
-    private FlowNode VisitStatement(Tree.Statement.GlobalDeclaration declaration, FlowNode? antecedent)
+    /// <summary>
+    /// Returns whether a declared variable is not initialized with a value.
+    /// </summary>
+    private static bool IsVariableUninitialized(Tree.Statement.VariableDeclaration declaration, int index)
     {
-        throw new NotImplementedException();
+        return index >= declaration.Values.Count &&
+               (declaration.Values.Count <= 0 ||
+                declaration.Values[^1] is not Tree.Expression.Call or Tree.Expression.Vararg);
     }
 
-    private FlowNode.LocalDeclaration? VisitStatement(Tree.Statement.LocalDeclaration localDeclaration,
+    private FlowNode.VariableDeclaration? VisitStatement(Tree.Statement.LocalDeclaration localDeclaration,
         FlowNode? antecedent)
     {
         Visit(localDeclaration.Values, localDeclaration, antecedent);
@@ -563,12 +568,10 @@ public class Binder
             var declaration = localDeclaration.Declarations[i];
 
             AddSymbol(declaration.Name, new Symbol.LocalVariable(
-                declaration: localDeclaration,
+                localDeclaration: localDeclaration,
                 index: i,
-                uninitialized: i >= localDeclaration.Values.Count &&
-                               (localDeclaration.Values.Count <= 0 ||
-                                localDeclaration.Values[^1] is not Tree.Expression.Call or Tree.Expression.Vararg),
-                chunk: scopes[^1].Chunk!));
+                uninitialized: IsVariableUninitialized(localDeclaration, i),
+                chunk: CurrentScope.Chunk!));
 
             if (declaration.Type != null)
             {
@@ -576,7 +579,24 @@ public class Binder
             }
         }
 
-        return antecedent == null ? null : new FlowNode.LocalDeclaration(antecedent, localDeclaration);
+        return antecedent == null ? null : new FlowNode.VariableDeclaration(antecedent, localDeclaration);
+    }
+
+    private FlowNode.VariableDeclaration? VisitStatement(Tree.Statement.GlobalDeclaration globalDeclaration,
+        FlowNode? antecedent)
+    {
+        Visit(globalDeclaration.Values, globalDeclaration, antecedent);
+
+        // Symbols for global variables are added in VisitFile, so we don't need to here.
+        foreach (var declaration in globalDeclaration.Declarations)
+        {
+            if (declaration.Type != null)
+            {
+                Visit(declaration.Type);
+            }
+        }
+
+        return antecedent == null ? null : new FlowNode.VariableDeclaration(antecedent, globalDeclaration);
     }
 
     private ConditionBranch VisitIfBranch(Tree.IfBranch branch, FlowNode? antecedent)
@@ -684,7 +704,7 @@ public class Binder
 
     private void VisitStatement(Tree.Statement.Break brk)
     {
-        if (scopes[^1].Loop == null)
+        if (CurrentScope.Loop == null)
         {
             Report(new Diagnostic.BreakOutsideOfLoop(brk.Range));
         }
@@ -710,7 +730,7 @@ public class Binder
         var name = @goto.Name;
 
         if (TryGetBinding(name.Value, Tree.NameContext.Label) is ({ } symbol, { } scope) &&
-            scope.Chunk == scopes[^1].Chunk)
+            scope.Chunk == CurrentScope.Chunk)
         {
             source.AttachSymbol(name, symbol);
             if (labelFlowNodes.TryGetValue(name, out var flowNode))
@@ -784,14 +804,33 @@ public class Binder
         chunk.AllPathsReturn = descendent == null;
     }
 
+    private void VisitFile(Tree.File file)
+    {
+        foreach (var globalDeclaration in file.GlobalDeclarations)
+        {
+            for (var i = 0; i < globalDeclaration.Declarations.Count; i++)
+            {
+                var declaration = globalDeclaration.Declarations[i];
+
+                AddSymbol(declaration.Name, new Symbol.GlobalVariable(
+                    globalDeclaration: globalDeclaration,
+                    index: i,
+                    uninitialized: IsVariableUninitialized(globalDeclaration, i),
+                    chunk: CurrentScope.Chunk!));
+            }
+        }
+
+        VisitChunk(file);
+    }
+
     /// <summary>
     /// Visits all nodes in the given tree to assign Symbols to top-level Name nodes, and to generate the control flow
     /// graph.
     /// </summary>
-    public static List<Diagnostic> Bind(Source source, Tree.Chunk chunk)
+    public static List<Diagnostic> Bind(Source source, Tree.File file)
     {
         var binder = new Binder(source);
-        binder.VisitChunk(chunk);
+        binder.VisitFile(file);
         return binder.Diagnostics;
     }
 

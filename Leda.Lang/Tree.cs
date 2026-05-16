@@ -218,22 +218,25 @@ public abstract class Tree
         }
 
         /// <summary>
-        /// Declarations of one or more local variables.
+        /// Declarations of one or more variables.
         /// </summary>
-        public class LocalDeclaration(List<Declaration> declarations, List<Expression> values) : Statement
+        public class VariableDeclaration(List<Declaration> declarations, List<Expression> values) : Statement
         {
             public List<Declaration> Declarations => declarations;
             public List<Expression> Values => values;
         }
 
         /// <summary>
+        /// Declarations of one or more local variables.
+        /// </summary>
+        public class LocalDeclaration(List<Declaration> declarations, List<Expression> values)
+            : VariableDeclaration(declarations, values);
+
+        /// <summary>
         /// Declarations of one or more global variables.
         /// </summary>
-        public class GlobalDeclaration(List<Declaration> declarations, List<Expression> values) : Statement
-        {
-            public List<Declaration> Declarations => declarations;
-            public List<Expression> Values => values;
-        }
+        public class GlobalDeclaration(List<Declaration> declarations, List<Expression> values)
+            : VariableDeclaration(declarations, values);
 
         /// <summary>
         /// A local function declaration.<br/>
@@ -530,7 +533,7 @@ internal abstract record AssignmentPath
 
     public record AssignmentValue(Tree.Statement.Assignment Assignment, int Index) : AssignmentPath;
 
-    public record LocalVariable(Tree.Statement.LocalDeclaration LocalDeclaration, int Index) : AssignmentPath;
+    public record Variable(Tree.Statement.VariableDeclaration VariableDeclaration, int Index) : AssignmentPath;
 
     public record Argument(Tree.Expression.Call Call, int Index) : AssignmentPath;
 

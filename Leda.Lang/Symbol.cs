@@ -13,20 +13,40 @@ public abstract class Symbol(string name)
     public string Name => name;
 
     /// <summary>
-    /// A local variable.
+    /// A local or global variable.
     /// </summary>
-    public class LocalVariable(
-        Tree.Statement.LocalDeclaration declaration,
+    public class Variable(
+        Tree.Statement.VariableDeclaration declaration,
         int index,
         bool uninitialized,
         Tree.Chunk chunk)
         : Symbol(declaration.Declarations[index].Name.Value)
     {
-        public Tree.Statement.LocalDeclaration Declaration => declaration;
+        public Tree.Statement.VariableDeclaration Declaration => declaration;
         public int Index => index;
         public bool Uninitialized => uninitialized;
         public Tree.Chunk Chunk => chunk;
     }
+
+    /// <summary>
+    /// A local variable.
+    /// </summary>
+    public class LocalVariable(
+        Tree.Statement.LocalDeclaration localDeclaration,
+        int index,
+        bool uninitialized,
+        Tree.Chunk chunk)
+        : Variable(localDeclaration, index, uninitialized, chunk);
+
+    /// <summary>
+    /// A global variable.
+    /// </summary>
+    public class GlobalVariable(
+        Tree.Statement.GlobalDeclaration globalDeclaration,
+        int index,
+        bool uninitialized,
+        Tree.Chunk chunk)
+        : Variable(globalDeclaration, index, uninitialized, chunk);
 
     /// <summary>
     /// A function defined with `local function`.

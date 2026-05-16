@@ -339,24 +339,24 @@ public class TypeEvaluator(Source source)
         return GetQueryOrCached(GetTypeOfFunctionAnnotationUncached, function, functionAnnotationCache);
     }
 
-    private Type GetTypeOfLocalVariable(Symbol.LocalVariable localVariable)
+    private Type GetTypeOfVariable(Symbol.Variable variable)
     {
-        var declaration = localVariable.Declaration.Declarations[localVariable.Index];
+        var declaration = variable.Declaration.Declarations[variable.Index];
 
         if (declaration.Type != null)
         {
             return GetTypeOfTypeAnnotation(declaration.Type);
         }
 
-        return GetTypeOfExpressionInList(localVariable.Declaration.Values, localVariable.Index);
+        return GetTypeOfExpressionInList(variable.Declaration.Values, variable.Index);
     }
 
     private Type GetAssignmentPathType(AssignmentPath assignmentPath)
     {
         var path = assignmentPath switch
         {
-            AssignmentPath.LocalVariable { LocalDeclaration.Declarations: var declarations, Index: var localIndex }
-                when localIndex < declarations.Count && declarations[localIndex].Type is { } annotation =>
+            AssignmentPath.Variable { VariableDeclaration.Declarations: var declarations, Index: var varIndex }
+                when varIndex < declarations.Count && declarations[varIndex].Type is { } annotation =>
                 GetTypeOfTypeAnnotation(annotation),
             AssignmentPath.AssignmentValue { Assignment.Targets: var targets, Index: var assignIndex }
                 when assignIndex < targets.Count =>
@@ -367,7 +367,7 @@ public class TypeEvaluator(Source source)
             AssignmentPath.ReturnValue { Return: var returnStmt, Index: var returnIndex }
                 when returnStmt.ParentChunk.ParentFunction is { } function =>
                 GetTypeInTypeList(GetTypeOfFunction(function).Returns, returnIndex),
-            _ => Type.Unknown
+            _ => Type.Unknown,
         };
 
         foreach (var key in assignmentPath.TableFields)
@@ -421,7 +421,7 @@ public class TypeEvaluator(Source source)
     {
         return symbol switch
         {
-            Symbol.LocalVariable localVariable => GetTypeOfLocalVariable(localVariable),
+            Symbol.Variable variable => GetTypeOfVariable(variable),
             Symbol.LocalFunction localFunction => GetTypeOfFunction(localFunction.Declaration.Function),
             Symbol.Parameter parameter => GetTypeOfParameter(parameter.Function, parameter.Index),
             Symbol.NumericForCounter => Type.NumberPrimitive,

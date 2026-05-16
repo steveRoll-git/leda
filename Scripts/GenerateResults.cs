@@ -38,7 +38,7 @@ foreach (var testCodePath in matcher.GetResultsInFullPath(testFilesPath))
     File.WriteAllText(testDiagnosticsPath, diagnosticsOutput);
     Console.WriteLine("Generated results file at " + testDiagnosticsPath);
 
-    var emittedCode = Emitter.Emit(source.Chunk);
+    var emittedCode = Emitter.Emit(source.File);
     File.WriteAllText(testEmittedPath, emittedCode);
     Console.WriteLine("Generated emitted file at " + testEmittedPath);
 }

@@ -124,8 +124,6 @@ public static class SymbolFinder
                                                GetNameAtPosition(functionType.ReturnTypes, position) ??
                                                GetNameAtPosition(functionType.TypeParameters, position),
 
-            Tree.Statement.GlobalDeclaration globalDeclaration => throw new NotImplementedException(),
-
             Tree.Statement.If ifStmt => GetNameAtPosition(ifStmt.Primary, position) ??
                                         GetNameAtPosition(ifStmt.ElseIfs, position) ??
                                         GetNameAtPosition(ifStmt.ElseBody, position),
@@ -136,9 +134,10 @@ public static class SymbolFinder
 
             Tree.Expression.Unary unary => GetNameAtPosition(unary.Expression, position),
 
-            Tree.Statement.LocalDeclaration localDeclaration => GetNameAtPosition(localDeclaration.Declarations,
-                                                                    position) ??
-                                                                GetNameAtPosition(localDeclaration.Values, position),
+            Tree.Statement.VariableDeclaration variableDeclaration => GetNameAtPosition(
+                                                                          variableDeclaration.Declarations, position) ??
+                                                                      GetNameAtPosition(variableDeclaration.Values,
+                                                                          position),
 
             Tree.Statement.LocalFunctionDeclaration localFunctionDeclaration =>
                 GetNameAtPosition(localFunctionDeclaration.Name, position) ??
