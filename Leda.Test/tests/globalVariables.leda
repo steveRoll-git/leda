@@ -1,0 +1,19 @@
+local function f()
+  local asdf = a
+  global no = {}
+end
+
+global c = a
+
+global a: string
+
+local b: string = a
+
+if 3 > 2 then
+  a = "asdf"
+else
+  a = "abc"
+  global x = 123
+end
+
+local d: string = a
