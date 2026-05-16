@@ -27,7 +27,7 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
             {
                 case Symbol.StringField { Table: var table, Key: var key }:
                     content =
-                        $"(field) {key}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfStringFieldInTable(table, key) ?? Type.Unknown)}";
+                        $"(field) {key}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfStringFieldInTable(table, key) ?? Type.Unknown, multiline: true)}";
                     break;
 
                 case Symbol.Variable or Symbol.Parameter:
@@ -40,7 +40,7 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                         _ => "???",
                     };
                     content =
-                        $"{kind} {symbol.Name}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfSymbol(symbol))}";
+                        $"{kind} {symbol.Name}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfSymbol(symbol), multiline: true)}";
                     break;
                 }
 
