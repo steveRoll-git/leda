@@ -29,14 +29,21 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                     content =
                         $"(field) {key}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfStringFieldInTable(table, key) ?? Type.Unknown)}";
                     break;
-                case Symbol.LocalVariable:
+
+                case Symbol.Variable or Symbol.Parameter:
+                {
+                    var kind = symbol switch
+                    {
+                        Symbol.LocalVariable => "local",
+                        Symbol.GlobalVariable => "global",
+                        Symbol.Parameter => "(parameter)",
+                        _ => "???",
+                    };
                     content =
-                        $"local {symbol.Name}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfSymbol(symbol))}";
+                        $"{kind} {symbol.Name}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfSymbol(symbol))}";
                     break;
-                case Symbol.Parameter:
-                    content =
-                        $"(parameter) {symbol.Name}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfSymbol(symbol))}";
-                    break;
+                }
+
                 case Symbol.LocalFunction:
                 {
                     var type = expressionType ?? source.Evaluator.GetTypeOfSymbol(symbol);
@@ -44,6 +51,7 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                         $"local function {symbol.Name}{(type is Type.Function function ? source.Evaluator.FunctionSignatureToString(function) : "")}";
                     break;
                 }
+
                 case Symbol.IntrinsicType or Symbol.TypeAlias or Symbol.TypeParameter:
                 {
                     var typeValue = symbol is not Symbol.IntrinsicType and not Symbol.TypeParameter
@@ -53,9 +61,11 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                     content = $"type {symbol.Name}{typeValue}";
                     break;
                 }
+
                 case Symbol.Label:
                     content = $"(label) {symbol.Name}";
                     break;
+
                 default:
                     content = $"??? {symbol.Name}";
                     break;
