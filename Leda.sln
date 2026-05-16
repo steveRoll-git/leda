@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leda.Lang", "Leda.Lang\Leda.Lang.csproj", "{0B743190-3FC6-4235-B49B-E1C6D73004C2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leda", "Leda\Leda.csproj", "{07895619-2681-47F7-9D06-1891BB881192}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leda.Cli", "Leda.Cli\Leda.Cli.csproj", "{07895619-2681-47F7-9D06-1891BB881192}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leda.LSP", "Leda.LSP\Leda.LSP.csproj", "{2671D4B0-EACE-4661-92A2-1F5CB77F3E5C}"
 EndProject

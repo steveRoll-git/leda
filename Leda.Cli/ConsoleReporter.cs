@@ -1,6 +1,6 @@
 using Leda.Lang;
 
-namespace Leda;
+namespace Leda.Cli;
 
 /// <summary>
 /// Pretty-prints diagnostics to the console.
@@ -12,7 +12,7 @@ public static class ConsoleReporter
         { DiagnosticSeverity.Error, ConsoleColor.Red },
         { DiagnosticSeverity.Warning, ConsoleColor.Yellow },
         { DiagnosticSeverity.Information, ConsoleColor.Blue },
-        { DiagnosticSeverity.Hint, ConsoleColor.Cyan }
+        { DiagnosticSeverity.Hint, ConsoleColor.Cyan },
     };
 
     public static void Report(Source source, Diagnostic diagnostic)

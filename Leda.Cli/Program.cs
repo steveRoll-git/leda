@@ -1,6 +1,6 @@
 ﻿using Leda.Lang;
 
-namespace Leda;
+namespace Leda.Cli;
 
 internal class Program
 {
