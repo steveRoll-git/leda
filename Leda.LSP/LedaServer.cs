@@ -64,7 +64,10 @@ public class LedaServer
                 Items = [],
             }, CancellationToken.None);
 
-            project.CheckAll(PushDiagnostics);
+            foreach (var source in project.Sources)
+            {
+                PushDiagnostics(source, project.GetDiagnostics(source));
+            }
         });
 
         server.AddHandler(new TextDocumentHandler(this));
@@ -121,12 +124,15 @@ public class LedaServer
     }
 
     /// <summary>
-    /// Updates this source's code, then parses, binds and checks it.
+    /// Updates this source's code, then pushes its updated diagnostics.
     /// </summary>
     public void UpdateAndRecheckSource(Source source, string code)
     {
         source.Code = code;
-        PushDiagnostics(source, project.Check(source));
+        source.NeedsParsing = true;
+        source.NeedsBinding = true;
+        source.NeedsChecking = true;
+        PushDiagnostics(source, project.GetDiagnostics(source));
     }
 
     private void PushDiagnostics(Source source, List<Diagnostic> diagnostics)

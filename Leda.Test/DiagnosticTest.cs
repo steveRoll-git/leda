@@ -8,12 +8,11 @@ public class DiagnosticTest
     [ClassData(typeof(DiagnosticTestData))]
     public void TestDiagnostics(TestScenario testScenario)
     {
-        var source = new Source("testCode", testScenario.Code);
+        var project = new Project();
+        var source = new Source(testScenario.Filename, testScenario.Code);
+        project.AddSource(source);
 
-        var diagnostics = new List<Diagnostic>();
-        diagnostics.AddRange(source.Parse());
-        diagnostics.AddRange(source.Bind());
-        diagnostics.AddRange(source.Check());
+        var diagnostics = project.GetDiagnostics(source);
 
         var actualDiagnostics = DiagnosticPrinter.DiagnosticsOutput(diagnostics);
 

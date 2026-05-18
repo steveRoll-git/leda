@@ -25,24 +25,54 @@ public class Source
     /// <summary>
     /// The syntax tree for this file.
     /// </summary>
-    public Tree.File File { get; private set; }
+    public Tree.File File { get; set; }
 
     /// <summary>
     /// Maps Tree nodes to the symbol they refer to.
     /// </summary>
-    private Dictionary<Tree, Symbol> treeSymbolMap = [];
+    public Dictionary<Tree, Symbol> TreeSymbolMap { get; set; } = [];
 
     /// <summary>
     /// A dictionary of where symbols are references in this source. (Symbols from other sources may be referenced too?)
     /// </summary>
-    public Dictionary<Symbol, List<Location>> SymbolReferences { get; private set; } = [];
+    public Dictionary<Symbol, List<Location>> SymbolReferences { get; set; } = [];
 
-    public TypeEvaluator Evaluator { get; private set; }
+    public TypeEvaluator Evaluator { get; set; }
 
     /// <summary>
     /// A list of any symbols referenced in this Source that are defined in other Sources.
     /// </summary>
     private List<string> externalSymbols = [];
+
+    /// <summary>
+    /// List of diagnostics reported by the Parser.
+    /// </summary>
+    public List<Diagnostic> ParserDiagnostics { get; set; } = [];
+
+    /// <summary>
+    /// List of diagnostics reported by the Binder.
+    /// </summary>
+    public List<Diagnostic> BinderDiagnostics { get; set; } = [];
+
+    /// <summary>
+    /// List of diagnostics reported by the Checker.
+    /// </summary>
+    public List<Diagnostic> CheckerDiagnostics { get; set; } = [];
+
+    /// <summary>
+    /// Whether the source code needs to be parsed in order to get updated diagnostics.
+    /// </summary>
+    public bool NeedsParsing { get; set; } = true;
+
+    /// <summary>
+    /// Whether this source needs a Binder pass in order to get updated diagnostics.
+    /// </summary>
+    public bool NeedsBinding { get; set; } = true;
+
+    /// <summary>
+    /// Whether this source needs a Checker pass in order to get updated diagnostics.
+    /// </summary>
+    public bool NeedsChecking { get; set; } = true;
 
     /// <summary>
     /// Creates a new source with the given path, and reads the file at that path into Code.
@@ -94,40 +124,11 @@ public class Source
     }
 
     /// <summary>
-    /// Parse the source's contents and store the syntax tree.
-    /// </summary>
-    public List<Diagnostic> Parse()
-    {
-        var (tree, diagnostics) = Parser.ParseFile(this);
-        File = tree;
-        return diagnostics;
-    }
-
-    /// <summary>
-    /// Associates all top level `Name` nodes with symbols.
-    /// </summary>
-    public List<Diagnostic> Bind()
-    {
-        treeSymbolMap = [];
-        SymbolReferences = [];
-        return Binder.Bind(this, File);
-    }
-
-    /// <summary>
-    /// Checks the types of all nodes.
-    /// </summary>
-    public List<Diagnostic> Check()
-    {
-        Evaluator = new TypeEvaluator(this);
-        return Checker.Check(this, Evaluator);
-    }
-
-    /// <summary>
     /// Associates this tree node with the given symbol.
     /// </summary>
     internal void AttachSymbol(Tree tree, Symbol symbol, bool isDefinition = false)
     {
-        treeSymbolMap.Add(tree, symbol);
+        TreeSymbolMap.Add(tree, symbol);
 
         if (isDefinition)
         {
@@ -150,7 +151,7 @@ public class Source
     /// </summary>
     public Symbol? GetTreeSymbol(Tree tree)
     {
-        treeSymbolMap.TryGetValue(tree, out var symbol);
+        TreeSymbolMap.TryGetValue(tree, out var symbol);
         return symbol;
     }
 }

@@ -10,8 +10,6 @@ public class Project
     public readonly List<Source> Sources = [];
     private readonly Dictionary<string, Source> sourcesByPath = [];
 
-    public delegate void SourceCheckedHandler(Source source, List<Diagnostic> diagnostics);
-
     /// <summary>
     /// Adds a source file to this project.
     /// </summary>
@@ -46,29 +44,58 @@ public class Project
     }
 
     /// <summary>
-    /// Parses, binds and checks this source, and returns the diagnostics from all the stages.
+    /// Returns the list of current diagnostics of a source.
     /// </summary>
-    /// <param name="source"></param>
-    /// <returns></returns>
-    public List<Diagnostic> Check(Source source)
+    public List<Diagnostic> GetDiagnostics(Source source)
     {
-        List<Diagnostic> diagnostics = [];
-        diagnostics.AddRange(source.Parse());
-        diagnostics.AddRange(source.Bind());
-        diagnostics.AddRange(source.Check());
+        if (source.NeedsParsing)
+        {
+            source.ParserDiagnostics = Parse(source);
+            source.NeedsParsing = false;
+        }
+
+        if (source.NeedsBinding)
+        {
+            source.BinderDiagnostics = Bind(source);
+            source.NeedsBinding = false;
+        }
+
+        if (source.NeedsChecking)
+        {
+            source.CheckerDiagnostics = Check(source);
+            source.NeedsChecking = false;
+        }
+
+        return [..source.ParserDiagnostics, ..source.BinderDiagnostics, ..source.CheckerDiagnostics];
+    }
+
+    /// <summary>
+    /// Parse the source's contents and store the syntax tree.
+    /// </summary>
+    private List<Diagnostic> Parse(Source source)
+    {
+        var (tree, diagnostics) = Parser.ParseFile(source);
+        source.File = tree;
         return diagnostics;
     }
 
     /// <summary>
-    /// Parses, binds and checks all currently added sources.
+    /// Associates all top level `Name` nodes with symbols.
     /// </summary>
-    /// <param name="sourceCheckedHandler">Handler to run after a source has been checked, with all the diagnostics that were reported.</param>
-    public void CheckAll(SourceCheckedHandler sourceCheckedHandler)
+    private List<Diagnostic> Bind(Source source)
     {
-        foreach (var source in Sources)
-        {
-            sourceCheckedHandler(source, Check(source));
-        }
+        source.TreeSymbolMap = [];
+        source.SymbolReferences = [];
+        return Binder.Bind(source, source.File);
+    }
+
+    /// <summary>
+    /// Checks the types of all nodes.
+    /// </summary>
+    private List<Diagnostic> Check(Source source)
+    {
+        source.Evaluator = new TypeEvaluator(source);
+        return Checker.Check(source, source.Evaluator);
     }
 
     /// <summary>

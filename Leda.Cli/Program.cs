@@ -53,8 +53,9 @@ internal class Program
         }
 
         var project = Project.FromFilesInDirectory(path);
-        project.CheckAll((source, diagnostics) =>
+        foreach (var source in project.Sources)
         {
+            var diagnostics = project.GetDiagnostics(source);
             foreach (var diagnostic in diagnostics)
             {
                 ConsoleReporter.Report(source, diagnostic);
@@ -64,7 +65,7 @@ internal class Program
                     ErrorSources.Add(source);
                 }
             }
-        });
+        }
 
         if (_errorCount > 0)
         {
