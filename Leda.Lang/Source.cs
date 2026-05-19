@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace Leda.Lang;
 
 /// <summary>
@@ -8,7 +6,7 @@ namespace Leda.Lang;
 public class Source
 {
     /// <summary>
-    /// The file path for this source - relative to the workspace directory.
+    /// The file path of this source.
     /// </summary>
     public readonly string Path;
 
@@ -40,39 +38,46 @@ public class Source
     public TypeEvaluator Evaluator { get; set; }
 
     /// <summary>
-    /// A list of any symbols referenced in this Source that are defined in other Sources.
+    /// A set of other sources that this source depends on.
     /// </summary>
-    private List<string> externalSymbols = [];
+    public HashSet<Source> Dependencies { get; } = [];
+
+    /// <summary>
+    /// Info about how a source depends on another source.
+    /// </summary>
+    /// <param name="UsesGlobals">Whether the source uses globals from the other source, meaning a Binder pass is
+    /// needed.</param>
+    public record struct DependentKind(bool UsesGlobals);
+
+    /// <summary>
+    /// A set of sources that depend on this source.
+    /// </summary>
+    public Dictionary<Source, DependentKind> Dependents { get; set; } = [];
 
     /// <summary>
     /// List of diagnostics reported by the Parser.
     /// </summary>
-    public List<Diagnostic> ParserDiagnostics { get; set; } = [];
+    internal List<Diagnostic> ParserDiagnostics { get; set; } = [];
 
     /// <summary>
     /// List of diagnostics reported by the Binder.
     /// </summary>
-    public List<Diagnostic> BinderDiagnostics { get; set; } = [];
+    internal List<Diagnostic> BinderDiagnostics { get; set; } = [];
 
     /// <summary>
     /// List of diagnostics reported by the Checker.
     /// </summary>
-    public List<Diagnostic> CheckerDiagnostics { get; set; } = [];
-
-    /// <summary>
-    /// Whether the source code needs to be parsed in order to get updated diagnostics.
-    /// </summary>
-    public bool NeedsParsing { get; set; } = true;
+    internal List<Diagnostic> CheckerDiagnostics { get; set; } = [];
 
     /// <summary>
     /// Whether this source needs a Binder pass in order to get updated diagnostics.
     /// </summary>
-    public bool NeedsBinding { get; set; } = true;
+    internal bool NeedsBinding { get; set; } = true;
 
     /// <summary>
     /// Whether this source needs a Checker pass in order to get updated diagnostics.
     /// </summary>
-    public bool NeedsChecking { get; set; } = true;
+    internal bool NeedsChecking { get; set; } = true;
 
     /// <summary>
     /// Creates a new source with the given path, and reads the file at that path into Code.

@@ -58,11 +58,14 @@ public class Binder
 
     private readonly Dictionary<Tree.LabelName, FlowNode.Label> labelFlowNodes = [];
 
+    private readonly Dictionary<string, Symbol.GlobalVariable> globalVariables;
+
     private record struct ConditionBranch(FlowNode? FalseBranch, FlowNode? TrueBranch);
 
-    private Binder(Source source)
+    private Binder(Source source, Dictionary<string, Symbol.GlobalVariable> globalVariables)
     {
         this.source = source;
+        this.globalVariables = globalVariables;
 
         scopes.Add(InitialScope);
         PushChunkScope(source.File);
@@ -370,9 +373,16 @@ public class Binder
         {
             source.AttachSymbol(name, symbol);
         }
+        else if (globalVariables.TryGetValue(name.Value, out var global))
+        {
+            source.AttachSymbol(name, global);
+            if (global.Definition.Source is { } dependency && dependency != source)
+            {
+                Project.AddDependency(source, dependency, true);
+            }
+        }
         else
         {
-            // TODO defer to check for global
             Report(new Diagnostic.NameNotFound(name.Range, name.Value, Tree.NameContext.Value));
         }
     }
@@ -551,7 +561,7 @@ public class Binder
     /// <summary>
     /// Returns whether a declared variable is not initialized with a value.
     /// </summary>
-    private static bool IsVariableUninitialized(Tree.Statement.VariableDeclaration declaration, int index)
+    public static bool IsVariableUninitialized(Tree.Statement.VariableDeclaration declaration, int index)
     {
         return index >= declaration.Values.Count &&
                (declaration.Values.Count <= 0 ||
@@ -587,7 +597,7 @@ public class Binder
     {
         Visit(globalDeclaration.Values, globalDeclaration, antecedent);
 
-        // Symbols for global variables are added in VisitFile, so we don't need to here.
+        // Symbols for global variables are added by the Project, so we don't need to here.
         foreach (var declaration in globalDeclaration.Declarations)
         {
             if (declaration.Type != null)
@@ -804,33 +814,14 @@ public class Binder
         chunk.AllPathsReturn = descendent == null;
     }
 
-    private void VisitFile(Tree.File file)
-    {
-        foreach (var globalDeclaration in file.GlobalDeclarations)
-        {
-            for (var i = 0; i < globalDeclaration.Declarations.Count; i++)
-            {
-                var declaration = globalDeclaration.Declarations[i];
-
-                AddSymbol(declaration.Name, new Symbol.GlobalVariable(
-                    globalDeclaration: globalDeclaration,
-                    index: i,
-                    uninitialized: IsVariableUninitialized(globalDeclaration, i),
-                    chunk: CurrentScope.Chunk!));
-            }
-        }
-
-        VisitChunk(file);
-    }
-
     /// <summary>
     /// Visits all nodes in the given tree to assign Symbols to top-level Name nodes, and to generate the control flow
     /// graph.
     /// </summary>
-    public static List<Diagnostic> Bind(Source source, Tree.File file)
+    public static List<Diagnostic> Bind(Source source, Dictionary<string, Symbol.GlobalVariable> globalVariables)
     {
-        var binder = new Binder(source);
-        binder.VisitFile(file);
+        var binder = new Binder(source, globalVariables);
+        binder.VisitChunk(source.File);
         return binder.Diagnostics;
     }
 

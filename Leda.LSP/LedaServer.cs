@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using EmmyLua.LanguageServer.Framework.Protocol.Message.Client.PublishDiagnostics;
 using EmmyLua.LanguageServer.Framework.Protocol.Message.Configuration;
@@ -128,10 +127,7 @@ public class LedaServer
     /// </summary>
     public void UpdateAndRecheckSource(Source source, string code)
     {
-        source.Code = code;
-        source.NeedsParsing = true;
-        source.NeedsBinding = true;
-        source.NeedsChecking = true;
+        project.ModifySource(source, code);
         PushDiagnostics(source, project.GetDiagnostics(source));
     }
 

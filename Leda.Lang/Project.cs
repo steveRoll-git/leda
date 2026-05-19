@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace Leda.Lang;
 
 /// <summary>
@@ -9,6 +7,16 @@ public class Project
 {
     public readonly List<Source> Sources = [];
     private readonly Dictionary<string, Source> sourcesByPath = [];
+
+    /// <summary>
+    /// Set of sources whose code has been modified, meaning they need a Parser and Binder pass.
+    /// </summary>
+    private readonly HashSet<Source> modifiedSources = [];
+
+    /// <summary>
+    /// Global variables defined by any of the sources in the project.
+    /// </summary>
+    private readonly Dictionary<string, Symbol.GlobalVariable> globalVariables = [];
 
     /// <summary>
     /// Adds a source file to this project.
@@ -22,6 +30,7 @@ public class Project
 
         Sources.Add(source);
         sourcesByPath.Add(source.Path, source);
+        modifiedSources.Add(source);
     }
 
     /// <summary>
@@ -38,9 +47,74 @@ public class Project
         sourcesByPath.Remove(source.Path);
     }
 
-    public bool TryGetSourceByPath(string path, [NotNullWhen(true)] out Source? source)
+    /// <summary>
+    /// Clears all of a source's dependencies, while also updating their `Dependents` set.
+    /// </summary>
+    internal static void ClearDependencies(Source source)
     {
-        return sourcesByPath.TryGetValue(path, out source);
+        foreach (var dependency in source.Dependencies)
+        {
+            dependency.Dependents.Remove(source);
+        }
+
+        source.Dependencies.Clear();
+    }
+
+    /// <summary>
+    /// Adds a source as a dependency of another source.
+    /// </summary>
+    /// <param name="dependent">The source that depends on the other source.</param>
+    /// <param name="dependency">The source that is the dependency of the other source.</param>
+    /// <param name="usesGlobals">Whether the dependent source uses globals defined in the dependency.</param>
+    internal static void AddDependency(Source dependent, Source dependency, bool usesGlobals)
+    {
+        dependent.Dependencies.Add(dependency);
+        dependency.Dependents.Add(dependent, new(usesGlobals));
+    }
+
+    /// <summary>
+    /// Update's the source's flags to indicate that it needs rechecking (and optionally binding), and does the same for
+    /// all of its recursive dependents.
+    /// </summary>
+    /// <param name="source">The source to mark as modified.</param>
+    /// <param name="codeEdited">Whether the source's code was edited, meaning parsing and binding need to run
+    /// again.</param>
+    private void MarkModified(Source source, bool codeEdited)
+    {
+        if (codeEdited)
+        {
+            // The source is added to the modified set - it will be parsed and bound the next time diagnostics are
+            // requested.
+            modifiedSources.Add(source);
+        }
+
+        if (source.NeedsChecking)
+        {
+            return;
+        }
+
+        source.NeedsChecking = true;
+
+        foreach (var (dependent, dependentKind) in source.Dependents)
+        {
+            if (codeEdited && dependentKind.UsesGlobals)
+            {
+                dependent.NeedsBinding = true;
+            }
+
+            MarkModified(dependent, false);
+        }
+    }
+
+    /// <summary>
+    /// Change's a source's code, and marks it and all of its dependent sources as modified.
+    /// </summary>
+    /// <param name="source">The source that was modified.</param>
+    /// <param name="code">The updated source code.</param>
+    public void ModifySource(Source source, string code)
+    {
+        source.Code = code;
+        MarkModified(source, true);
     }
 
     /// <summary>
@@ -48,22 +122,36 @@ public class Project
     /// </summary>
     public List<Diagnostic> GetDiagnostics(Source source)
     {
-        if (source.NeedsParsing)
+        if (modifiedSources.Count > 0)
         {
-            source.ParserDiagnostics = Parse(source);
-            source.NeedsParsing = false;
+            // If there are any modified sources, they must be parsed and bound before the checking of any other source,
+            // so that global variables will be available.
+            foreach (var modifiedSource in modifiedSources)
+            {
+                ClearDependencies(modifiedSource);
+                RemoveGlobals(modifiedSource);
+                Parse(modifiedSource);
+                modifiedSource.TreeSymbolMap = [];
+                CreateGlobals(modifiedSource);
+            }
+
+            foreach (var modifiedSource in modifiedSources)
+            {
+                Bind(modifiedSource);
+            }
+
+            modifiedSources.Clear();
         }
 
         if (source.NeedsBinding)
         {
-            source.BinderDiagnostics = Bind(source);
-            source.NeedsBinding = false;
+            source.TreeSymbolMap = [];
+            Bind(source);
         }
 
         if (source.NeedsChecking)
         {
-            source.CheckerDiagnostics = Check(source);
-            source.NeedsChecking = false;
+            Check(source);
         }
 
         return [..source.ParserDiagnostics, ..source.BinderDiagnostics, ..source.CheckerDiagnostics];
@@ -72,30 +160,70 @@ public class Project
     /// <summary>
     /// Parse the source's contents and store the syntax tree.
     /// </summary>
-    private List<Diagnostic> Parse(Source source)
+    private void Parse(Source source)
     {
         var (tree, diagnostics) = Parser.ParseFile(source);
         source.File = tree;
-        return diagnostics;
+        source.ParserDiagnostics = diagnostics;
+    }
+
+    /// <summary>
+    /// Creates global variable symbols for all globals defined in the source, and stores them in the project's
+    /// `globalVariables` dictionary.
+    /// </summary>
+    private void CreateGlobals(Source source)
+    {
+        foreach (var globalDeclaration in source.File.GlobalDeclarations)
+        {
+            for (var i = 0; i < globalDeclaration.Declarations.Count; i++)
+            {
+                var declaration = globalDeclaration.Declarations[i];
+                var symbol = new Symbol.GlobalVariable(globalDeclaration,
+                    i,
+                    Binder.IsVariableUninitialized(globalDeclaration, i),
+                    source.File);
+                source.AttachSymbol(declaration.Name, symbol, true);
+                globalVariables.Add(declaration.Name.Value, symbol);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Removes all global variables defined by this source.
+    /// </summary>
+    private void RemoveGlobals(Source source)
+    {
+        foreach (var globalDeclaration in source.File.GlobalDeclarations)
+        {
+            foreach (var declaration in globalDeclaration.Declarations)
+            {
+                if (globalVariables.TryGetValue(declaration.Name.Value, out var global) &&
+                    global.Definition.Source == source)
+                {
+                    globalVariables.Remove(declaration.Name.Value);
+                }
+            }
+        }
     }
 
     /// <summary>
     /// Associates all top level `Name` nodes with symbols.
     /// </summary>
-    private List<Diagnostic> Bind(Source source)
+    private void Bind(Source source)
     {
-        source.TreeSymbolMap = [];
         source.SymbolReferences = [];
-        return Binder.Bind(source, source.File);
+        source.BinderDiagnostics = Binder.Bind(source, globalVariables);
+        source.NeedsBinding = false;
     }
 
     /// <summary>
     /// Checks the types of all nodes.
     /// </summary>
-    private List<Diagnostic> Check(Source source)
+    private void Check(Source source)
     {
         source.Evaluator = new TypeEvaluator(source);
-        return Checker.Check(source, source.Evaluator);
+        source.CheckerDiagnostics = Checker.Check(source, source.Evaluator);
+        source.NeedsChecking = false;
     }
 
     /// <summary>
