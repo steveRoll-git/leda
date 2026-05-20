@@ -62,11 +62,6 @@ public class LedaServer
             {
                 Items = [],
             }, CancellationToken.None);
-
-            foreach (var source in project.Sources)
-            {
-                PushDiagnostics(source, project.GetDiagnostics(source));
-            }
         });
 
         server.AddHandler(new TextDocumentHandler(this));
@@ -75,6 +70,7 @@ public class LedaServer
         server.AddHandler(new ReferenceHandler(this));
         server.AddHandler(new DocumentHighlightHandler(this));
         server.AddHandler(new DidChangeWatchedFilesHandler(this));
+        server.AddHandler(new DocumentDiagnosticHandler(this));
     }
 
     public Task Run()
@@ -122,22 +118,22 @@ public class LedaServer
         return uriSources[uri];
     }
 
+    public DocumentUri GetUriOfSource(Source source)
+    {
+        return sourceUris[source];
+    }
+
+    public Project.RelatedDiagnosticsResult GetDiagnosticsWithRelated(Source source)
+    {
+        return project.GetDiagnosticsWithRelated(source);
+    }
+
     /// <summary>
     /// Updates this source's code, then pushes its updated diagnostics.
     /// </summary>
-    public void UpdateAndRecheckSource(Source source, string code)
+    public void ModifySource(Source source, string code)
     {
         project.ModifySource(source, code);
-        PushDiagnostics(source, project.GetDiagnostics(source));
-    }
-
-    private void PushDiagnostics(Source source, List<Diagnostic> diagnostics)
-    {
-        server.Client.PublishDiagnostics(new PublishDiagnosticsParams
-        {
-            Uri = sourceUris[source],
-            Diagnostics = diagnostics.Select(d => d.ToLs()).ToList(),
-        });
     }
 
     /// <summary>
