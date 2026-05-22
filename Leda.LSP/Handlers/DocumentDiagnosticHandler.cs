@@ -11,16 +11,10 @@ public class DocumentDiagnosticHandler(LedaServer server) : DocumentDiagnosticHa
     protected override Task<DocumentDiagnosticReport> Handle(DocumentDiagnosticParams request, CancellationToken token)
     {
         var source = server.GetSourceByUri(request.TextDocument.Uri);
-        var (diagnostics, related) = server.GetDiagnosticsWithRelated(source);
+        var diagnostics = server.Project.GetDiagnostics(source);
         return Task.FromResult<DocumentDiagnosticReport>(new RelatedFullDocumentDiagnosticReport
         {
             Diagnostics = diagnostics.Select(d => d.ToLs()).ToList(),
-            RelatedDocuments = related.ToDictionary(
-                pair => server.GetUriOfSource(pair.Key),
-                pair => (FullOrUnchangeDocumentDiagnosticReport)new FullDocumentDiagnosticReport
-                {
-                    Diagnostics = pair.Value.Select(d => d.ToLs()).ToList(),
-                }),
         });
     }
 

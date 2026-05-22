@@ -1,5 +1,4 @@
 using System.Reflection;
-using EmmyLua.LanguageServer.Framework.Protocol.Message.Client.PublishDiagnostics;
 using EmmyLua.LanguageServer.Framework.Protocol.Message.Configuration;
 using EmmyLua.LanguageServer.Framework.Protocol.Model;
 using EmmyLua.LanguageServer.Framework.Protocol.Model.TextDocument;
@@ -15,7 +14,7 @@ namespace Leda.LSP;
 /// </summary>
 public class LedaServer
 {
-    private Project project = null!;
+    internal Project Project { get; private set; } = null!;
     private readonly LanguageServer server;
 
     /// <summary>
@@ -42,15 +41,15 @@ public class LedaServer
 
             if (initParams.RootUri is { } uri)
             {
-                project = Project.FromFilesInDirectory(uri.FileSystemPath);
-                foreach (var source in project.Sources)
+                Project = Project.FromFilesInDirectory(uri.FileSystemPath);
+                foreach (var source in Project.Sources)
                 {
                     MapSourceToUri(source, source.Path);
                 }
             }
             else
             {
-                project = new Project();
+                Project = new Project();
             }
 
             return Task.CompletedTask;
@@ -92,14 +91,14 @@ public class LedaServer
     public void AddSource(DocumentUri uri)
     {
         var source = new Source(uri.FileSystemPath, "");
-        project.AddSource(source);
+        Project.AddSource(source);
         MapSourceToUri(source, uri);
     }
 
     public void RemoveSource(DocumentUri uri)
     {
         var source = uriSources[uri];
-        project.RemoveSource(source);
+        Project.RemoveSource(source);
         uriSources.Remove(uri);
         sourceUris.Remove(source);
     }
@@ -123,19 +122,6 @@ public class LedaServer
         return sourceUris[source];
     }
 
-    public Project.RelatedDiagnosticsResult GetDiagnosticsWithRelated(Source source)
-    {
-        return project.GetDiagnosticsWithRelated(source);
-    }
-
-    /// <summary>
-    /// Updates this source's code, then pushes its updated diagnostics.
-    /// </summary>
-    public void ModifySource(Source source, string code)
-    {
-        project.ModifySource(source, code);
-    }
-
     /// <summary>
     /// Tries to find the symbol that the `TextDocumentPosition` request is pointing to.
     /// </summary>
@@ -154,7 +140,7 @@ public class LedaServer
             list.Add(ToLsLocation(symbol.Definition));
         }
 
-        foreach (var projectSource in project.Sources)
+        foreach (var projectSource in Project.Sources)
         {
             if (projectSource.SymbolReferences.TryGetValue(symbol, out var references))
             {

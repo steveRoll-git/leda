@@ -159,36 +159,6 @@ public class Project
     }
 
     /// <summary>
-    /// Diagnostic information returned by `GetDiagnostics`.
-    /// </summary>
-    /// <param name="Diagnostics">The list of diagnostics reported for the requested source.</param>
-    /// <param name="RelatedDiagnostics">Diagnostics for additional sources related to the requested source.</param>
-    public record struct RelatedDiagnosticsResult(
-        List<Diagnostic> Diagnostics,
-        Dictionary<Source, List<Diagnostic>> RelatedDiagnostics);
-
-    /// <summary>
-    /// Returns the diagnostics for the given source, along with diagnostics for other sources that depend on it.
-    /// </summary>
-    public RelatedDiagnosticsResult GetDiagnosticsWithRelated(Source source)
-    {
-        var diagnostics = GetDiagnostics(source);
-
-        Dictionary<Source, List<Diagnostic>> relatedDiagnostics = [];
-        // `GetDiagnostics` modifies the `Dependents` set, so we create a copy of it first.
-        var dependents = source.Dependents.ToList();
-        foreach (var (dependent, _) in dependents)
-        {
-            if (!relatedDiagnostics.ContainsKey(dependent))
-            {
-                relatedDiagnostics.Add(dependent, GetDiagnostics(dependent));
-            }
-        }
-
-        return new(diagnostics, relatedDiagnostics);
-    }
-
-    /// <summary>
     /// Parse the source's contents and store the syntax tree.
     /// </summary>
     private void Parse(Source source)
