@@ -35,6 +35,11 @@ public class Source
     /// </summary>
     public Dictionary<Symbol, List<Location>> SymbolReferences { get; set; } = [];
 
+    /// <summary>
+    /// Names that possibly refer to a global value defined in another source.
+    /// </summary>
+    public List<Tree.Expression.Name> GlobalNames { get; } = [];
+
     public TypeEvaluator Evaluator { get; set; }
 
     /// <summary>
@@ -60,6 +65,11 @@ public class Source
     internal List<Diagnostic> ParserDiagnostics { get; set; } = [];
 
     /// <summary>
+    /// List of diagnostics reported by `Project.BindGlobals`.
+    /// </summary>
+    internal List<Diagnostic.NameNotFound> NameNotFoundDiagnostics { get; set; } = [];
+
+    /// <summary>
     /// List of diagnostics reported by the Binder.
     /// </summary>
     internal List<Diagnostic> BinderDiagnostics { get; set; } = [];
@@ -70,9 +80,9 @@ public class Source
     internal List<Diagnostic> CheckerDiagnostics { get; set; } = [];
 
     /// <summary>
-    /// Whether this source needs a Binder pass in order to get updated diagnostics.
+    /// Whether the bindings of the global references in this source need to be rechecked.
     /// </summary>
-    internal bool NeedsBinding { get; set; } = true;
+    internal bool NeedsBindingGlobals { get; set; } = true;
 
     /// <summary>
     /// Whether this source needs a Checker pass in order to get updated diagnostics.
@@ -149,6 +159,14 @@ public class Source
 
             references.Add(new Location(this, tree.Range));
         }
+    }
+
+    /// <summary>
+    /// Removes the association of this tree node with a symbol.
+    /// </summary>
+    internal void DetachSymbol(Tree tree)
+    {
+        TreeSymbolMap.Remove(tree);
     }
 
     /// <summary>

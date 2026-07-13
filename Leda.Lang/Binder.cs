@@ -58,14 +58,11 @@ public class Binder
 
     private readonly Dictionary<Tree.LabelName, FlowNode.Label> labelFlowNodes = [];
 
-    private readonly Dictionary<string, Symbol.GlobalVariable> globalVariables;
-
     private record struct ConditionBranch(FlowNode? FalseBranch, FlowNode? TrueBranch);
 
-    private Binder(Source source, Dictionary<string, Symbol.GlobalVariable> globalVariables)
+    private Binder(Source source)
     {
         this.source = source;
-        this.globalVariables = globalVariables;
 
         scopes.Add(InitialScope);
         PushChunkScope(source.File);
@@ -373,17 +370,9 @@ public class Binder
         {
             source.AttachSymbol(name, symbol);
         }
-        else if (globalVariables.TryGetValue(name.Value, out var global))
-        {
-            source.AttachSymbol(name, global);
-            if (global.Definition.Source is { } dependency && dependency != source)
-            {
-                Project.AddDependency(source, dependency, true);
-            }
-        }
         else
         {
-            Report(new Diagnostic.NameNotFound(name.Range, name.Value, Tree.NameContext.Value));
+            source.GlobalNames.Add(name);
         }
     }
 
@@ -818,9 +807,11 @@ public class Binder
     /// Visits all nodes in the given tree to assign Symbols to top-level Name nodes, and to generate the control flow
     /// graph.
     /// </summary>
-    public static List<Diagnostic> Bind(Source source, Dictionary<string, Symbol.GlobalVariable> globalVariables)
+    public static List<Diagnostic> Bind(Source source)
     {
-        var binder = new Binder(source, globalVariables);
+        source.GlobalNames.Clear();
+
+        var binder = new Binder(source);
         binder.VisitChunk(source.File);
         return binder.Diagnostics;
     }

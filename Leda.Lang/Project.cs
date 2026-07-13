@@ -86,6 +86,7 @@ public class Project
             // The source is added to the modified set - it will be parsed and bound the next time diagnostics are
             // requested.
             modifiedSources.Add(source);
+            source.NeedsBindingGlobals = true;
         }
 
         if (source.NeedsChecking)
@@ -99,7 +100,7 @@ public class Project
         {
             if (codeEdited && dependentKind.UsesGlobals)
             {
-                dependent.NeedsBinding = true;
+                dependent.NeedsBindingGlobals = true;
             }
 
             MarkModified(dependent, false);
@@ -128,7 +129,6 @@ public class Project
             // so that global variables will be available.
             foreach (var modifiedSource in modifiedSources)
             {
-                ClearDependencies(modifiedSource);
                 ClearBindings(modifiedSource);
                 RemoveGlobals(modifiedSource);
                 Parse(modifiedSource);
@@ -143,11 +143,14 @@ public class Project
             modifiedSources.Clear();
         }
 
-        if (source.NeedsBinding)
+        if (source.NeedsBindingGlobals || source.NeedsChecking)
         {
             ClearDependencies(source);
-            ClearBindings(source);
-            Bind(source);
+        }
+
+        if (source.NeedsBindingGlobals)
+        {
+            BindGlobals(source);
         }
 
         if (source.NeedsChecking)
@@ -155,7 +158,13 @@ public class Project
             Check(source);
         }
 
-        return [..source.ParserDiagnostics, ..source.BinderDiagnostics, ..source.CheckerDiagnostics];
+        return
+        [
+            ..source.ParserDiagnostics,
+            ..source.BinderDiagnostics,
+            ..source.NameNotFoundDiagnostics,
+            ..source.CheckerDiagnostics,
+        ];
     }
 
     /// <summary>
@@ -212,9 +221,47 @@ public class Project
     /// </summary>
     private void Bind(Source source)
     {
-        source.SymbolReferences = [];
-        source.BinderDiagnostics = Binder.Bind(source, globalVariables);
-        source.NeedsBinding = false;
+        source.SymbolReferences.Clear();
+        source.BinderDiagnostics = Binder.Bind(source);
+    }
+
+    /// <summary>
+    /// Binds all top level `Name` nodes that aren't bound to any locally defined symbol in this source.<br/>
+    /// Names are either bound to global variables defined in another source in the project, or reported as not found.
+    /// </summary>
+    private void BindGlobals(Source source)
+    {
+        source.NameNotFoundDiagnostics.Clear();
+
+        // First, remove existing references to global symbols.
+        foreach (var name in source.GlobalNames)
+        {
+            if (source.GetTreeSymbol(name) is { } symbol)
+            {
+                source.SymbolReferences.Remove(symbol);
+            }
+
+            source.DetachSymbol(name);
+        }
+
+        foreach (var name in source.GlobalNames)
+        {
+            if (globalVariables.TryGetValue(name.Value, out var global))
+            {
+                source.AttachSymbol(name, global);
+                if (global.Definition.Source is { } dependency && dependency != source)
+                {
+                    AddDependency(source, dependency, true);
+                }
+            }
+            else
+            {
+                source.NameNotFoundDiagnostics.Add(new Diagnostic.NameNotFound(name.Range, name.Value,
+                    Tree.NameContext.Value));
+            }
+        }
+
+        source.NeedsBindingGlobals = false;
     }
 
     /// <summary>
