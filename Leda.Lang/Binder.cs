@@ -372,7 +372,13 @@ public class Binder
         }
         else
         {
-            source.GlobalNames.Add(name);
+            if (!source.GlobalNames.TryGetValue(name.Value, out var names))
+            {
+                names = [];
+                source.GlobalNames[name.Value] = names;
+            }
+
+            names.Add(name);
         }
     }
 
@@ -567,10 +573,10 @@ public class Binder
             var declaration = localDeclaration.Declarations[i];
 
             AddSymbol(declaration.Name, new Symbol.LocalVariable(
-                localDeclaration: localDeclaration,
-                index: i,
-                uninitialized: IsVariableUninitialized(localDeclaration, i),
-                chunk: CurrentScope.Chunk!));
+                localDeclaration,
+                i,
+                IsVariableUninitialized(localDeclaration, i),
+                CurrentScope.Chunk!));
 
             if (declaration.Type != null)
             {

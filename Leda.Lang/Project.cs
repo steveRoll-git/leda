@@ -65,11 +65,10 @@ public class Project
     /// </summary>
     /// <param name="dependent">The source that depends on the other source.</param>
     /// <param name="dependency">The source that is the dependency of the other source.</param>
-    /// <param name="usesGlobals">Whether the dependent source uses globals defined in the dependency.</param>
-    internal static void AddDependency(Source dependent, Source dependency, bool usesGlobals)
+    internal static void AddDependency(Source dependent, Source dependency)
     {
         dependent.Dependencies.Add(dependency);
-        dependency.Dependents.Add(dependent, new(usesGlobals));
+        dependency.Dependents.Add(dependent);
     }
 
     /// <summary>
@@ -87,6 +86,7 @@ public class Project
             // requested.
             modifiedSources.Add(source);
             source.NeedsBindingGlobals = true;
+            MarkGlobalUsers(source);
         }
 
         if (source.NeedsChecking)
@@ -96,14 +96,38 @@ public class Project
 
         source.NeedsChecking = true;
 
-        foreach (var (dependent, dependentKind) in source.Dependents)
+        foreach (var dependent in source.Dependents)
         {
-            if (codeEdited && dependentKind.UsesGlobals)
+            MarkModified(dependent, false);
+        }
+    }
+
+    /// <summary>
+    /// Goes over all sources that reference any global variables defined in the given source, and marks them.
+    /// </summary>
+    private void MarkGlobalUsers(Source source)
+    {
+        foreach (var globalDeclaration in source.File.GlobalDeclarations)
+        {
+            foreach (var declaration in globalDeclaration.Declarations)
             {
-                dependent.NeedsBindingGlobals = true;
+                foreach (var otherSource in Sources)
+                {
+                    if (otherSource == source)
+                    {
+                        continue;
+                    }
+
+                    if (otherSource.GlobalNames.ContainsKey(declaration.Name.Value))
+                    {
+                        otherSource.NeedsBindingGlobals = true;
+                        MarkModified(otherSource, false);
+                        goto NextSource;
+                    }
+                }
             }
 
-            MarkModified(dependent, false);
+            NextSource: ;
         }
     }
 
@@ -138,25 +162,21 @@ public class Project
             foreach (var modifiedSource in modifiedSources)
             {
                 Bind(modifiedSource);
+                BindGlobals(modifiedSource);
+            }
+
+            // A modified source may now define new global variables - mark users of those too
+            foreach (var modifiedSource in modifiedSources)
+            {
+                MarkGlobalUsers(modifiedSource);
             }
 
             modifiedSources.Clear();
         }
 
-        if (source.NeedsBindingGlobals || source.NeedsChecking)
-        {
-            ClearDependencies(source);
-        }
+        BindGlobals(source);
 
-        if (source.NeedsBindingGlobals)
-        {
-            BindGlobals(source);
-        }
-
-        if (source.NeedsChecking)
-        {
-            Check(source);
-        }
+        Check(source);
 
         return
         [
@@ -231,33 +251,43 @@ public class Project
     /// </summary>
     private void BindGlobals(Source source)
     {
+        if (!source.NeedsBindingGlobals)
+        {
+            return;
+        }
+
         source.NameNotFoundDiagnostics.Clear();
 
         // First, remove existing references to global symbols.
-        foreach (var name in source.GlobalNames)
+        foreach (var (_, nodes) in source.GlobalNames)
         {
-            if (source.GetTreeSymbol(name) is { } symbol)
+            foreach (var tree in nodes)
             {
-                source.SymbolReferences.Remove(symbol);
-            }
+                if (source.GetTreeSymbol(tree) is { } symbol)
+                {
+                    source.SymbolReferences.Remove(symbol);
+                }
 
-            source.DetachSymbol(name);
+                source.DetachSymbol(tree);
+            }
         }
 
-        foreach (var name in source.GlobalNames)
+        foreach (var (name, nodes) in source.GlobalNames)
         {
-            if (globalVariables.TryGetValue(name.Value, out var global))
+            if (globalVariables.TryGetValue(name, out var global))
             {
-                source.AttachSymbol(name, global);
-                if (global.Definition.Source is { } dependency && dependency != source)
+                foreach (var tree in nodes)
                 {
-                    AddDependency(source, dependency, true);
+                    source.AttachSymbol(tree, global);
                 }
             }
             else
             {
-                source.NameNotFoundDiagnostics.Add(new Diagnostic.NameNotFound(name.Range, name.Value,
-                    Tree.NameContext.Value));
+                foreach (var tree in nodes)
+                {
+                    source.NameNotFoundDiagnostics.Add(new Diagnostic.NameNotFound(tree.Range, tree.Value,
+                        Tree.NameContext.Value));
+                }
             }
         }
 
@@ -269,6 +299,12 @@ public class Project
     /// </summary>
     private void Check(Source source)
     {
+        if (!source.NeedsChecking)
+        {
+            return;
+        }
+
+        ClearDependencies(source);
         source.Evaluator = new TypeEvaluator(source);
         source.CheckerDiagnostics = Checker.Check(source, source.Evaluator);
         source.NeedsChecking = false;

@@ -38,7 +38,7 @@ public class Source
     /// <summary>
     /// Names that possibly refer to a global value defined in another source.
     /// </summary>
-    public List<Tree.Expression.Name> GlobalNames { get; } = [];
+    public Dictionary<string, List<Tree.Expression.Name>> GlobalNames { get; } = [];
 
     public TypeEvaluator Evaluator { get; set; }
 
@@ -48,16 +48,9 @@ public class Source
     public HashSet<Source> Dependencies { get; } = [];
 
     /// <summary>
-    /// Info about how a source depends on another source.
-    /// </summary>
-    /// <param name="UsesGlobals">Whether the source uses globals from the other source, meaning a Binder pass is
-    /// needed.</param>
-    public record struct DependentKind(bool UsesGlobals);
-
-    /// <summary>
     /// A set of sources that depend on this source.
     /// </summary>
-    public Dictionary<Source, DependentKind> Dependents { get; set; } = [];
+    public HashSet<Source> Dependents { get; set; } = [];
 
     /// <summary>
     /// List of diagnostics reported by the Parser.
