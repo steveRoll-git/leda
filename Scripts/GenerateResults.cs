@@ -29,10 +29,9 @@ foreach (var testCodePath in matcher.GetResultsInFullPath(testFilesPath))
 
     var testCode = File.ReadAllText(testCodePath);
     var source = new Source(filenameWithoutExtension, testCode);
-    var diagnostics = new List<Diagnostic>();
-    diagnostics.AddRange(source.Parse());
-    diagnostics.AddRange(source.Bind());
-    diagnostics.AddRange(source.Check());
+    var project = new Project();
+    project.AddSource(source);
+    var diagnostics = project.GetDiagnostics(source);
 
     var diagnosticsOutput = DiagnosticPrinter.DiagnosticsOutput(diagnostics);
     File.WriteAllText(testDiagnosticsPath, diagnosticsOutput);
