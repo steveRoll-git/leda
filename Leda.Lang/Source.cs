@@ -73,14 +73,15 @@ public class Source
     internal List<Diagnostic> CheckerDiagnostics { get; set; } = [];
 
     /// <summary>
-    /// Whether the bindings of the global references in this source need to be rechecked.
+    /// Whether the global references in this source have been bound since the last time it or its dependencies were
+    /// modified.
     /// </summary>
-    internal bool NeedsBindingGlobals { get; set; } = true;
+    internal bool AreGlobalsBound { get; set; }
 
     /// <summary>
-    /// Whether this source needs a Checker pass in order to get updated diagnostics.
+    /// Whether this source had a Checker pass since the last time it or its dependencies were modified.
     /// </summary>
-    internal bool NeedsChecking { get; set; } = true;
+    internal bool IsChecked { get; set; }
 
     /// <summary>
     /// Creates a new source with the given path, and reads the file at that path into Code.

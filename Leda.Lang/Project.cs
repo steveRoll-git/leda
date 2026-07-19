@@ -72,38 +72,69 @@ public class Project
     }
 
     /// <summary>
-    /// Update's the source's flags to indicate that it needs rechecking (and optionally binding), and does the same for
-    /// all of its recursive dependents.
+    /// The different ways in which a source's flags may be modified.
     /// </summary>
-    /// <param name="source">The source to mark as modified.</param>
-    /// <param name="codeEdited">Whether the source's code was edited, meaning parsing and binding need to run
-    /// again.</param>
-    private void MarkModified(Source source, bool codeEdited)
+    private enum SourceStatus
     {
-        if (codeEdited)
+        /// <summary>
+        /// The source's code has been modified, meaning it must be parsed and bound again.
+        /// </summary>
+        Modified,
+
+        /// <summary>
+        /// The code of one of this source's dependencies has changed, meaning this source must be checked again.
+        /// </summary>
+        DependencyModified,
+
+        /// <summary>
+        /// A source that defines global variables used by this source has changed, meaning global references must be
+        /// bound again.
+        /// </summary>
+        GlobalReferenceModified,
+    }
+
+    /// <summary>
+    /// Update's the source's flags to indicate which operations must be done to it before the next time diagnostics
+    /// are requested.
+    /// </summary>
+    private void SetSourceStatus(Source source, SourceStatus status)
+    {
+        if (status == SourceStatus.Modified && !modifiedSources.Contains(source))
         {
             // The source is added to the modified set - it will be parsed and bound the next time diagnostics are
             // requested.
             modifiedSources.Add(source);
-            source.NeedsBindingGlobals = true;
+            // After being edited, global variables that this source defines may not be defined anymore.
+            // Users of these global variables need to be rechecked.
             MarkGlobalUsers(source);
         }
 
-        if (source.NeedsChecking)
+        var prevChecked = source.IsChecked;
+
+        switch (status)
         {
-            return;
+            case SourceStatus.Modified or SourceStatus.GlobalReferenceModified:
+                source.AreGlobalsBound = false;
+                source.IsChecked = false;
+                break;
+            case SourceStatus.DependencyModified:
+                source.IsChecked = false;
+                break;
         }
 
-        source.NeedsChecking = true;
-
-        foreach (var dependent in source.Dependents)
+        if (prevChecked && !source.IsChecked)
         {
-            MarkModified(dependent, false);
+            // If this source transitioned from checked to not checked, all its dependents must be rechecked too.
+            foreach (var dependent in source.Dependents)
+            {
+                SetSourceStatus(dependent, SourceStatus.DependencyModified);
+            }
         }
     }
 
     /// <summary>
-    /// Goes over all sources that reference any global variables defined in the given source, and marks them.
+    /// Goes over all sources that reference any global variables defined in the given source, and sets their status
+    /// such that they'll be bound again and rechecked.
     /// </summary>
     private void MarkGlobalUsers(Source source)
     {
@@ -120,8 +151,7 @@ public class Project
 
                     if (otherSource.GlobalNames.ContainsKey(declaration.Name.Value))
                     {
-                        otherSource.NeedsBindingGlobals = true;
-                        MarkModified(otherSource, false);
+                        SetSourceStatus(otherSource, SourceStatus.GlobalReferenceModified);
                         goto NextSource;
                     }
                 }
@@ -139,7 +169,7 @@ public class Project
     public void ModifySource(Source source, string code)
     {
         source.Code = code;
-        MarkModified(source, true);
+        SetSourceStatus(source, SourceStatus.Modified);
     }
 
     /// <summary>
@@ -251,7 +281,7 @@ public class Project
     /// </summary>
     private void BindGlobals(Source source)
     {
-        if (!source.NeedsBindingGlobals)
+        if (source.AreGlobalsBound)
         {
             return;
         }
@@ -291,7 +321,7 @@ public class Project
             }
         }
 
-        source.NeedsBindingGlobals = false;
+        source.AreGlobalsBound = true;
     }
 
     /// <summary>
@@ -299,7 +329,7 @@ public class Project
     /// </summary>
     private void Check(Source source)
     {
-        if (!source.NeedsChecking)
+        if (source.IsChecked)
         {
             return;
         }
@@ -307,7 +337,7 @@ public class Project
         ClearDependencies(source);
         source.Evaluator = new TypeEvaluator(source);
         source.CheckerDiagnostics = Checker.Check(source, source.Evaluator);
-        source.NeedsChecking = false;
+        source.IsChecked = true;
     }
 
     private void ClearBindings(Source source)
