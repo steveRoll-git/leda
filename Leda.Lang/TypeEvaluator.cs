@@ -488,8 +488,8 @@ public class TypeEvaluator(Source source)
 
             case TokenKind.Less or TokenKind.LessEqual or TokenKind.Greater or TokenKind.GreaterEqual:
             {
-                if (IsAssignableFrom(Type.NumberPrimitive, left) && IsAssignableFrom(Type.NumberPrimitive, right) ||
-                    IsAssignableFrom(Type.StringPrimitive, left) && IsAssignableFrom(Type.StringPrimitive, right))
+                if ((IsAssignableFrom(Type.NumberPrimitive, left) && IsAssignableFrom(Type.NumberPrimitive, right)) ||
+                    (IsAssignableFrom(Type.StringPrimitive, left) && IsAssignableFrom(Type.StringPrimitive, right)))
                 {
                     return Type.Boolean;
                 }
@@ -649,7 +649,7 @@ public class TypeEvaluator(Source source)
             case TypeList.Parameters { Function: var function }:
                 return GetTypeOfParameter(function, index);
 
-            case TypeList.FromTypes { Types: var types } when index < types.Count:
+            case TypeList.FromTypes { Types: var types }:
                 // TODO check rest
                 if (index < types.Count)
                 {
@@ -796,7 +796,7 @@ public class TypeEvaluator(Source source)
 
         return IsAssignableFrom(targetNillable.Inner,
             // If the target type is nillable, we don't care about the source type's nillability.
-            sourceType is Type.Nillable { Inner: var sourceInner, } ? sourceInner : sourceType,
+            sourceType is Type.Nillable { Inner: var sourceInner } ? sourceInner : sourceType,
             out reason);
     }
 
@@ -1028,7 +1028,7 @@ public class TypeEvaluator(Source source)
                 parameters[index].Name.Value,
             TypeList.FromDeclarations { Declarations: var declarations } when index < declarations.Count =>
                 declarations[index].Name.Value,
-            _ => null
+            _ => null,
         };
     }
 
