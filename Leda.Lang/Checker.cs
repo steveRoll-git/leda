@@ -374,8 +374,7 @@ public class Checker
                 evaluator.GetTypeListOfExpression(value) is { } sourceTypeList &&
                 evaluator.GetTypeListMinimum(sourceTypeList) > 1)
             {
-                if (!evaluator.IsAssignableFrom(targets, sourceTypeList, out var reasons, TypeListKind.Return,
-                        targetIndex: i))
+                if (!evaluator.IsAssignableFrom(targets, sourceTypeList, out var reasons, TypeListKind.Return, i))
                 {
                     Report(new Diagnostic.TypeMismatch(value.Range,
                         new TypeMismatch.TrailingValuesIncompatible { Children = reasons }));
@@ -599,12 +598,13 @@ public class Checker
     private void VisitType(Tree.Type.Table table)
     {
         // Call this just to generate symbols for the table's string fields, if they weren't evaluated before.
+        // TODO change this
         evaluator.GetTypeOfTableAnnotation(table);
 
-        foreach (var (key, value) in table.Fields)
+        foreach (var field in table.Fields)
         {
-            VisitType(key);
-            VisitType(value);
+            VisitType(field.Key);
+            VisitType(field.Value);
         }
     }
 

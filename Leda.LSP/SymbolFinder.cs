@@ -67,6 +67,24 @@ public static class SymbolFinder
         return null;
     }
 
+    private static NameFindResult? GetNameAtPosition(List<Tree.Expression.Table.Field> fields, Position position)
+    {
+        foreach (var field in fields)
+        {
+            if (GetNameAtPosition(field.Key, position) is { } foundKey)
+            {
+                return foundKey;
+            }
+
+            if (GetNameAtPosition(field.Value, position) is { } foundValue)
+            {
+                return foundValue;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Finds the name that lies on the given position by recursively descending the tree.
     /// </summary>
@@ -159,9 +177,6 @@ public static class SymbolFinder
             Tree.Statement.Return returnStatement => GetNameAtPosition(returnStatement.Values, position),
 
             Tree.Expression.Table table => GetNameAtPosition(table.Fields, position),
-
-            Tree.Expression.Table.Field tableField => GetNameAtPosition(tableField.Key, position) ??
-                                                      GetNameAtPosition(tableField.Value, position),
 
             Tree.Type.Table table => GetNameAtPosition(table.Fields, position),
 

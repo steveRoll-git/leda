@@ -27,7 +27,10 @@ public abstract class Tree
         {
             public string Value => value;
 
-            public override string ToString() => Value;
+            public override string ToString()
+            {
+                return Value;
+            }
         }
 
         public class StringLiteral(string value) : Type
@@ -50,7 +53,11 @@ public abstract class Tree
             /// <summary>
             /// A pair of key and value types.
             /// </summary>
-            public record struct Field(Type Key, Type Value);
+            public class Field(Type key, Type value)
+            {
+                public Type Key => key;
+                public Type Value => value;
+            }
         }
 
         /// <summary>
@@ -322,7 +329,10 @@ public abstract class Tree
         {
             public string Value => value;
 
-            public override string ToString() => Value;
+            public override string ToString()
+            {
+                return Value;
+            }
         }
 
         /// <summary>
@@ -348,7 +358,10 @@ public abstract class Tree
             public string Value => value;
             public double NumberValue => numberValue;
 
-            public override string ToString() => Value;
+            public override string ToString()
+            {
+                return Value;
+            }
         }
 
         /// <summary>
@@ -358,7 +371,10 @@ public abstract class Tree
         {
             public string Value { get; } = value;
 
-            public override string ToString() => Value;
+            public override string ToString()
+            {
+                return Value;
+            }
         }
 
         /// <summary>
@@ -379,7 +395,7 @@ public abstract class Tree
             /// <summary>
             /// A field in a table constructor.
             /// </summary>
-            public class Field(Expression key, Expression value) : Tree
+            public class Field(Expression key, Expression value)
             {
                 public Expression Key => key;
                 public Expression Value => value;

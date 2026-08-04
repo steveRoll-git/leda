@@ -10,8 +10,10 @@ public class Parser
     /// <summary>
     /// Returns whether `token` can end a statement.
     /// </summary>
-    private static bool IsStatementEndingToken(Token token) =>
-        token.Kind is TokenKind.End or TokenKind.Else or TokenKind.Elseif or TokenKind.Until or TokenKind.Eof;
+    private static bool IsStatementEndingToken(Token token)
+    {
+        return token.Kind is TokenKind.End or TokenKind.Else or TokenKind.Elseif or TokenKind.Until or TokenKind.Eof;
+    }
 
     private List<Diagnostic> Diagnostics { get; } = [];
 
@@ -43,7 +45,10 @@ public class Parser
 
     private readonly Stack<ChunkInfo> chunkStack = new();
 
-    private static bool IsAssignableTo(Tree.Expression tree) => tree is Tree.Expression.Name or Tree.Expression.Access;
+    private static bool IsAssignableTo(Tree.Expression tree)
+    {
+        return tree is Tree.Expression.Name or Tree.Expression.Access;
+    }
 
     private Parser(Source source)
     {
@@ -1010,8 +1015,6 @@ public class Parser
         {
             var isListElement = false;
 
-            StartTree();
-
             Tree.Expression key;
             // '[' exp ']' '=' exp
             if (Accept(TokenKind.LSquare))
@@ -1035,7 +1038,7 @@ public class Parser
             }
 
             var value = ParseExpression();
-            fields.Add(EndTree(new Tree.Expression.Table.Field(key, value)));
+            fields.Add(new Tree.Expression.Table.Field(key, value));
 
             if (isListElement)
             {
