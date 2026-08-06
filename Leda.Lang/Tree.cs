@@ -398,6 +398,8 @@ public abstract class Tree
         {
             public List<Field> Fields => fields;
 
+            public ValueLocation? ValueLocation { get; internal set; }
+
             /// <summary>
             /// A field in a table constructor.
             /// </summary>

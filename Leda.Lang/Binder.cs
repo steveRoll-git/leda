@@ -384,6 +384,11 @@ public class Binder
 
     private void VisitExpression(Tree.Expression.Table table, FlowNode? flowNode)
     {
+        if (valueLocationStack.TryPeek(out var path))
+        {
+            table.ValueLocation = path;
+        }
+
         foreach (var field in table.Fields)
         {
             if (valueLocationStack.TryPeek(out var parent))
