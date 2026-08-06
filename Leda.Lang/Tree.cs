@@ -555,12 +555,6 @@ public abstract class Tree
 /// </summary>
 internal abstract record ValueLocation
 {
-    /// <summary>
-    /// If the value is inside a table, or a series of nested tables, this is a list of the table keys that go from the
-    /// ValueLocation root to the field where the value itself is located.
-    /// </summary>
-    public List<Tree.Expression> TableFields { get; init; } = [];
-
     public record AssignmentValue(Tree.Statement.Assignment Assignment, int Index) : ValueLocation;
 
     public record Variable(Tree.Statement.VariableDeclaration VariableDeclaration, int Index) : ValueLocation;
@@ -568,4 +562,6 @@ internal abstract record ValueLocation
     public record Argument(Tree.Expression.Call Call, int Index) : ValueLocation;
 
     public record ReturnValue(Tree.Statement.Return Return, int Index) : ValueLocation;
+
+    public record TableField(Tree.Expression.Table.Field Field, ValueLocation Parent) : ValueLocation;
 }

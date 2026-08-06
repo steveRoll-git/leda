@@ -344,7 +344,7 @@ public class TypeEvaluator(Source source)
 
     private Type GetTypeAtValueLocation(ValueLocation valueLocation)
     {
-        var path = valueLocation switch
+        return valueLocation switch
         {
             ValueLocation.Variable { VariableDeclaration.Declarations: var declarations, Index: var varIndex }
                 when varIndex < declarations.Count && declarations[varIndex].Type is { } annotation =>
@@ -358,23 +358,12 @@ public class TypeEvaluator(Source source)
             ValueLocation.ReturnValue { Return: var returnStmt, Index: var returnIndex }
                 when returnStmt.ParentChunk.ParentFunction is { } function =>
                 GetTypeInTypeList(GetTypeOfFunction(function).Returns, returnIndex),
+            ValueLocation.TableField { Field: var field, Parent: var parent }
+                when GetTypeAtValueLocation(parent) is Type.Table parentTable &&
+                     GetTypeOfTableAccess(parentTable, field.Key) is { } keyType =>
+                keyType,
             _ => Type.Unknown,
         };
-
-        foreach (var key in valueLocation.TableFields)
-        {
-            if (path is Type.Table table)
-            {
-                path = GetTypeOfTableAccess(table, key) ?? Type.Unknown;
-            }
-            else
-            {
-                path = Type.Unknown;
-                break;
-            }
-        }
-
-        return path;
     }
 
     // TODO this probably needs to be cached

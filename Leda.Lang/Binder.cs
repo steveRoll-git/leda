@@ -343,7 +343,7 @@ public class Binder
     {
         if (valueLocationStack.TryPeek(out var path))
         {
-            function.ValueLocation = path with { TableFields = [..path.TableFields] };
+            function.ValueLocation = path;
         }
 
         PushChunkScope(function.Chunk);
@@ -386,8 +386,10 @@ public class Binder
     {
         foreach (var field in table.Fields)
         {
-            valueLocationStack.TryPeek(out var valueLocation);
-            valueLocation?.TableFields.Add(field.Key);
+            if (valueLocationStack.TryPeek(out var parent))
+            {
+                valueLocationStack.Push(new ValueLocation.TableField(field, parent));
+            }
 
             VisitExpression(field.Key, flowNode);
             VisitExpression(field.Value, flowNode);
@@ -402,7 +404,7 @@ public class Binder
                 };
             }
 
-            valueLocation?.TableFields.RemoveAt(valueLocation.TableFields.Count - 1);
+            valueLocationStack.TryPop(out _);
         }
     }
 
