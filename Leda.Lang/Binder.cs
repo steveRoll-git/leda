@@ -54,7 +54,7 @@ public class Binder
         [Type.FunctionPrimitive.Name!] = new(null, Symbol.FunctionType),
     };
 
-    private readonly Stack<AssignmentPath> assignmentPathStack = [];
+    private readonly Stack<ValueLocation> valueLocationStack = [];
 
     private readonly Dictionary<Tree.LabelName, FlowNode.Label> labelFlowNodes = [];
 
@@ -277,17 +277,17 @@ public class Binder
     {
         for (var i = 0; i < expressions.Count; i++)
         {
-            assignmentPathStack.Push(parent switch
+            valueLocationStack.Push(parent switch
                 {
                     Tree.Statement.VariableDeclaration variableDeclaration =>
-                        new AssignmentPath.Variable(variableDeclaration, i),
+                        new ValueLocation.Variable(variableDeclaration, i),
                     Tree.Statement.Assignment assignment =>
-                        new AssignmentPath.AssignmentValue(assignment, i),
+                        new ValueLocation.AssignmentValue(assignment, i),
                     Tree.Expression.Call call =>
-                        new AssignmentPath.Argument(call, i),
+                        new ValueLocation.Argument(call, i),
                     Tree.Expression.MethodCall => throw new NotImplementedException(),
                     Tree.Statement.Return returnStmt =>
-                        new AssignmentPath.ReturnValue(returnStmt, i),
+                        new ValueLocation.ReturnValue(returnStmt, i),
                     _ => throw new Exception(), // Unreachable.
                 }
             );
@@ -295,7 +295,7 @@ public class Binder
             var expression = expressions[i];
             VisitExpression(expression, flowNode);
 
-            assignmentPathStack.Pop();
+            valueLocationStack.Pop();
         }
     }
 
@@ -341,9 +341,9 @@ public class Binder
 
     private void VisitExpression(Tree.Expression.Function function)
     {
-        if (assignmentPathStack.TryPeek(out var path))
+        if (valueLocationStack.TryPeek(out var path))
         {
-            function.AssignmentPath = path with { TableFields = [..path.TableFields] };
+            function.ValueLocation = path with { TableFields = [..path.TableFields] };
         }
 
         PushChunkScope(function.Chunk);
@@ -386,8 +386,8 @@ public class Binder
     {
         foreach (var field in table.Fields)
         {
-            assignmentPathStack.TryPeek(out var assignmentPath);
-            assignmentPath?.TableFields.Add(field.Key);
+            valueLocationStack.TryPeek(out var valueLocation);
+            valueLocation?.TableFields.Add(field.Key);
 
             VisitExpression(field.Key, flowNode);
             VisitExpression(field.Value, flowNode);
@@ -402,7 +402,7 @@ public class Binder
                 };
             }
 
-            assignmentPath?.TableFields.RemoveAt(assignmentPath.TableFields.Count - 1);
+            valueLocation?.TableFields.RemoveAt(valueLocation.TableFields.Count - 1);
         }
     }
 

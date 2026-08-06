@@ -424,7 +424,7 @@ public abstract class Tree
             public Chunk Chunk { get; }
             public Range NameRange { get; }
 
-            internal AssignmentPath? AssignmentPath { get; set; }
+            internal ValueLocation? ValueLocation { get; set; }
 
             /// <summary>
             /// Whether this function was defined with a `:`.
@@ -550,21 +550,22 @@ public abstract class Tree
 }
 
 /// <summary>
-/// Represents a location where a value could be assigned to. Used when inferring the parameter types of functions.
+/// Represents a location where a value could have a type that it's assigned to.
+/// Used when inferring the parameter types of functions.
 /// </summary>
-internal abstract record AssignmentPath
+internal abstract record ValueLocation
 {
     /// <summary>
     /// If the value is inside a table, or a series of nested tables, this is a list of the table keys that go from the
-    /// AssignmentPath root to the field where the value itself is located.
+    /// ValueLocation root to the field where the value itself is located.
     /// </summary>
     public List<Tree.Expression> TableFields { get; init; } = [];
 
-    public record AssignmentValue(Tree.Statement.Assignment Assignment, int Index) : AssignmentPath;
+    public record AssignmentValue(Tree.Statement.Assignment Assignment, int Index) : ValueLocation;
 
-    public record Variable(Tree.Statement.VariableDeclaration VariableDeclaration, int Index) : AssignmentPath;
+    public record Variable(Tree.Statement.VariableDeclaration VariableDeclaration, int Index) : ValueLocation;
 
-    public record Argument(Tree.Expression.Call Call, int Index) : AssignmentPath;
+    public record Argument(Tree.Expression.Call Call, int Index) : ValueLocation;
 
-    public record ReturnValue(Tree.Statement.Return Return, int Index) : AssignmentPath;
+    public record ReturnValue(Tree.Statement.Return Return, int Index) : ValueLocation;
 }

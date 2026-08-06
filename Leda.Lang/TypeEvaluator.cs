@@ -342,26 +342,26 @@ public class TypeEvaluator(Source source)
         return GetTypeOfExpressionInList(variable.Declaration.Values, variable.Index);
     }
 
-    private Type GetAssignmentPathType(AssignmentPath assignmentPath)
+    private Type GetTypeAtValueLocation(ValueLocation valueLocation)
     {
-        var path = assignmentPath switch
+        var path = valueLocation switch
         {
-            AssignmentPath.Variable { VariableDeclaration.Declarations: var declarations, Index: var varIndex }
+            ValueLocation.Variable { VariableDeclaration.Declarations: var declarations, Index: var varIndex }
                 when varIndex < declarations.Count && declarations[varIndex].Type is { } annotation =>
                 GetTypeOfTypeAnnotation(annotation),
-            AssignmentPath.AssignmentValue { Assignment.Targets: var targets, Index: var assignIndex }
+            ValueLocation.AssignmentValue { Assignment.Targets: var targets, Index: var assignIndex }
                 when assignIndex < targets.Count =>
                 GetTypeOfExpression(targets[assignIndex]),
-            AssignmentPath.Argument { Call.Target: var callee, Index: var argIndex }
+            ValueLocation.Argument { Call.Target: var callee, Index: var argIndex }
                 when GetTypeOfExpression(callee) is Type.Function function =>
                 GetTypeInTypeList(function.Parameters, argIndex),
-            AssignmentPath.ReturnValue { Return: var returnStmt, Index: var returnIndex }
+            ValueLocation.ReturnValue { Return: var returnStmt, Index: var returnIndex }
                 when returnStmt.ParentChunk.ParentFunction is { } function =>
                 GetTypeInTypeList(GetTypeOfFunction(function).Returns, returnIndex),
             _ => Type.Unknown,
         };
 
-        foreach (var key in assignmentPath.TableFields)
+        foreach (var key in valueLocation.TableFields)
         {
             if (path is Type.Table table)
             {
@@ -380,8 +380,8 @@ public class TypeEvaluator(Source source)
     // TODO this probably needs to be cached
     internal Type? GetInferredParameterType(Tree.Expression.Function function, int index)
     {
-        if (function.AssignmentPath != null &&
-            GetAssignmentPathType(function.AssignmentPath) is Type.Function targetFunction &&
+        if (function.ValueLocation != null &&
+            GetTypeAtValueLocation(function.ValueLocation) is Type.Function targetFunction &&
             !(targetFunction.Parameters is TypeList.Parameters { Function: var other } && other == function))
         {
             return GetTypeInTypeList(targetFunction.Parameters, index);
