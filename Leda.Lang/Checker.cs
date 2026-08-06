@@ -166,7 +166,11 @@ public class Checker
         for (var i = 0; i < function.Type.Parameters.Count; i++)
         {
             var parameter = function.Type.Parameters[i];
-            if (parameter.Type == null && evaluator.GetInferredParameterType(function, i) == null)
+            if (parameter.Type != null)
+            {
+                VisitType(parameter.Type);
+            }
+            else if (evaluator.GetInferredParameterType(function, i) == null)
             {
                 Report(new Diagnostic.ImplicitAnyType(parameter.Name.Range, parameter.Name.Value));
             }
@@ -230,8 +234,7 @@ public class Checker
         }
     }
 
-    private void VisitExpression(Tree.Expression expr, bool generateFieldSymbols = false,
-        bool isAssignmentTarget = false)
+    private void VisitExpression(Tree.Expression expr, bool isAssignmentTarget = false)
     {
         switch (expr)
         {
@@ -327,7 +330,7 @@ public class Checker
     {
         foreach (var target in assignment.Targets)
         {
-            VisitExpression(target, isAssignmentTarget: true);
+            VisitExpression(target, true);
         }
 
         foreach (var value in assignment.Values)
@@ -419,9 +422,7 @@ public class Checker
         for (var i = 0; i < variableDeclaration.Values.Count; i++)
         {
             var value = variableDeclaration.Values[i];
-            VisitExpression(value,
-                // Generate symbols for table fields only if the value is inferred.
-                i < variableDeclaration.Declarations.Count && variableDeclaration.Declarations[i].Type == null);
+            VisitExpression(value);
 
             if (i >= variableDeclaration.Declarations.Count)
             {
@@ -435,6 +436,8 @@ public class Checker
             var declaration = variableDeclaration.Declarations[i];
             if (declaration.Type != null)
             {
+                VisitType(declaration.Type);
+
                 var targetType = evaluator.GetTypeOfTypeAnnotation(declaration.Type);
                 if (i < variableDeclaration.Values.Count)
                 {
