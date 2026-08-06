@@ -205,16 +205,8 @@ public class TypeEvaluator(Source source)
         {
             if (GetTypeOfExpression(field.Key, true) is Type.StringLiteral { Literal: var literal })
             {
-                var newKey = new Type.Table.ValueStringField(new Symbol.StringField(type, literal), field);
+                var newKey = new Type.Table.ValueStringField(field.Symbol, field);
                 type.StringLiterals[literal] = newKey;
-                if (field.Key is Tree.Expression.String && source.GetTreeSymbol(field.Key) == null)
-                {
-                    source.AttachSymbol(field.Key, newKey.Symbol, true);
-                }
-                else
-                {
-                    newKey.Symbol.Definition = new(source, field.Key.Range);
-                }
             }
         }
 
@@ -233,9 +225,8 @@ public class TypeEvaluator(Source source)
         {
             if (GetTypeOfTypeAnnotation(field.Key) is Type.StringLiteral { Literal: var literal })
             {
-                var newKey = new Type.Table.TypeStringField(new Symbol.StringField(type, literal), field);
+                var newKey = new Type.Table.TypeStringField(field.Symbol, field);
                 type.StringLiterals[literal] = newKey;
-                source.AttachSymbol(field.Key, newKey.Symbol, true);
             }
         }
 

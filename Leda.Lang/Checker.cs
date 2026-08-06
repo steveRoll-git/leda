@@ -251,7 +251,7 @@ public class Checker
                 VisitExpression(methodCall);
                 break;
             case Tree.Expression.Table table:
-                VisitExpression(table, generateFieldSymbols);
+                VisitExpression(table);
                 break;
             case Tree.Expression.Unary unary:
                 VisitExpression(unary);
@@ -522,7 +522,10 @@ public class Checker
             if (TypeEvaluator.GetStringFieldInType(targetType, literal.Value) is { } stringField)
             {
                 found = true;
-                source.AttachSymbol(literal, stringField.Symbol);
+                if (stringField.Symbol != null)
+                {
+                    source.AttachSymbol(literal, stringField.Symbol);
+                }
             }
         }
         else
@@ -557,18 +560,19 @@ public class Checker
         VisitExpression(unary.Expression);
     }
 
-    private void VisitExpression(Tree.Expression.Table table, bool generateFieldSymbols)
+    private void VisitExpression(Tree.Expression.Table table)
     {
-        if (generateFieldSymbols)
-        {
-            // Call this just to generate symbols for the table's string fields, if they weren't evaluated before.
-            evaluator.GetTypeOfTableValue(table);
-        }
-
         foreach (var field in table.Fields)
         {
             VisitExpression(field.Key);
             VisitExpression(field.Value);
+
+            if (field.Symbol != null && source.GetTreeSymbol(field.Key) == null)
+            {
+                // If this table is the origin of an inferred table type, this field will be its symbol's definition.
+                // But, CheckValueToType can overwrite it if it references some other field.
+                source.AttachSymbol(field.Key, field.Symbol, true);
+            }
         }
     }
 
@@ -597,14 +601,15 @@ public class Checker
 
     private void VisitType(Tree.Type.Table table)
     {
-        // Call this just to generate symbols for the table's string fields, if they weren't evaluated before.
-        // TODO change this
-        evaluator.GetTypeOfTableAnnotation(table);
-
         foreach (var field in table.Fields)
         {
             VisitType(field.Key);
             VisitType(field.Value);
+
+            if (field.Symbol != null)
+            {
+                source.AttachSymbol(field.Key, field.Symbol, true);
+            }
         }
     }
 
@@ -636,9 +641,9 @@ public class Checker
                     targetValueType = stringField != null
                         ? evaluator.GetTypeOfStringField(targetTable, stringField)
                         : null;
-                    if (stringField != null && sourceField.Key is Tree.Expression.String)
+                    if (stringField?.Symbol != null && sourceField.Key is Tree.Expression.String)
                     {
-                        source.AttachSymbol(sourceField.Key, stringField.Symbol);
+                        source.AttachSymbol(sourceField.Key, stringField.Symbol, overwrite: true);
                     }
                 }
                 else

@@ -25,9 +25,9 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
 
             switch (symbol)
             {
-                case Symbol.StringField { Table: var table, Key: var key }:
+                case Symbol.StringField { Key: var key }:
                     content =
-                        $"(field) {key}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfStringFieldInTable(table, key) ?? Type.Unknown, multiline: true)}";
+                        $"(field) {key}: TODO";
                     break;
 
                 case Symbol.Variable or Symbol.Parameter:
@@ -56,7 +56,7 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                 {
                     var typeValue = symbol is not Symbol.IntrinsicType and not Symbol.TypeParameter
                         ? " = " + source.Evaluator.TypeToString(source.Evaluator.GetTypeOfSymbol(symbol),
-                            typeContents: true, multiline: true)
+                            true, true)
                         : "";
                     content = $"type {symbol.Name}{typeValue}";
                     break;
@@ -81,9 +81,9 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                 Contents = new MarkupContent
                 {
                     Kind = MarkupKind.Markdown,
-                    Value = content
+                    Value = content,
                 },
-                Range = range.ToLs()
+                Range = range.ToLs(),
             })!;
         }
 

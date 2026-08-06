@@ -135,9 +135,20 @@ public class Source
     /// <summary>
     /// Associates this tree node with the given symbol.
     /// </summary>
-    internal void AttachSymbol(Tree tree, Symbol symbol, bool isDefinition = false)
+    /// <param name="tree">The tree that will reference the symbol.</param>
+    /// <param name="symbol">The symbol that will be referenced.</param>
+    /// <param name="isDefinition">Whether this tree is where the symbol is defined.</param>
+    /// <param name="overwrite">Set the tree's symbol even if it already has one.</param>
+    internal void AttachSymbol(Tree tree, Symbol symbol, bool isDefinition = false, bool overwrite = false)
     {
-        TreeSymbolMap.Add(tree, symbol);
+        if (overwrite)
+        {
+            TreeSymbolMap[tree] = symbol;
+        }
+        else
+        {
+            TreeSymbolMap.Add(tree, symbol);
+        }
 
         if (isDefinition)
         {

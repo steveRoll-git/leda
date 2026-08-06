@@ -112,10 +112,8 @@ public abstract class Symbol(string name)
     /// <summary>
     /// A string field in a table.
     /// </summary>
-    public class StringField(Type.Table table, string key) : Symbol(key)
+    public class StringField(string key) : Symbol(key)
     {
-        // For this symbol it's okay to store type information, since it's recreated in the typecheck phase.
-        public Type.Table Table => table;
         public string Key => Name;
     }
 

@@ -110,16 +110,16 @@ public abstract class Type
         /// <summary>
         /// The symbol and type of a string field in a table.
         /// </summary>
-        public abstract class StringField(Symbol symbol)
+        public abstract class StringField(Symbol? symbol)
         {
-            public Symbol Symbol => symbol;
+            public Symbol? Symbol => symbol;
             public Type? CachedType = null;
         }
 
         /// <summary>
         /// A string field in a table type that's inferred from a value.
         /// </summary>
-        public class ValueStringField(Symbol symbol, Tree.Expression.Table.Field tableField) : StringField(symbol)
+        public class ValueStringField(Symbol? symbol, Tree.Expression.Table.Field tableField) : StringField(symbol)
         {
             public Tree.Expression.Table.Field Field => tableField;
         }
@@ -127,7 +127,7 @@ public abstract class Type
         /// <summary>
         /// A string field in a table type that's defined by a type annotation.
         /// </summary>
-        public class TypeStringField(Symbol symbol, Tree.Type.Table.Field tableField) : StringField(symbol)
+        public class TypeStringField(Symbol? symbol, Tree.Type.Table.Field tableField) : StringField(symbol)
         {
             public Tree.Type.Table.Field Field => tableField;
         }

@@ -392,6 +392,16 @@ public class Binder
             VisitExpression(field.Key, flowNode);
             VisitExpression(field.Value, flowNode);
 
+            // We create symbols only for keys that are string literals.
+            // Symbols for other kinds of keys aren't created yet.
+            if (field.Key is Tree.Expression.String stringLiteral)
+            {
+                field.Symbol = new Symbol.StringField(stringLiteral.Value)
+                {
+                    Definition = new(source, field.Key.Range),
+                };
+            }
+
             assignmentPath?.TableFields.RemoveAt(assignmentPath.TableFields.Count - 1);
         }
     }
@@ -465,6 +475,14 @@ public class Binder
         {
             Visit(field.Key);
             Visit(field.Value);
+
+            if (field.Key is Tree.Type.StringLiteral stringLiteral)
+            {
+                field.Symbol = new Symbol.StringField(stringLiteral.Value)
+                {
+                    Definition = new(source, field.Key.Range),
+                };
+            }
         }
     }
 

@@ -57,6 +57,12 @@ public abstract class Tree
             {
                 public Type Key => key;
                 public Type Value => value;
+
+                /// <summary>
+                /// The symbol that this field defines.<br/>
+                /// Initialized by the Binder.
+                /// </summary>
+                internal Symbol? Symbol { get; set; }
             }
         }
 
@@ -399,6 +405,13 @@ public abstract class Tree
             {
                 public Expression Key => key;
                 public Expression Value => value;
+
+                /// <summary>
+                /// The symbol that this field defines. Used only for table types that are inferred from the containing
+                /// table.<br/>
+                /// Initialized by the Binder.
+                /// </summary>
+                internal Symbol? Symbol { get; set; }
             }
         }
 
