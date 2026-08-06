@@ -14,20 +14,17 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
     {
         var source = server.GetSourceByUri(request.TextDocument.Uri);
 
-        if (SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()) is
-            ({ } symbol, var range, var expression))
+        if (SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()) is ({ } symbol, var range, var getType))
         {
             string? content;
 
-            var expressionType = expression != null
-                ? source.Evaluator.GetTypeOfExpression(expression)
-                : null;
+            var gotType = getType?.Invoke(source.Evaluator);
 
             switch (symbol)
             {
                 case Symbol.StringField { Key: var key }:
                     content =
-                        $"(field) {key}: TODO";
+                        $"(field) {key}: {source.Evaluator.TypeToString(gotType ?? Type.Unknown)}";
                     break;
 
                 case Symbol.Variable or Symbol.Parameter:
@@ -39,14 +36,15 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                         Symbol.Parameter => "(parameter)",
                         _ => "???",
                     };
+                    var type = gotType ?? source.Evaluator.GetTypeOfSymbol(symbol);
                     content =
-                        $"{kind} {symbol.Name}: {source.Evaluator.TypeToString(expressionType ?? source.Evaluator.GetTypeOfSymbol(symbol), multiline: true)}";
+                        $"{kind} {symbol.Name}: {source.Evaluator.TypeToString(type, multiline: true)}";
                     break;
                 }
 
                 case Symbol.LocalFunction:
                 {
-                    var type = expressionType ?? source.Evaluator.GetTypeOfSymbol(symbol);
+                    var type = gotType ?? source.Evaluator.GetTypeOfSymbol(symbol);
                     content =
                         $"local function {symbol.Name}{(type is Type.Function function ? source.Evaluator.FunctionSignatureToString(function) : "")}";
                     break;

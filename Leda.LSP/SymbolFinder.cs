@@ -1,5 +1,6 @@
 using Leda.Lang;
 using Range = Leda.Lang.Range;
+using Type = Leda.Lang.Type;
 
 namespace Leda.LSP;
 
@@ -9,8 +10,8 @@ public static class SymbolFinder
     /// A found name along with other information.
     /// </summary>
     /// <param name="Name">The name node that was found.</param>
-    /// <param name="Expression">The expression whose type should be shown when hovering this name.</param>
-    public record struct NameFindResult(Tree Name, Tree.Expression? Expression);
+    /// <param name="GetTreeType">A function that returns the type of the tree node.</param>
+    private record struct NameFindResult(Tree Name, Func<TypeEvaluator, Type>? GetTreeType);
 
     private static NameFindResult? GetNameAtPosition<T>(List<T>? trees, Position position) where T : Tree
     {
@@ -49,13 +50,13 @@ public static class SymbolFinder
         return null;
     }
 
-    private static NameFindResult? GetNameAtPosition(List<Tree.Type.Table.Field> fields, Position position)
+    private static NameFindResult? GetNameAtPosition(Tree.Type.Table table, Position position)
     {
-        foreach (var field in fields)
+        foreach (var field in table.Fields)
         {
             if (GetNameAtPosition(field.Key, position) is { } foundKey)
             {
-                return foundKey;
+                return foundKey with { GetTreeType = ev => ev.GetTypeOfTypeAnnotation(field.Value) };
             }
 
             if (GetNameAtPosition(field.Value, position) is { } foundValue)
@@ -67,13 +68,18 @@ public static class SymbolFinder
         return null;
     }
 
-    private static NameFindResult? GetNameAtPosition(List<Tree.Expression.Table.Field> fields, Position position)
+    private static NameFindResult? GetNameAtPosition(Tree.Expression.Table table, Position position)
     {
-        foreach (var field in fields)
+        foreach (var field in table.Fields)
         {
             if (GetNameAtPosition(field.Key, position) is { } foundKey)
             {
-                return foundKey;
+                return foundKey with
+                {
+                    GetTreeType = table.ValueLocation != null
+                        ? ev => ev.GetTypeAtValueLocation(new ValueLocation.TableField(field, table.ValueLocation))
+                        : null,
+                };
             }
 
             if (GetNameAtPosition(field.Value, position) is { } foundValue)
@@ -108,7 +114,7 @@ public static class SymbolFinder
         if (tree is Tree.Expression.Name or Tree.Type.Name or Tree.LabelName or Tree.Expression.String
             or Tree.Type.StringLiteral)
         {
-            return new(tree, tree as Tree.Expression);
+            return new(tree, tree is Tree.Expression expression ? ev => ev.GetTypeOfExpression(expression) : null);
         }
 
         return tree switch
@@ -119,8 +125,8 @@ public static class SymbolFinder
             Tree.Expression.Access access => GetNameAtPosition(access.Target, position) ??
                                              (GetNameAtPosition(access.Key, position) is { } accessKey
                                                  // When hovering over the key of the access, we want to show the type
-                                                 // of the access itself on hover.
-                                                 ? accessKey with { Expression = access }
+                                                 // of the access itself.
+                                                 ? accessKey with { GetTreeType = ev => ev.GetTypeOfExpression(access) }
                                                  : null),
 
             Tree.Statement.Assignment assignment => GetNameAtPosition(assignment.Targets, position) ??
@@ -176,9 +182,9 @@ public static class SymbolFinder
 
             Tree.Statement.Return returnStatement => GetNameAtPosition(returnStatement.Values, position),
 
-            Tree.Expression.Table table => GetNameAtPosition(table.Fields, position),
+            Tree.Expression.Table table => GetNameAtPosition(table, position),
 
-            Tree.Type.Table table => GetNameAtPosition(table.Fields, position),
+            Tree.Type.Table table => GetNameAtPosition(table, position),
 
             Tree.Type.Nillable nillable => GetNameAtPosition(nillable.Inner, position),
 
@@ -209,15 +215,22 @@ public static class SymbolFinder
     }
 
     /// <summary>
-    /// Returns the symbol, range and expression of the tree node under the given position, if it exists.
+    /// Information about a tree node.
     /// </summary>
-    public static (Symbol? symbol, Range range, Tree.Expression? expression) GetSymbolAtPosition(Source source,
-        Position position)
+    /// <param name="Symbol">The symbol that the tree node is associated with.</param>
+    /// <param name="Range">The range of the tree node.</param>
+    /// <param name="GetTreeType">A function that returns the type of the tree node.</param>
+    public record struct GetSymbolResult(Symbol? Symbol, Range Range, Func<TypeEvaluator, Type>? GetTreeType);
+
+    /// <summary>
+    /// Returns information about the tree node under the given position, if it exists.
+    /// </summary>
+    public static GetSymbolResult GetSymbolAtPosition(Source source, Position position)
     {
         var result = GetNameAtPosition(source.File, position);
-        if (result is { Name: var name, Expression: var expression })
+        if (result is { Name: var name, GetTreeType: var getType })
         {
-            return (source.GetTreeSymbol(name), name.Range, expression);
+            return new(source.GetTreeSymbol(name), name.Range, getType);
         }
 
         return default;

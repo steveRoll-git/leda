@@ -330,25 +330,22 @@ public class TypeEvaluator(Source source)
         return GetQueryOrCached(GetTypeOfFunctionAnnotationUncached, function, functionAnnotationCache);
     }
 
-    private Type GetTypeOfVariable(Symbol.Variable variable)
+    private Type GetTypeOfVariable(Tree.Statement.VariableDeclaration declaration, int index)
     {
-        var declaration = variable.Declaration.Declarations[variable.Index];
-
-        if (declaration.Type != null)
+        if (index < declaration.Declarations.Count && declaration.Declarations[index].Type is { } typeAnnotation)
         {
-            return GetTypeOfTypeAnnotation(declaration.Type);
+            return GetTypeOfTypeAnnotation(typeAnnotation);
         }
 
-        return GetTypeOfExpressionInList(variable.Declaration.Values, variable.Index);
+        return GetTypeOfExpressionInList(declaration.Values, index);
     }
 
-    private Type GetTypeAtValueLocation(ValueLocation valueLocation)
+    public Type GetTypeAtValueLocation(ValueLocation valueLocation)
     {
         return valueLocation switch
         {
-            ValueLocation.Variable { VariableDeclaration.Declarations: var declarations, Index: var varIndex }
-                when varIndex < declarations.Count && declarations[varIndex].Type is { } annotation =>
-                GetTypeOfTypeAnnotation(annotation),
+            ValueLocation.Variable { VariableDeclaration: var declaration, Index: var varIndex } =>
+                GetTypeOfVariable(declaration, varIndex),
             ValueLocation.AssignmentValue { Assignment.Targets: var targets, Index: var assignIndex }
                 when assignIndex < targets.Count =>
                 GetTypeOfExpression(targets[assignIndex]),
@@ -401,7 +398,7 @@ public class TypeEvaluator(Source source)
     {
         return symbol switch
         {
-            Symbol.Variable variable => GetTypeOfVariable(variable),
+            Symbol.Variable variable => GetTypeOfVariable(variable.Declaration, variable.Index),
             Symbol.LocalFunction localFunction => GetTypeOfFunction(localFunction.Declaration.Function),
             Symbol.Parameter parameter => GetTypeOfParameter(parameter.Function, parameter.Index),
             Symbol.NumericForCounter => Type.NumberPrimitive,
@@ -521,7 +518,7 @@ public class TypeEvaluator(Source source)
         return Type.Unknown;
     }
 
-    internal Type GetTypeOfTypeAnnotation(Tree.Type typeAnnotation)
+    public Type GetTypeOfTypeAnnotation(Tree.Type typeAnnotation)
     {
         return typeAnnotation switch
         {

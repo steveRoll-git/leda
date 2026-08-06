@@ -555,7 +555,7 @@ public abstract class Tree
 /// Represents a location where a value could have a type that it's assigned to.
 /// Used when inferring the parameter types of functions.
 /// </summary>
-internal abstract record ValueLocation
+public abstract record ValueLocation
 {
     public record AssignmentValue(Tree.Statement.Assignment Assignment, int Index) : ValueLocation;
 

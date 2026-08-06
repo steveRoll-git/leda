@@ -128,7 +128,7 @@ public class LedaServer
     public Symbol? GetRequestSymbol(TextDocumentPositionParams request)
     {
         var source = uriSources[request.TextDocument.Uri];
-        return SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()).symbol;
+        return SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()).Symbol;
     }
 
     public List<Location> GetSymbolReferences(Symbol symbol, bool includeDefinition)
