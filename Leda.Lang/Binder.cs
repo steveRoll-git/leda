@@ -574,7 +574,7 @@ public class Binder
     /// <summary>
     /// Returns whether a declared variable is not initialized with a value.
     /// </summary>
-    public static bool IsVariableUninitialized(Tree.Statement.VariableDeclaration declaration, int index)
+    private static bool IsVariableUninitialized(Tree.Statement.VariableDeclaration declaration, int index)
     {
         return index >= declaration.Values.Count &&
                (declaration.Values.Count <= 0 ||
@@ -610,9 +610,18 @@ public class Binder
     {
         Visit(globalDeclaration.Values, globalDeclaration, antecedent);
 
-        // Symbols for global variables are added by the Project, so we don't need to here.
-        foreach (var declaration in globalDeclaration.Declarations)
+        for (var i = 0; i < globalDeclaration.Declarations.Count; i++)
         {
+            var declaration = globalDeclaration.Declarations[i];
+
+            declaration.Name.LocalBinding = new Symbol.GlobalVariable(globalDeclaration,
+                i,
+                IsVariableUninitialized(globalDeclaration, i),
+                source.File)
+            {
+                Definition = new(source, declaration.Name.Range),
+            };
+
             if (declaration.Type != null)
             {
                 Visit(declaration.Type);

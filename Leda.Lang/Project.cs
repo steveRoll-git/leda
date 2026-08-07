@@ -134,31 +134,24 @@ public class Project
     }
 
     /// <summary>
-    /// Creates global variable symbols for all globals defined in the source, and stores them in the project's
-    /// `globalVariables` dictionary.
+    /// Store all the global symbols defined in this source in the globalVariables dictionary.
     /// </summary>
     private void CreateGlobals(Source source)
     {
         foreach (var globalDeclaration in source.File.GlobalDeclarations)
         {
-            for (var i = 0; i < globalDeclaration.Declarations.Count; i++)
+            foreach (var declaration in globalDeclaration.Declarations)
             {
-                var declaration = globalDeclaration.Declarations[i];
                 if (globalVariables.ContainsKey(declaration.Name.Value))
                 {
                     // Diagnostics for duplicate global declarations will be reported by the Checker.
                     continue;
                 }
 
-                var symbol = new Symbol.GlobalVariable(globalDeclaration,
-                    i,
-                    Binder.IsVariableUninitialized(globalDeclaration, i),
-                    source.File)
+                if (declaration.Name.LocalBinding is Symbol.GlobalVariable globalVariable)
                 {
-                    Definition = new(source, declaration.Name.Range),
-                };
-                AttachNonLocalSymbol(declaration.Name, symbol);
-                globalVariables.Add(declaration.Name.Value, symbol);
+                    globalVariables.Add(declaration.Name.Value, globalVariable);
+                }
             }
         }
     }
