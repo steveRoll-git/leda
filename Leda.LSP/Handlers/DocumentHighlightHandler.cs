@@ -2,7 +2,6 @@ using EmmyLua.LanguageServer.Framework.Protocol.Capabilities.Client.ClientCapabi
 using EmmyLua.LanguageServer.Framework.Protocol.Capabilities.Server;
 using EmmyLua.LanguageServer.Framework.Protocol.Message.DocumentHighlight;
 using EmmyLua.LanguageServer.Framework.Server.Handler;
-using Leda.Lang;
 
 namespace Leda.LSP;
 
@@ -13,16 +12,10 @@ public class DocumentHighlightHandler(LedaServer server) : DocumentHighlightHand
         var source = server.GetSourceByUri(request.TextDocument.Uri);
         if (server.GetRequestSymbol(request) is { } symbol)
         {
-            IEnumerable<Location> references = []; // TODO
-
-            if (symbol.Definition.Source == source)
-            {
-                references = references.Prepend(symbol.Definition);
-            }
+            var references = server.Project.GetSymbolReferencesInSource(source, symbol, true);
 
             return Task.FromResult(new DocumentHighlightResponse(
-                references.Select(l => new DocumentHighlight { Range = l.Range.ToLs() })
-                    .ToList()));
+                references.Select(r => new DocumentHighlight { Range = r.ToLs() }).ToList()));
         }
 
         return Task.FromResult(new DocumentHighlightResponse([]));

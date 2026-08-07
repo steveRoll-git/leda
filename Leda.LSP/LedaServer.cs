@@ -135,14 +135,10 @@ public class LedaServer
     {
         List<Location> list = [];
 
-        if (includeDefinition && symbol.Definition.Source != null)
+        foreach (var source in Project.Sources)
         {
-            list.Add(ToLsLocation(symbol.Definition));
-        }
-
-        foreach (var projectSource in Project.Sources)
-        {
-            throw new NotImplementedException();
+            list.AddRange(Project.GetSymbolReferencesInSource(source, symbol, includeDefinition)
+                .Select(r => new Location(sourceUris[source], r.ToLs())));
         }
 
         return list;

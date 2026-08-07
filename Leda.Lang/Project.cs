@@ -111,8 +111,6 @@ public class Project
     /// </summary>
     public List<Diagnostic> GetDiagnostics(Source source)
     {
-        UpdateModifiedFiles();
-
         Check(source);
 
         return
@@ -192,6 +190,9 @@ public class Project
             return;
         }
 
+        // All modified files must be parsed and bound before the checking of any other file.
+        UpdateModifiedFiles();
+
         source.CheckerDiagnostics = Checker.Check(this, source, TypeEvaluator);
         source.CheckedVersion = EditVersion;
     }
@@ -212,6 +213,26 @@ public class Project
     internal Symbol? GetGlobalVariable(string name)
     {
         return globalVariables.GetValueOrDefault(name);
+    }
+
+    /// <summary>
+    /// Returns all the locations that reference the given symbol in this source.
+    /// </summary>
+    public List<Range> GetSymbolReferencesInSource(Source source, Symbol symbol, bool includeDefinition)
+    {
+        // The source must be checked so that the non-local bindings in it will be up to date.
+        Check(source);
+
+        List<Range> references = [];
+        Visitor.VisitAllWithCallback(source, tree =>
+        {
+            var isDefinition = source == symbol.Definition.Source && tree.Range == symbol.Definition.Range;
+            if (GetTreeSymbol(tree) == symbol && (includeDefinition || !isDefinition))
+            {
+                references.Add(tree.Range);
+            }
+        });
+        return references;
     }
 
     /// <summary>
