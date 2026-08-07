@@ -208,8 +208,11 @@ public class Checker(Project project, TypeEvaluator evaluator)
             case Tree.Statement.IteratorFor iteratorFor:
                 VisitStatement(iteratorFor);
                 break;
-            case Tree.Statement.VariableDeclaration variableDeclaration: // Covers both local and global declarations.
-                VisitStatement(variableDeclaration);
+            case Tree.Statement.GlobalDeclaration globalDeclaration:
+                VisitStatement(globalDeclaration);
+                break;
+            case Tree.Statement.LocalDeclaration localDeclaration:
+                VisitStatement(localDeclaration);
                 break;
             case Tree.Statement.LocalFunctionDeclaration localFunctionDeclaration:
                 VisitStatement(localFunctionDeclaration);
@@ -415,8 +418,25 @@ public class Checker(Project project, TypeEvaluator evaluator)
         VisitFunction(declaration.Function);
     }
 
+    private void VisitStatement(Tree.Statement.GlobalDeclaration globalDeclaration)
+    {
+        foreach (var declaration in globalDeclaration.Declarations)
+        {
+            if (declaration.Name.LocalBinding is Symbol.GlobalVariable declared &&
+                project.GetGlobalVariable(declaration.Name.Value) is { } existing &&
+                declared != existing)
+            {
+                Report(new Diagnostic.GlobalAlreadyDeclared(declaration.Name.Range, declaration.Name.Value));
+            }
+        }
+
+        VisitStatement(globalDeclaration as Tree.Statement.VariableDeclaration);
+    }
+
     private void VisitStatement(Tree.Statement.VariableDeclaration variableDeclaration)
     {
+        // This runs for both local and global variable declarations.
+
         for (var i = 0; i < variableDeclaration.Values.Count; i++)
         {
             var value = variableDeclaration.Values[i];

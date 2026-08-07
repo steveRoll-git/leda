@@ -18,13 +18,16 @@ public abstract record Diagnostic(Range Range)
     /// </summary>
     public virtual bool Unnecessary => false;
 
-    private static string NameContextNoun(Tree.NameContext context) => context switch
+    private static string NameContextNoun(Tree.NameContext context)
     {
-        Tree.NameContext.Value => "value",
-        Tree.NameContext.Type => "type",
-        Tree.NameContext.Label => "label",
-        _ => throw new ArgumentOutOfRangeException(nameof(context))
-    };
+        return context switch
+        {
+            Tree.NameContext.Value => "value",
+            Tree.NameContext.Type => "type",
+            Tree.NameContext.Label => "label",
+            _ => throw new ArgumentOutOfRangeException(nameof(context)),
+        };
+    }
 
     public record MalformedNumber(Range Range) : Diagnostic(Range)
     {
@@ -104,6 +107,12 @@ public abstract record Diagnostic(Range Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
         public override string Message => "Global variables can only be declared in file scope.";
+    }
+
+    public record GlobalAlreadyDeclared(Range Range, string Name) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"A global variable named \"{Name}\" has already been declared.";
     }
 
     public record NameNotFound(Range Range, string Name, Tree.NameContext Context) : Diagnostic(Range)
@@ -267,5 +276,5 @@ public enum DiagnosticSeverity
     Error,
     Warning,
     Information,
-    Hint
+    Hint,
 }
