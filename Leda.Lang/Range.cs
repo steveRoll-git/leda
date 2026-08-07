@@ -3,18 +3,10 @@ namespace Leda.Lang;
 /// <summary>
 /// A range of text in a source file.
 /// </summary>
-public struct Range(Position start, Position end)
+/// <param name="Start">Where this range starts (inclusive).</param>
+/// <param name="End">Where this range ends (exclusive).</param>
+public readonly record struct Range(Position Start, Position End)
 {
-    /// <summary>
-    /// Where this range starts (inclusive).
-    /// </summary>
-    public Position Start = start;
-
-    /// <summary>
-    /// Where this range ends (exclusive).
-    /// </summary>
-    public Position End = end;
-
     /// <summary>
     /// Returns whether the given position lies within this range.
     /// </summary>
@@ -23,6 +15,9 @@ public struct Range(Position start, Position end)
         return position >= Start && position <= End;
     }
 
+    /// <summary>
+    /// Returns a range that covers both this and the other range.
+    /// </summary>
     public Range Union(Range other)
     {
         return new(Start < other.Start ? Start : other.Start, End > other.End ? End : other.End);
