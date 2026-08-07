@@ -3,7 +3,7 @@ local function f()
   no = {}
 end
 c = a
-a
+
 local b = a
 if 3 > 2 then
   a = "asdf"

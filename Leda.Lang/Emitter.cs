@@ -25,12 +25,16 @@ public class Emitter
         { '\n', @"\n" },
     };
 
-    private static bool IsSimpleKey(string name) =>
-        name.Length > 0 && !char.IsDigit(name[0]) && name.All(Lexer.IsNameChar);
+    private static bool IsSimpleKey(string name)
+    {
+        return name.Length > 0 && !char.IsDigit(name[0]) && name.All(Lexer.IsNameChar);
+    }
 
-    private static bool AreBinaryParensNeeded(Tree.Expression.Binary outer, Tree.Expression inner) =>
-        inner is Tree.Expression.Binary innerBinary &&
-        Token.Precedence(innerBinary.Operator) < Token.Precedence(outer.Operator);
+    private static bool AreBinaryParensNeeded(Tree.Expression.Binary outer, Tree.Expression inner)
+    {
+        return inner is Tree.Expression.Binary innerBinary &&
+               Token.Precedence(innerBinary.Operator) < Token.Precedence(outer.Operator);
+    }
 
     private Emitter() { }
 
@@ -293,9 +297,9 @@ public class Emitter
         }
         else if (statement is Tree.Statement.GlobalDeclaration globalDeclaration)
         {
-            EmitDeclarationList(globalDeclaration.Declarations);
             if (globalDeclaration.Values.Count > 0)
             {
+                EmitDeclarationList(globalDeclaration.Declarations);
                 Emit(" = ");
                 EmitExpressionList(globalDeclaration.Values, indent);
             }
