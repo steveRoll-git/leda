@@ -151,6 +151,7 @@ public class Binder
     /// <summary>
     /// Adds a named symbol to the current scope. Reports a diagnostic if a symbol with this name has already been
     /// declared in the same scope.
+    /// Also sets the symbol's definition to the given node.
     /// </summary>
     private void AddSymbol(Tree node, string name, Tree.NameContext context, Symbol symbol)
     {
@@ -179,7 +180,8 @@ public class Binder
             currentBinding.Label = symbol as Symbol.Label;
         }
 
-        source.AttachSymbol(node, symbol, true);
+        node.LocalBinding = symbol;
+        symbol.Definition = new(source, node.Range);
     }
 
     private void AddSymbol(Tree.Expression.Name name, Symbol symbol)
@@ -368,17 +370,7 @@ public class Binder
     {
         if (TryGetBinding(name) is { } symbol)
         {
-            source.AttachSymbol(name, symbol);
-        }
-        else
-        {
-            if (!source.GlobalNames.TryGetValue(name.Value, out var names))
-            {
-                names = [];
-                source.GlobalNames[name.Value] = names;
-            }
-
-            names.Add(name);
+            name.LocalBinding = symbol;
         }
     }
 
@@ -446,7 +438,7 @@ public class Binder
     {
         if (TryGetBinding(name) is { } symbol)
         {
-            source.AttachSymbol(name, symbol);
+            name.LocalBinding = symbol;
         }
         else
         {
@@ -489,6 +481,7 @@ public class Binder
                 {
                     Definition = new(source, field.Key.Range),
                 };
+                field.Key.LocalBinding = field.Symbol;
             }
         }
     }
@@ -762,7 +755,7 @@ public class Binder
         if (TryGetBinding(name.Value, Tree.NameContext.Label) is ({ } symbol, { } scope) &&
             scope.Chunk == CurrentScope.Chunk)
         {
-            source.AttachSymbol(name, symbol);
+            name.LocalBinding = symbol;
             if (labelFlowNodes.TryGetValue(name, out var flowNode))
             {
                 AddIfNotNull(flowNode.Antecedents, antecedent);
@@ -840,8 +833,6 @@ public class Binder
     /// </summary>
     public static List<Diagnostic> Bind(Source source)
     {
-        source.GlobalNames.Clear();
-
         var binder = new Binder(source);
         binder.VisitChunk(source.File);
         return binder.Diagnostics;

@@ -10,21 +10,24 @@ namespace Leda.LSP;
 
 public class HoverHandler(LedaServer server) : HoverHandlerBase
 {
+    private Project Project => server.Project;
+
     protected override Task<HoverResponse?> Handle(HoverParams request, CancellationToken token)
     {
         var source = server.GetSourceByUri(request.TextDocument.Uri);
 
-        if (SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()) is ({ } symbol, var range, var getType))
+        if (SymbolFinder.GetSymbolAtPosition(Project, source, request.Position.ToLeda()) is
+            ({ } symbol, var range, var getType))
         {
             string? content;
 
-            var gotType = getType?.Invoke(source.Evaluator);
+            var gotType = getType?.Invoke(Project.TypeEvaluator);
 
             switch (symbol)
             {
                 case Symbol.StringField { Key: var key }:
                     content =
-                        $"(field) {key}: {source.Evaluator.TypeToString(gotType ?? Type.Unknown)}";
+                        $"(field) {key}: {Project.TypeEvaluator.TypeToString(gotType ?? Type.Unknown)}";
                     break;
 
                 case Symbol.Variable or Symbol.Parameter:
@@ -36,24 +39,24 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                         Symbol.Parameter => "(parameter)",
                         _ => "???",
                     };
-                    var type = gotType ?? source.Evaluator.GetTypeOfSymbol(symbol);
+                    var type = gotType ?? Project.TypeEvaluator.GetTypeOfSymbol(symbol);
                     content =
-                        $"{kind} {symbol.Name}: {source.Evaluator.TypeToString(type, multiline: true)}";
+                        $"{kind} {symbol.Name}: {Project.TypeEvaluator.TypeToString(type, multiline: true)}";
                     break;
                 }
 
                 case Symbol.LocalFunction:
                 {
-                    var type = gotType ?? source.Evaluator.GetTypeOfSymbol(symbol);
+                    var type = gotType ?? Project.TypeEvaluator.GetTypeOfSymbol(symbol);
                     content =
-                        $"local function {symbol.Name}{(type is Type.Function function ? source.Evaluator.FunctionSignatureToString(function) : "")}";
+                        $"local function {symbol.Name}{(type is Type.Function function ? Project.TypeEvaluator.FunctionSignatureToString(function) : "")}";
                     break;
                 }
 
                 case Symbol.IntrinsicType or Symbol.TypeAlias or Symbol.TypeParameter:
                 {
                     var typeValue = symbol is not Symbol.IntrinsicType and not Symbol.TypeParameter
-                        ? " = " + source.Evaluator.TypeToString(source.Evaluator.GetTypeOfSymbol(symbol),
+                        ? " = " + Project.TypeEvaluator.TypeToString(Project.TypeEvaluator.GetTypeOfSymbol(symbol),
                             true, true)
                         : "";
                     content = $"type {symbol.Name}{typeValue}";

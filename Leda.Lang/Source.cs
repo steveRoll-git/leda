@@ -26,41 +26,9 @@ public class Source
     public Tree.File File { get; set; }
 
     /// <summary>
-    /// Maps Tree nodes to the symbol they refer to.
-    /// </summary>
-    public Dictionary<Tree, Symbol> TreeSymbolMap { get; set; } = [];
-
-    /// <summary>
-    /// A dictionary of where symbols are references in this source. (Symbols from other sources may be referenced too?)
-    /// </summary>
-    public Dictionary<Symbol, List<Location>> SymbolReferences { get; set; } = [];
-
-    /// <summary>
-    /// Names that possibly refer to a global value defined in another source.
-    /// </summary>
-    public Dictionary<string, List<Tree.Expression.Name>> GlobalNames { get; } = [];
-
-    public TypeEvaluator Evaluator { get; set; }
-
-    /// <summary>
-    /// A set of other sources that this source depends on.
-    /// </summary>
-    public HashSet<Source> Dependencies { get; } = [];
-
-    /// <summary>
-    /// A set of sources that depend on this source.
-    /// </summary>
-    public HashSet<Source> Dependents { get; set; } = [];
-
-    /// <summary>
     /// List of diagnostics reported by the Parser.
     /// </summary>
     internal List<Diagnostic> ParserDiagnostics { get; set; } = [];
-
-    /// <summary>
-    /// List of diagnostics reported by `Project.BindGlobals`.
-    /// </summary>
-    internal List<Diagnostic.NameNotFound> NameNotFoundDiagnostics { get; set; } = [];
 
     /// <summary>
     /// List of diagnostics reported by the Binder.
@@ -73,15 +41,9 @@ public class Source
     internal List<Diagnostic> CheckerDiagnostics { get; set; } = [];
 
     /// <summary>
-    /// Whether the global references in this source have been bound since the last time it or its dependencies were
-    /// modified.
+    /// The last <see cref="Project.EditVersion"/> that this source was checked at.
     /// </summary>
-    internal bool AreGlobalsBound { get; set; }
-
-    /// <summary>
-    /// Whether this source had a Checker pass since the last time it or its dependencies were modified.
-    /// </summary>
-    internal bool IsChecked { get; set; }
+    internal int CheckedVersion { get; set; }
 
     /// <summary>
     /// Creates a new source with the given path, and reads the file at that path into Code.
@@ -99,7 +61,6 @@ public class Source
         Path = path;
         Code = code;
         File = new Tree.File();
-        Evaluator = new TypeEvaluator(this);
 
         // Map all newline numbers to the indices they appear at.
         // TODO the newline map is currently only used by ConsoleReporter. generating it should be done only in that case
@@ -130,56 +91,5 @@ public class Source
         }
 
         return "";
-    }
-
-    /// <summary>
-    /// Associates this tree node with the given symbol.
-    /// </summary>
-    /// <param name="tree">The tree that will reference the symbol.</param>
-    /// <param name="symbol">The symbol that will be referenced.</param>
-    /// <param name="isDefinition">Whether this tree is where the symbol is defined.</param>
-    /// <param name="overwrite">Set the tree's symbol even if it already has one.</param>
-    internal void AttachSymbol(Tree tree, Symbol symbol, bool isDefinition = false, bool overwrite = false)
-    {
-        if (overwrite)
-        {
-            TreeSymbolMap[tree] = symbol;
-        }
-        else
-        {
-            TreeSymbolMap.Add(tree, symbol);
-        }
-
-        if (isDefinition)
-        {
-            symbol.Definition = new(this, tree.Range);
-        }
-        else
-        {
-            if (!SymbolReferences.TryGetValue(symbol, out var references))
-            {
-                references = [];
-                SymbolReferences.Add(symbol, references);
-            }
-
-            references.Add(new Location(this, tree.Range));
-        }
-    }
-
-    /// <summary>
-    /// Removes the association of this tree node with a symbol.
-    /// </summary>
-    internal void DetachSymbol(Tree tree)
-    {
-        TreeSymbolMap.Remove(tree);
-    }
-
-    /// <summary>
-    /// Finds the symbol that this tree refers to if it exists.
-    /// </summary>
-    public Symbol? GetTreeSymbol(Tree tree)
-    {
-        TreeSymbolMap.TryGetValue(tree, out var symbol);
-        return symbol;
     }
 }

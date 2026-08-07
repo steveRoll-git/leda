@@ -16,6 +16,12 @@ public abstract class Tree
     public FlowNode? FlowNode { get; internal set; }
 
     /// <summary>
+    /// A binding to a local name or type.
+    /// Initialized by the Binder.
+    /// </summary>
+    internal Symbol? LocalBinding { get; set; }
+
+    /// <summary>
     /// A tree that defines a type.
     /// </summary>
     public abstract class Type : Tree

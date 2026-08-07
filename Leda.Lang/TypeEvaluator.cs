@@ -13,7 +13,7 @@ that specific query.
 /// <summary>
 /// Evaluates the types of tree nodes.
 /// </summary>
-public class TypeEvaluator(Source source)
+public class TypeEvaluator(Project project)
 {
     private readonly Dictionary<Symbol, Type> typeOfSymbolCache = [];
     private readonly Dictionary<Tree.Expression.Table, Type.Table> inferredTableCache = [];
@@ -52,7 +52,7 @@ public class TypeEvaluator(Source source)
     {
         if (a is Tree.Expression.Name && b is Tree.Expression.Name)
         {
-            return source.GetTreeSymbol(a) == source.GetTreeSymbol(b);
+            return project.GetTreeSymbol(a) == project.GetTreeSymbol(b);
         }
 
         if (a is Tree.Expression.String { Value: var stringA } &&
@@ -186,7 +186,7 @@ public class TypeEvaluator(Source source)
         {
             foreach (var typeParameter in function.Type.TypeParameters)
             {
-                typeParameters.Add((source.GetTreeSymbol(typeParameter) as Symbol.TypeParameter)!.Type);
+                typeParameters.Add((project.GetTreeSymbol(typeParameter) as Symbol.TypeParameter)!.Type);
             }
         }
 
@@ -312,8 +312,7 @@ public class TypeEvaluator(Source source)
     {
         if (type is Type.Table table)
         {
-            table.StringLiterals.TryGetValue(key, out var value);
-            return value;
+            return table.StringLiterals.GetValueOrDefault(key);
         }
 
         return null;
@@ -414,9 +413,29 @@ public class TypeEvaluator(Source source)
         return GetQueryOrCached(GetTypeOfSymbolUncached, symbol, typeOfSymbolCache);
     }
 
+    /// <summary>
+    /// Returns the symbol that this name refers to.
+    /// If it's not bound to any local symbol, attempts to attach and return a global variable with that name.
+    /// </summary>
+    internal Symbol? GetNameSymbol(Tree.Expression.Name name)
+    {
+        if (project.GetTreeSymbol(name) is { } symbol)
+        {
+            return symbol;
+        }
+
+        if (project.GetGlobalVariable(name.Value) is { } globalVariable)
+        {
+            project.AttachNonLocalSymbol(name, globalVariable);
+            return globalVariable;
+        }
+
+        return null;
+    }
+
     private Type GetTypeOfVariable(Tree.Expression.Name name)
     {
-        if (source.GetTreeSymbol(name) is { } symbol)
+        if (GetNameSymbol(name) is { } symbol)
         {
             return GetTypeOfSymbol(symbol);
         }
@@ -510,7 +529,7 @@ public class TypeEvaluator(Source source)
 
     private Type GetTypeOfTypeName(Tree.Type.Name name)
     {
-        if (source.GetTreeSymbol(name) is { } symbol)
+        if (project.GetTreeSymbol(name) is { } symbol)
         {
             return GetTypeOfSymbol(symbol);
         }

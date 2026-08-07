@@ -5,16 +5,14 @@ namespace Leda.Lang;
 /// type-related diagnostics.<br/>
 /// Also associates string keys in tables with symbols.
 /// </summary>
-public class Checker
+public class Checker(Project project, TypeEvaluator evaluator)
 {
-    private readonly Source source;
     private List<Diagnostic> Diagnostics { get; } = [];
 
     private record FunctionInfo(Type.Function Function, bool InferReturn, Tree.Chunk Chunk);
 
     private readonly Stack<FunctionInfo> functionStack = [];
 
-    private readonly TypeEvaluator evaluator;
 
     /// <summary>
     /// Returns the name and range that a diagnostic should display for a certain value.
@@ -58,7 +56,7 @@ public class Checker
         {
             foreach (var target in targets)
             {
-                if (source.GetTreeSymbol(target) == variable)
+                if (project.GetTreeSymbol(target) == variable)
                 {
                     return true;
                 }
@@ -527,7 +525,7 @@ public class Checker
                 found = true;
                 if (stringField.Symbol != null)
                 {
-                    source.AttachSymbol(literal, stringField.Symbol);
+                    project.AttachNonLocalSymbol(literal, stringField.Symbol);
                 }
             }
         }
@@ -570,22 +568,28 @@ public class Checker
             VisitExpression(field.Key);
             VisitExpression(field.Value);
 
-            if (field.Symbol != null && source.GetTreeSymbol(field.Key) == null)
+            if (field.Symbol != null && project.GetTreeSymbol(field.Key) == null)
             {
                 // If this table is the origin of an inferred table type, this field will be its symbol's definition.
                 // But, CheckValueToType can overwrite it if it references some other field.
-                source.AttachSymbol(field.Key, field.Symbol, true);
+                project.AttachNonLocalSymbol(field.Key, field.Symbol);
             }
         }
     }
 
     private void VisitExpression(Tree.Expression.Name name, bool isAssignmentTarget)
     {
-        if (!isAssignmentTarget &&
-            source.GetTreeSymbol(name) is Symbol.Variable variable &&
-            variable.Uninitialized &&
-            variable.Chunk == functionStack.Peek().Chunk &&
-            !IsVariableAssignedAtFlowNode(variable, name.FlowNode))
+        var symbol = evaluator.GetNameSymbol(name);
+
+        if (symbol == null)
+        {
+            Report(new Diagnostic.NameNotFound(name.Range, name.Value, Tree.NameContext.Value));
+        }
+        else if (!isAssignmentTarget &&
+                 symbol is Symbol.Variable variable &&
+                 variable.Uninitialized &&
+                 variable.Chunk == functionStack.Peek().Chunk &&
+                 !IsVariableAssignedAtFlowNode(variable, name.FlowNode))
         {
             Report(new Diagnostic.VariableUsedBeforeAssignment(name.Range, name.Value));
         }
@@ -608,11 +612,6 @@ public class Checker
         {
             VisitType(field.Key);
             VisitType(field.Value);
-
-            if (field.Symbol != null)
-            {
-                source.AttachSymbol(field.Key, field.Symbol, true);
-            }
         }
     }
 
@@ -646,7 +645,7 @@ public class Checker
                         : null;
                     if (stringField?.Symbol != null && sourceField.Key is Tree.Expression.String)
                     {
-                        source.AttachSymbol(sourceField.Key, stringField.Symbol, overwrite: true);
+                        project.AttachNonLocalSymbol(sourceField.Key, stringField.Symbol);
                     }
                 }
                 else
@@ -697,16 +696,9 @@ public class Checker
         }
     }
 
-
-    private Checker(Source source, TypeEvaluator evaluator)
+    public static List<Diagnostic> Check(Project project, Source source, TypeEvaluator evaluator)
     {
-        this.source = source;
-        this.evaluator = evaluator;
-    }
-
-    public static List<Diagnostic> Check(Source source, TypeEvaluator evaluator)
-    {
-        var checker = new Checker(source, evaluator);
+        var checker = new Checker(project, evaluator);
         checker.functionStack.Push(new(new Type.Function(TypeList.Any, TypeList.Any, []), false, source.File));
         checker.VisitBlock(source.File);
         return checker.Diagnostics;

@@ -225,12 +225,12 @@ public static class SymbolFinder
     /// <summary>
     /// Returns information about the tree node under the given position, if it exists.
     /// </summary>
-    public static GetSymbolResult GetSymbolAtPosition(Source source, Position position)
+    public static GetSymbolResult GetSymbolAtPosition(Project project, Source source, Position position)
     {
         var result = GetNameAtPosition(source.File, position);
         if (result is { Name: var name, GetTreeType: var getType })
         {
-            return new(source.GetTreeSymbol(name), name.Range, getType);
+            return new(project.GetTreeSymbol(name), name.Range, getType);
         }
 
         return default;

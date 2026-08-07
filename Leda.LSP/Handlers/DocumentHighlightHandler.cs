@@ -13,7 +13,7 @@ public class DocumentHighlightHandler(LedaServer server) : DocumentHighlightHand
         var source = server.GetSourceByUri(request.TextDocument.Uri);
         if (server.GetRequestSymbol(request) is { } symbol)
         {
-            IEnumerable<Location> references = source.SymbolReferences.GetValueOrDefault(symbol) ?? [];
+            IEnumerable<Location> references = []; // TODO
 
             if (symbol.Definition.Source == source)
             {

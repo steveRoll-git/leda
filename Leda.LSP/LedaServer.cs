@@ -128,7 +128,7 @@ public class LedaServer
     public Symbol? GetRequestSymbol(TextDocumentPositionParams request)
     {
         var source = uriSources[request.TextDocument.Uri];
-        return SymbolFinder.GetSymbolAtPosition(source, request.Position.ToLeda()).Symbol;
+        return SymbolFinder.GetSymbolAtPosition(Project, source, request.Position.ToLeda()).Symbol;
     }
 
     public List<Location> GetSymbolReferences(Symbol symbol, bool includeDefinition)
@@ -142,10 +142,7 @@ public class LedaServer
 
         foreach (var projectSource in Project.Sources)
         {
-            if (projectSource.SymbolReferences.TryGetValue(symbol, out var references))
-            {
-                list.AddRange(references.Select(ToLsLocation));
-            }
+            throw new NotImplementedException();
         }
 
         return list;
