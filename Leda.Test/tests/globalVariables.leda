@@ -17,3 +17,5 @@ else
 end
 
 local d: string = a
+
+global a

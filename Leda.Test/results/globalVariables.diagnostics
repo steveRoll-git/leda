@@ -6,3 +6,5 @@ VariableUsedBeforeAssignment(6:12 6:13)
 Error: Variable 'a' is used before being assigned.
 VariableUsedBeforeAssignment(10:19 10:20)
 Error: Variable 'a' is used before being assigned.
+GlobalAlreadyDeclared(21:8 21:9)
+Error: A global variable named "a" has already been declared.

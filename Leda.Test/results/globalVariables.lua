@@ -12,3 +12,4 @@ else
   x = 123
 end
 local d = a
+
