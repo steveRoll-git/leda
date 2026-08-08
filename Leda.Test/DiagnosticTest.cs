@@ -49,7 +49,7 @@ public record TestScenario(string Filename, string Code, string ExpectedDiagnost
     }
 }
 
-public class DiagnosticTestData : TheoryData<TestScenario>
+public sealed class DiagnosticTestData : TheoryData<TestScenario>
 {
     private const string ProjectPath = "../../../";
 
@@ -62,7 +62,7 @@ public class DiagnosticTestData : TheoryData<TestScenario>
             var expectedDiagnostics = File.ReadAllText(Path.Join(ProjectPath, "results", filename + ".diagnostics"));
             var expectedCode = File.ReadAllText(Path.Join(ProjectPath, "results", filename + ".lua"));
 
-            Add(new(filename, code, expectedDiagnostics, expectedCode));
+            Add(new TestScenario(filename, code, expectedDiagnostics, expectedCode));
         }
     }
 }
