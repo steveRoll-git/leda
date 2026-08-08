@@ -24,6 +24,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Leda.Lang\Leda.Lang.csproj"/>
+        <ProjectReference Include="..\Leda.Testing\Leda.Testing.csproj"/>
     </ItemGroup>
 
 </Project>

@@ -1,9 +1,9 @@
 #:project ../Leda.Lang/Leda.Lang.csproj
-#:project ../Leda.Test/Leda.Test.csproj
+#:project ../Leda.Testing/Leda.Testing.csproj
 #:package Microsoft.Extensions.FileSystemGlobbing@10.0.7
 
 using Leda.Lang;
-using Leda.Test;
+using Leda.Testing;
 using Microsoft.Extensions.FileSystemGlobbing;
 
 // Assumes the script's working directory is the solution's root.
