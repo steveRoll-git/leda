@@ -29,7 +29,7 @@ public class Project
     /// A counter that is incremented every time a file changes.
     /// Used to figure out whether files need to be rechecked.
     /// </summary>
-    internal int EditVersion { get; private set; }
+    public int EditVersion { get; private set; }
 
     public Project()
     {

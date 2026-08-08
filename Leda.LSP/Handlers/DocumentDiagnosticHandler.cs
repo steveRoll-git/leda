@@ -10,11 +10,22 @@ public class DocumentDiagnosticHandler(LedaServer server) : DocumentDiagnosticHa
 {
     protected override Task<DocumentDiagnosticReport> Handle(DocumentDiagnosticParams request, CancellationToken token)
     {
+        var resultId = server.Project.EditVersion.ToString();
+        if (request.PreviousResultId == resultId)
+        {
+            return Task.FromResult<DocumentDiagnosticReport>(new RelatedUnchangedDocumentDiagnosticReport
+            {
+                ResultId = resultId,
+            });
+        }
+
         var source = server.GetSourceByUri(request.TextDocument.Uri);
+
         var diagnostics = server.Project.GetDiagnostics(source);
         return Task.FromResult<DocumentDiagnosticReport>(new RelatedFullDocumentDiagnosticReport
         {
             Diagnostics = diagnostics.Select(d => d.ToLs()).ToList(),
+            ResultId = resultId,
         });
     }
 
