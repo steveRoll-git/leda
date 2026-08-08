@@ -6,16 +6,12 @@
         <Nullable>enable</Nullable>
         <WarningsAsErrors>Nullable</WarningsAsErrors>
         <IsPackable>false</IsPackable>
-    </PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    </PropertyGroup> 
 
     <ItemGroup>
-        <PackageReference Include="coverlet.collector" Version="6.0.2"/>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1"/>
-        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="xunit.v3" Version="3.2.2"/>
+        <PackageReference Include="xunit.v3.mtp-v2" Version="3.2.2"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -24,6 +20,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Leda.Lang\Leda.Lang.csproj"/>
+        <ProjectReference Include="..\Leda.Testing\Leda.Testing.csproj"/>
     </ItemGroup>
 
 </Project>

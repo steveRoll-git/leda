@@ -1,4 +1,5 @@
 ﻿using Leda.Lang;
+using Leda.Testing;
 
 namespace Leda.Test;
 
@@ -62,7 +63,7 @@ public sealed class DiagnosticTestData : TheoryData<TestScenario>
             var expectedDiagnostics = File.ReadAllText(Path.Join(ProjectPath, "results", filename + ".diagnostics"));
             var expectedCode = File.ReadAllText(Path.Join(ProjectPath, "results", filename + ".lua"));
 
-            Add(new TestScenario(filename, code, expectedDiagnostics, expectedCode));
+            Add(new TheoryDataRow<TestScenario>(new TestScenario(filename, code, expectedDiagnostics, expectedCode)));
         }
     }
 }

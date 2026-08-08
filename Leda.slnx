@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Leda.Cli/Leda.Cli.csproj" />
+  <Project Path="Leda.Lang/Leda.Lang.csproj" />
+  <Project Path="Leda.LSP/Leda.LSP.csproj" />
+  <Project Path="Leda.Test/Leda.Test.csproj" />
+</Solution>

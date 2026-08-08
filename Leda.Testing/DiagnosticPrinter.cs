@@ -1,6 +1,6 @@
 using Leda.Lang;
 
-namespace Leda.Test;
+namespace Leda.Testing;
 
 public static class DiagnosticPrinter
 {
