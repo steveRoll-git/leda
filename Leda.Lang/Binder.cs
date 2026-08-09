@@ -420,6 +420,9 @@ public class Binder
             case Tree.Type.Table table:
                 Visit(table);
                 break;
+            case Tree.Type.Array { ElementType: var elementType }:
+                Visit(elementType);
+                break;
             case Tree.Type.Nillable { Inner: var inner }:
                 Visit(inner);
                 break;

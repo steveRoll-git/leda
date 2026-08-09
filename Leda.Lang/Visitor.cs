@@ -174,6 +174,9 @@ public abstract class Visitor
                 }
 
                 break;
+            case Tree.Type.Array array:
+                VisitAll(array.ElementType);
+                break;
         }
     }
 

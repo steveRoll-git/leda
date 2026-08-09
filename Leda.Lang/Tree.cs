@@ -82,6 +82,11 @@ public abstract class Tree
             public List<Name>? TypeParameters => typeParameters;
         }
 
+        public class Array(Type elementType) : Type
+        {
+            public Type ElementType => elementType;
+        }
+
         /// <summary>
         /// A type followed by a '?'.
         /// </summary>

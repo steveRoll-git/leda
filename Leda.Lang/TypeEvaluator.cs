@@ -537,6 +537,21 @@ public class TypeEvaluator(Project project)
         return Type.Unknown;
     }
 
+    private Type.Nillable CreateNillableType(Type inner)
+    {
+        if (inner is Type.Nillable nillable)
+        {
+            return nillable;
+        }
+
+        return new Type.Nillable(inner);
+    }
+
+    private Type.Array CreateArrayType(Type elementType)
+    {
+        return new Type.Array(elementType);
+    }
+
     public Type GetTypeOfTypeAnnotation(Tree.Type typeAnnotation)
     {
         return typeAnnotation switch
@@ -546,7 +561,8 @@ public class TypeEvaluator(Project project)
             Tree.Type.Name name => GetTypeOfTypeName(name),
             Tree.Type.Table table => GetTypeOfTableAnnotation(table),
             Tree.Type.Function function => GetTypeOfFunctionAnnotation(function),
-            Tree.Type.Nillable { Inner: var inner } => new Type.Nillable(GetTypeOfTypeAnnotation(inner)),
+            Tree.Type.Nillable { Inner: var inner } => CreateNillableType(GetTypeOfTypeAnnotation(inner)),
+            Tree.Type.Array { ElementType: var elementType } => CreateArrayType(GetTypeOfTypeAnnotation(elementType)),
             _ => Type.Unknown,
         };
     }
@@ -1134,6 +1150,8 @@ public class TypeEvaluator(Project project)
             Type.Table table => TableToString(table, multiline, indent),
             Type.Function function => FunctionToString(function),
             Type.Nillable { Inner: var inner } => TypeToStringIndent(inner, typeContents, multiline, indent) + "?",
+            Type.Array { ElementType: var elementType } =>
+                TypeToStringIndent(elementType, typeContents, multiline, indent) + "[]",
             Type.TypeParameter typeParameter => typeParameter.Name!,
             _ => throw new ArgumentOutOfRangeException(nameof(type)),
         };

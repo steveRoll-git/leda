@@ -188,6 +188,8 @@ public static class SymbolFinder
 
             Tree.Type.Nillable nillable => GetNameAtPosition(nillable.Inner, position),
 
+            Tree.Type.Array array => GetNameAtPosition(array.ElementType, position),
+
             Tree.Statement.While whileStatement => GetNameAtPosition(whileStatement.Condition, position) ??
                                                    GetNameAtPosition(whileStatement.Body, position),
 

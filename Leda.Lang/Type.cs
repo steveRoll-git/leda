@@ -99,8 +99,8 @@ public abstract class Type
     /// <summary>
     /// Supertype of all table types.
     /// </summary>
-    public static readonly Type
-        TablePrimitive = new PrimitiveType(other => other == TablePrimitive || other is Table) { Name = "table" };
+    public static readonly Type TablePrimitive =
+        new PrimitiveType(other => other == TablePrimitive || other is Table or Array) { Name = "table" };
 
     /// <summary>
     /// A table type, which can originate either from a Tree.Type.Table, or inferred from a Tree.Expression.Table.
@@ -170,6 +170,11 @@ public abstract class Type
             NumberLiterals = other.NumberLiterals;
             Indexers = other.Indexers;
         }
+    }
+
+    public class Array(Type elementType) : Type
+    {
+        public Type ElementType => elementType;
     }
 
     /// <summary>

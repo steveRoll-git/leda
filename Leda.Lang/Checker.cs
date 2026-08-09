@@ -276,6 +276,12 @@ public class Checker(Project project, TypeEvaluator evaluator)
             case Tree.Type.Table table:
                 VisitType(table);
                 break;
+            case Tree.Type.Array { ElementType: var elementType }:
+                VisitType(elementType);
+                break;
+            case Tree.Type.Nillable { Inner: var inner }:
+                VisitType(inner);
+                break;
         }
     }
 

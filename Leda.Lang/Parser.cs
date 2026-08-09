@@ -544,8 +544,6 @@ public class Parser
 
     private Tree.Type ParseType()
     {
-        StartTree();
-
         Tree.Type type;
 
         if (Accept(TokenKind.Nil))
@@ -576,12 +574,25 @@ public class Parser
             type = ParseTypeName();
         }
 
+        return ParseTypePostfix(type);
+    }
+
+    private Tree.Type ParseTypePostfix(Tree.Type prev)
+    {
+        StartTree(prev.Range.Start);
+
         if (Accept(TokenKind.QuestionMark))
         {
-            type = StartEndTree(new Tree.Type.Nillable(type));
+            return ParseTypePostfix(EndTree(new Tree.Type.Nillable(prev)));
         }
 
-        return EndTree(type);
+        if (Accept(TokenKind.LSquare))
+        {
+            Expect(TokenKind.RSquare);
+            return ParseTypePostfix(EndTree(new Tree.Type.Array(prev)));
+        }
+
+        return EndTree(prev);
     }
 
     private Tree.Type.Table ParseTableType()
