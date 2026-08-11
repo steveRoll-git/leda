@@ -364,7 +364,7 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
             targetType = inner;
         }
 
-        if (targetType is not Type.Table)
+        if (targetType is not (Type.Table or Type.Array))
         {
             if (targetType != Type.Unknown && targetType != Type.Any)
             {
@@ -382,15 +382,13 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
 
         var found = false;
 
-        if (access.Key is Tree.Expression.String literal)
+        if (access.Key is Tree.Expression.String literal &&
+            TypeEvaluator.GetStringFieldInType(targetType, literal.Value) is { } stringField)
         {
-            if (TypeEvaluator.GetStringFieldInType(targetType, literal.Value) is { } stringField)
+            found = true;
+            if (stringField.Symbol != null)
             {
-                found = true;
-                if (stringField.Symbol != null)
-                {
-                    project.AttachNonLocalSymbol(literal, stringField.Symbol);
-                }
+                project.AttachNonLocalSymbol(literal, stringField.Symbol);
             }
         }
         else

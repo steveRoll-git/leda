@@ -282,6 +282,16 @@ public class TypeEvaluator(Project project)
         return null;
     }
 
+    private Type? GetTypeOfArrayAccess(Type.Array array, Tree.Expression key)
+    {
+        if (IsAssignableFrom(Type.NumberPrimitive, GetTypeOfExpression(key)))
+        {
+            return array.ElementType;
+        }
+
+        return null;
+    }
+
     internal Type? GetTypeOfAccess(Tree.Expression.Access access)
     {
         var targetType = GetTypeOfExpression(access.Target);
@@ -299,6 +309,11 @@ public class TypeEvaluator(Project project)
         if (targetType is Type.Table table)
         {
             return GetTypeOfTableAccess(table, access.Key);
+        }
+
+        if (targetType is Type.Array array)
+        {
+            return GetTypeOfArrayAccess(array, access.Key);
         }
 
         return Type.Unknown;
