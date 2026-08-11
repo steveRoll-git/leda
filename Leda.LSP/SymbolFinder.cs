@@ -31,7 +31,8 @@ public static class SymbolFinder
     {
         var result = Visitor.Search<(Tree, Func<TypeEvaluator, Type>?)?>(source, tree =>
         {
-            if (tree is Tree.Expression.Access access && IsSymbolNode(access.Key, position))
+            if (tree is Tree.Expression.Access access && access.Key.Range.Contains(position) &&
+                access.Key is Tree.Expression.String)
             {
                 // When hovering over the key of an access, we want to show the type of the access itself.
                 return (access.Key, ev => ev.GetTypeOfExpression(access));
