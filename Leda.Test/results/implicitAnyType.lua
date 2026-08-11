@@ -4,3 +4,4 @@ local function g(a, b, c)
 end
 local t = {f = function(a)
 end}
+local h

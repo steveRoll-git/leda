@@ -5,3 +5,5 @@ local function g(a: number, b, c: boolean) end
 local t = {
     f = function(a) end
 }
+
+local h: function(a)

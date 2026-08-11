@@ -2,3 +2,5 @@ ImplicitAnyType(3:29 3:30)
 Error: Parameter 'b' implicitly has 'any' type.
 ImplicitAnyType(6:18 6:19)
 Error: Parameter 'a' implicitly has 'any' type.
+ImplicitAnyType(9:19 9:20)
+Error: Parameter 'a' implicitly has 'any' type.
