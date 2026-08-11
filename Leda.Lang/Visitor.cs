@@ -7,6 +7,19 @@ public abstract class Visitor
 {
     protected abstract void Visit(Tree tree);
 
+    /// <summary>
+    /// Only nodes for which this function returns `true` will be visited recursively.
+    /// </summary>
+    protected virtual bool Filter(Tree tree)
+    {
+        return true;
+    }
+
+    /// <summary>
+    /// If this is true, no more nodes will be visited.
+    /// </summary>
+    protected bool Stop { get; set; }
+
     private void VisitAll<T>(List<T>? trees) where T : Tree
     {
         if (trees == null)
@@ -17,6 +30,10 @@ public abstract class Visitor
         foreach (var tree in trees)
         {
             VisitAll(tree);
+            if (Stop)
+            {
+                return;
+            }
         }
     }
 
@@ -30,11 +47,19 @@ public abstract class Visitor
         foreach (var statement in block.Statements)
         {
             VisitAll(statement);
+            if (Stop)
+            {
+                return;
+            }
         }
 
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
             VisitAll(typeDeclaration);
+            if (Stop)
+            {
+                return;
+            }
         }
     }
 
@@ -49,12 +74,26 @@ public abstract class Visitor
     /// </summary>
     private void VisitAll(Tree? tree)
     {
+        if (Stop)
+        {
+            return;
+        }
+
         if (tree == null)
         {
             return;
         }
 
+        if (!Filter(tree))
+        {
+            return;
+        }
+
         Visit(tree);
+        if (Stop)
+        {
+            return;
+        }
 
         switch (tree)
         {
@@ -89,6 +128,10 @@ public abstract class Visitor
                 {
                     VisitAll(field.Key);
                     VisitAll(field.Value);
+                    if (Stop)
+                    {
+                        return;
+                    }
                 }
 
                 break;
@@ -113,6 +156,10 @@ public abstract class Visitor
                 foreach (var ifBranch in @if.ElseIfs)
                 {
                     VisitAll(ifBranch);
+                    if (Stop)
+                    {
+                        return;
+                    }
                 }
 
                 VisitAll(@if.ElseBody);
@@ -171,6 +218,10 @@ public abstract class Visitor
                 {
                     VisitAll(field.Key);
                     VisitAll(field.Value);
+                    if (Stop)
+                    {
+                        return;
+                    }
                 }
 
                 break;
@@ -188,11 +239,40 @@ public abstract class Visitor
         }
     }
 
+    private class SearchVisitor<T>(Func<Tree, T?> searchFunc, Func<Tree, bool> filterFunc) : Visitor
+    {
+        internal T? Result { get; private set; }
+
+        protected override bool Filter(Tree tree)
+        {
+            return filterFunc(tree);
+        }
+
+        protected override void Visit(Tree tree)
+        {
+            Result = searchFunc(tree);
+            if (Result != null)
+            {
+                Stop = true;
+            }
+        }
+    }
+
     /// <summary>
     /// Calls the given callback on all the nodes in the source's syntax tree.
     /// </summary>
     public static void VisitAllWithCallback(Source source, Action<Tree> callback)
     {
         new CallbackVisitor(callback).VisitAll(source.File);
+    }
+
+    /// <summary>
+    /// Runs `searchFunc` on all nodes until it returns a non-null value, and returns it.
+    /// </summary>
+    public static T? Search<T>(Source source, Func<Tree, T?> searchFunc, Func<Tree, bool> filterFunc)
+    {
+        var visitor = new SearchVisitor<T>(searchFunc, filterFunc);
+        visitor.VisitAll(source.File);
+        return visitor.Result;
     }
 }

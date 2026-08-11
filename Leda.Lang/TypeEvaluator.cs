@@ -433,7 +433,7 @@ public class TypeEvaluator(Project project)
         return null;
     }
 
-    private Type GetTypeOfVariable(Tree.Expression.Name name)
+    public Type GetTypeOfVariable(Tree.Expression.Name name)
     {
         if (GetNameSymbol(name) is { } symbol)
         {
