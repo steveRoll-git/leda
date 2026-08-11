@@ -235,7 +235,7 @@ public class Checker(Project project, TypeEvaluator evaluator)
         }
     }
 
-    private void VisitExpression(Tree.Expression expr, bool isAssignmentTarget = false)
+    private void VisitExpression(Tree.Expression expr)
     {
         switch (expr)
         {
@@ -261,7 +261,7 @@ public class Checker(Project project, TypeEvaluator evaluator)
                 VisitExpression(unary);
                 break;
             case Tree.Expression.Name name:
-                VisitExpression(name, isAssignmentTarget);
+                VisitExpression(name);
                 break;
         }
     }
@@ -337,7 +337,7 @@ public class Checker(Project project, TypeEvaluator evaluator)
     {
         foreach (var target in assignment.Targets)
         {
-            VisitExpression(target, true);
+            VisitExpression(target);
         }
 
         foreach (var value in assignment.Values)
@@ -603,7 +603,7 @@ public class Checker(Project project, TypeEvaluator evaluator)
         }
     }
 
-    private void VisitExpression(Tree.Expression.Name name, bool isAssignmentTarget)
+    private void VisitExpression(Tree.Expression.Name name)
     {
         var symbol = evaluator.GetNameSymbol(name);
 
@@ -611,7 +611,7 @@ public class Checker(Project project, TypeEvaluator evaluator)
         {
             Report(new Diagnostic.NameNotFound(name.Range, name.Value, Tree.NameContext.Value));
         }
-        else if (!isAssignmentTarget &&
+        else if (!name.IsAssignmentTarget &&
                  symbol is Symbol.Variable variable &&
                  variable.Uninitialized &&
                  variable.Chunk == functionStack.Peek().Chunk &&

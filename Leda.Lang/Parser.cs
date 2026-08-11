@@ -401,6 +401,14 @@ public class Parser
 
             var expressions = ParseExpressionList();
 
+            foreach (var target in targets)
+            {
+                if (target is Tree.Expression.Name name)
+                {
+                    name.IsAssignmentTarget = true;
+                }
+            }
+
             return EndTree(new Tree.Statement.Assignment(targets, expressions));
         }
 

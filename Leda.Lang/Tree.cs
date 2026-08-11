@@ -346,6 +346,8 @@ public abstract class Tree
         {
             public string Value => value;
 
+            public bool IsAssignmentTarget { get; internal set; }
+
             public override string ToString()
             {
                 return Value;
