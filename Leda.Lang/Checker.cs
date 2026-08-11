@@ -467,8 +467,6 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
     {
         var errorRange = (targetValue ?? sourceValue).Range;
 
-        targetType = evaluator.Dereference(targetType);
-
         if (sourceValue is Tree.Expression.Table sourceTable && targetType is Type.Table targetTable)
         {
             var missingStrings = new HashSet<string>(targetTable.StringLiterals.Select(p => p.Key));

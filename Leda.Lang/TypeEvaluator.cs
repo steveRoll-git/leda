@@ -794,14 +794,6 @@ public class TypeEvaluator(Project project)
         return new TypeList.Instantiation(typeList, map);
     }
 
-    /// <summary>
-    /// If the type points to another type, returns the pointed-to type.
-    /// </summary>
-    internal Type Dereference(Type type)
-    {
-        return type;
-    }
-
     private static bool IsTriviallyAssignableFrom(Type targetType, Type sourceType)
     {
         if (targetType == Type.Unknown || sourceType == Type.Unknown)
@@ -846,13 +838,6 @@ public class TypeEvaluator(Project project)
     internal bool IsAssignableFrom(Type targetType, Type sourceType, [NotNullWhen(false)] out TypeMismatch? reason)
     {
         reason = null;
-        if (IsTriviallyAssignableFrom(targetType, sourceType))
-        {
-            return true;
-        }
-
-        targetType = Dereference(targetType);
-        sourceType = Dereference(sourceType);
         if (IsTriviallyAssignableFrom(targetType, sourceType))
         {
             return true;
