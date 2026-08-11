@@ -16,11 +16,12 @@ that specific query.
 public class TypeEvaluator(Project project)
 {
     private readonly Dictionary<Symbol, Type> typeOfSymbolCache = [];
-    private readonly Dictionary<Tree.Expression.Table, Type.Table> inferredTableCache = [];
+    private readonly Dictionary<Tree.Expression.Table, Type> inferredTableCache = [];
     private readonly Dictionary<Tree.Type.Table, Type.Table> tableAnnotationCache = [];
     private readonly Dictionary<Tree.Expression.Function, Type.Function> functionTypeCache = [];
     private readonly Dictionary<Tree.Type.Function, Type.Function> functionAnnotationCache = [];
     private readonly Dictionary<Symbol.TypeAlias, Type> typeAliasCache = [];
+    private readonly Dictionary<Type, Type.Array> arrayTypeCache = [];
 
     /// <summary>
     /// Returns whether a type may need to be narrowed using FlowNodes.
@@ -198,8 +199,14 @@ public class TypeEvaluator(Project project)
         return GetQueryOrCached(GetTypeOfFunctionUncached, function, functionTypeCache);
     }
 
-    private Type.Table GetTypeOfTableValueUncached(Tree.Expression.Table table)
+    private Type GetTypeOfTableValueUncached(Tree.Expression.Table table)
     {
+        if (table.IsArray)
+        {
+            // TODO the element type needs to be a union of all the elements in the table
+            return CreateArrayType(GetTypeOfExpression(table.Fields[0].Value));
+        }
+
         var type = new Type.Table();
         foreach (var field in table.Fields)
         {
@@ -213,7 +220,7 @@ public class TypeEvaluator(Project project)
         return type;
     }
 
-    internal Type.Table GetTypeOfTableValue(Tree.Expression.Table table)
+    private Type GetTypeOfTableValue(Tree.Expression.Table table)
     {
         return GetQueryOrCached(GetTypeOfTableValueUncached, table, inferredTableCache);
     }
@@ -233,7 +240,7 @@ public class TypeEvaluator(Project project)
         return type;
     }
 
-    internal Type.Table GetTypeOfTableAnnotation(Tree.Type.Table table)
+    private Type.Table GetTypeOfTableAnnotation(Tree.Type.Table table)
     {
         return GetQueryOrCached(GetTypeOfTableAnnotationUncached, table, tableAnnotationCache);
     }
@@ -562,9 +569,14 @@ public class TypeEvaluator(Project project)
         return new Type.Nillable(inner);
     }
 
-    private Type.Array CreateArrayType(Type elementType)
+    private static Type.Array CreateArrayTypeUncached(Type elementType)
     {
         return new Type.Array(elementType);
+    }
+
+    private Type.Array CreateArrayType(Type elementType)
+    {
+        return GetQueryOrCached(CreateArrayTypeUncached, elementType, arrayTypeCache);
     }
 
     public Type GetTypeOfTypeAnnotation(Tree.Type typeAnnotation)

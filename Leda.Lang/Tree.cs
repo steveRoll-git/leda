@@ -407,9 +407,14 @@ public abstract class Tree
         /// <summary>
         /// A table constructor.
         /// </summary>
-        public class Table(List<Table.Field> fields) : Expression
+        public class Table(List<Table.Field> fields, bool isArray) : Expression
         {
             public List<Field> Fields => fields;
+
+            /// <summary>
+            /// Whether all this table's fields are list elements.
+            /// </summary>
+            public bool IsArray => isArray;
 
             public ValueLocation? ValueLocation { get; internal set; }
 

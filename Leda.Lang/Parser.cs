@@ -1072,8 +1072,7 @@ public class Parser
             }
         }
 
-
-        return EndTree(new Tree.Expression.Table(fields));
+        return EndTree(new Tree.Expression.Table(fields, fields.Count > 0 && lastNumberIndex - 1 == fields.Count));
     }
 
     private Tree.Expression ParsePrimary()
