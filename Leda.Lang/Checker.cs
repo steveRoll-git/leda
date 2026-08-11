@@ -5,14 +5,13 @@ namespace Leda.Lang;
 /// type-related diagnostics.<br/>
 /// Also associates string keys in tables with symbols.
 /// </summary>
-public class Checker(Project project, TypeEvaluator evaluator)
+public class Checker(Project project, TypeEvaluator evaluator) : Visitor
 {
     private List<Diagnostic> Diagnostics { get; } = [];
 
     private record FunctionInfo(Type.Function Function, bool InferReturn, Tree.Chunk Chunk);
 
     private readonly Stack<FunctionInfo> functionStack = [];
-
 
     /// <summary>
     /// Returns the name and range that a diagnostic should display for a certain value.
@@ -86,27 +85,60 @@ public class Checker(Project project, TypeEvaluator evaluator)
         return false;
     }
 
-    /// <summary>
-    /// Visits all of a block's statements.
-    /// </summary>
-    private void VisitBlock(Tree.Block block)
+    protected override void Visit(Tree tree, Tree? parent)
     {
-        foreach (var typeDeclaration in block.TypeDeclarations)
+        switch (tree)
         {
-            VisitType(typeDeclaration.Type);
-        }
+            case Tree.Expression.Access access:
+                Visit(access);
+                break;
+            case Tree.Expression.Binary binary:
+                Visit(binary);
+                break;
+            case Tree.Expression.Call call:
+                Visit(call);
+                break;
+            case Tree.Expression.Function function:
+                Visit(function);
+                break;
+            case Tree.Expression.Name name:
+                if (parent is not Tree.Declaration)
+                {
+                    Visit(name);
+                }
 
-        foreach (var statement in block.Statements)
-        {
-            VisitStatement(statement);
+                break;
+            case Tree.Expression.Table table:
+                Visit(table);
+                break;
+            case Tree.Statement.Assignment assignment:
+                Visit(assignment);
+                break;
+            case Tree.Statement.GlobalDeclaration globalDeclaration:
+                Visit(globalDeclaration);
+                Visit((Tree.Statement.VariableDeclaration)globalDeclaration);
+                break;
+            case Tree.Statement.LocalDeclaration localDeclaration:
+                Visit(localDeclaration);
+                break;
+            case Tree.Statement.NumericalFor numericalFor:
+                Visit(numericalFor);
+                break;
+            case Tree.Statement.Return @return:
+                Visit(@return);
+                break;
+            case Tree.Type.Function functionType:
+                if (parent is not Tree.Expression.Function)
+                {
+                    Visit(functionType);
+                }
+
+                break;
         }
     }
 
-    private void VisitCall(Tree.Expression.Call call)
+    private void Visit(Tree.Expression.Call call)
     {
-        VisitExpression(call.Target);
-        VisitExpressionList(call.Arguments);
-
         var target = evaluator.GetTypeOfExpression(call.Target);
 
         if (target == Type.Unknown)
@@ -134,22 +166,12 @@ public class Checker(Project project, TypeEvaluator evaluator)
         }
     }
 
-    private void VisitExpressionList(List<Tree.Expression> expressions)
-    {
-        foreach (var expression in expressions)
-        {
-            VisitExpression(expression);
-        }
-    }
-
-    private void VisitFunction(Tree.Expression.Function function)
+    private void Visit(Tree.Expression.Function function)
     {
         // TODO handle rest parameter
 
         if (function.Type.ReturnTypes != null)
         {
-            VisitTypeList(function.Type.ReturnTypes);
-
             // TODO report these only if the return type is not nillable
             if (function.Chunk.ReturnStatements.Count == 0)
             {
@@ -164,11 +186,7 @@ public class Checker(Project project, TypeEvaluator evaluator)
         for (var i = 0; i < function.Type.Parameters.Count; i++)
         {
             var parameter = function.Type.Parameters[i];
-            if (parameter.Type != null)
-            {
-                VisitType(parameter.Type);
-            }
-            else if (evaluator.GetInferredParameterType(function, i) == null)
+            if (parameter.Type == null && evaluator.GetInferredParameterType(function, i) == null)
             {
                 Report(new Diagnostic.ImplicitAnyType(parameter.Name.Range, parameter.Name.Value));
             }
@@ -177,120 +195,17 @@ public class Checker(Project project, TypeEvaluator evaluator)
         functionStack.Push(new(evaluator.GetTypeOfFunction(function),
             function.Type.ReturnTypes == null,
             function.Chunk));
-        VisitBlock(function.Chunk);
-        functionStack.Pop();
     }
 
-    private void VisitTypeList(List<Tree.Type> typeTrees)
+    protected override void PostVisit(Tree tree)
     {
-        foreach (var typeTree in typeTrees)
+        if (tree is Tree.Expression.Function)
         {
-            VisitType(typeTree);
+            functionStack.Pop();
         }
     }
 
-    private void VisitStatement(Tree.Statement stmt)
-    {
-        switch (stmt)
-        {
-            case Tree.Statement.Assignment assignment:
-                VisitStatement(assignment);
-                break;
-            case Tree.Statement.Call call:
-                VisitCall(call.CallExpr);
-                break;
-            case Tree.Statement.Do @do:
-                VisitStatement(@do);
-                break;
-            case Tree.Statement.If @if:
-                VisitStatement(@if);
-                break;
-            case Tree.Statement.IteratorFor iteratorFor:
-                VisitStatement(iteratorFor);
-                break;
-            case Tree.Statement.GlobalDeclaration globalDeclaration:
-                VisitStatement(globalDeclaration);
-                break;
-            case Tree.Statement.LocalDeclaration localDeclaration:
-                VisitStatement(localDeclaration);
-                break;
-            case Tree.Statement.LocalFunctionDeclaration localFunctionDeclaration:
-                VisitStatement(localFunctionDeclaration);
-                break;
-            case Tree.Statement.MethodCall methodCall:
-                VisitExpression(methodCall.CallExpr);
-                break;
-            case Tree.Statement.NumericalFor numericalFor:
-                VisitStatement(numericalFor);
-                break;
-            case Tree.Statement.RepeatUntil repeatUntil:
-                VisitStatement(repeatUntil);
-                break;
-            case Tree.Statement.Return @return:
-                VisitStatement(@return);
-                break;
-            case Tree.Statement.While @while:
-                VisitStatement(@while);
-                break;
-        }
-    }
-
-    private void VisitExpression(Tree.Expression expr)
-    {
-        switch (expr)
-        {
-            case Tree.Expression.Access access:
-                VisitExpression(access);
-                break;
-            case Tree.Expression.Binary binary:
-                VisitExpression(binary);
-                break;
-            case Tree.Expression.Call call:
-                VisitExpression(call);
-                break;
-            case Tree.Expression.Function function:
-                VisitExpression(function);
-                break;
-            case Tree.Expression.MethodCall methodCall:
-                VisitExpression(methodCall);
-                break;
-            case Tree.Expression.Table table:
-                VisitExpression(table);
-                break;
-            case Tree.Expression.Unary unary:
-                VisitExpression(unary);
-                break;
-            case Tree.Expression.Name name:
-                VisitExpression(name);
-                break;
-        }
-    }
-
-    private void VisitType(Tree.Type type)
-    {
-        switch (type)
-        {
-            case Tree.Type.Function function:
-                VisitType(function);
-                break;
-            case Tree.Type.Table table:
-                VisitType(table);
-                break;
-            case Tree.Type.Array { ElementType: var elementType }:
-                VisitType(elementType);
-                break;
-            case Tree.Type.Nillable { Inner: var inner }:
-                VisitType(inner);
-                break;
-        }
-    }
-
-    private void VisitStatement(Tree.Statement.Do block)
-    {
-        VisitBlock(block.Body);
-    }
-
-    private void VisitStatement(Tree.Statement.NumericalFor numericalFor)
+    private void Visit(Tree.Statement.NumericalFor numericalFor)
     {
         var startType = evaluator.GetTypeOfExpression(numericalFor.Start);
         if (!evaluator.IsAssignableFrom(Type.NumberPrimitive, startType))
@@ -312,39 +227,10 @@ public class Checker(Project project, TypeEvaluator evaluator)
                 Report(new Diagnostic.ForLoopStepNotNumber(numericalFor.Step.Range, evaluator.TypeToString(stepType)));
             }
         }
-
-        VisitBlock(numericalFor.Body);
     }
 
-    private void VisitStatement(Tree.Statement.If ifStatement)
+    private void Visit(Tree.Statement.Assignment assignment)
     {
-        VisitExpression(ifStatement.Primary.Condition);
-        VisitBlock(ifStatement.Primary.Body);
-
-        foreach (var branch in ifStatement.ElseIfs)
-        {
-            VisitExpression(branch.Condition);
-            VisitBlock(branch.Body);
-        }
-
-        if (ifStatement.ElseBody != null)
-        {
-            VisitBlock(ifStatement.ElseBody);
-        }
-    }
-
-    private void VisitStatement(Tree.Statement.Assignment assignment)
-    {
-        foreach (var target in assignment.Targets)
-        {
-            VisitExpression(target);
-        }
-
-        foreach (var value in assignment.Values)
-        {
-            VisitExpression(value);
-        }
-
         var sideErrorRange = assignment.Values.Count >= 1
             ? assignment.Values[0].Range.Union(assignment.Values[^1].Range)
             : assignment.Range;
@@ -408,23 +294,16 @@ public class Checker(Project project, TypeEvaluator evaluator)
         }
     }
 
-    private void VisitStatement(Tree.Statement.Return returnStatement)
+    private void Visit(Tree.Statement.Return returnStatement)
     {
         var (function, inferReturn, _) = functionStack.Peek();
         if (!inferReturn)
         {
             CheckAssignment(function.Returns, returnStatement.Values, TypeListKind.Return, returnStatement.Range);
         }
-
-        VisitExpressionList(returnStatement.Values);
     }
 
-    private void VisitStatement(Tree.Statement.LocalFunctionDeclaration declaration)
-    {
-        VisitFunction(declaration.Function);
-    }
-
-    private void VisitStatement(Tree.Statement.GlobalDeclaration globalDeclaration)
+    private void Visit(Tree.Statement.GlobalDeclaration globalDeclaration)
     {
         foreach (var declaration in globalDeclaration.Declarations)
         {
@@ -435,18 +314,15 @@ public class Checker(Project project, TypeEvaluator evaluator)
                 Report(new Diagnostic.GlobalAlreadyDeclared(declaration.Name.Range, declaration.Name.Value));
             }
         }
-
-        VisitStatement(globalDeclaration as Tree.Statement.VariableDeclaration);
     }
 
-    private void VisitStatement(Tree.Statement.VariableDeclaration variableDeclaration)
+    private void Visit(Tree.Statement.VariableDeclaration variableDeclaration)
     {
         // This runs for both local and global variable declarations.
 
         for (var i = 0; i < variableDeclaration.Values.Count; i++)
         {
             var value = variableDeclaration.Values[i];
-            VisitExpression(value);
 
             if (i >= variableDeclaration.Declarations.Count)
             {
@@ -460,8 +336,6 @@ public class Checker(Project project, TypeEvaluator evaluator)
             var declaration = variableDeclaration.Declarations[i];
             if (declaration.Type != null)
             {
-                VisitType(declaration.Type);
-
                 var targetType = evaluator.GetTypeOfTypeAnnotation(declaration.Type);
                 if (i < variableDeclaration.Values.Count)
                 {
@@ -479,44 +353,8 @@ public class Checker(Project project, TypeEvaluator evaluator)
         }
     }
 
-    private void VisitStatement(Tree.Statement.RepeatUntil repeatUntil)
+    private void Visit(Tree.Expression.Access access)
     {
-        VisitBlock(repeatUntil.Body);
-        VisitExpression(repeatUntil.Condition);
-    }
-
-    private void VisitStatement(Tree.Statement.While whileLoop)
-    {
-        VisitExpression(whileLoop.Condition);
-        VisitBlock(whileLoop.Body);
-    }
-
-    private void VisitStatement(Tree.Statement.IteratorFor forLoop)
-    {
-        VisitExpression(forLoop.Iterator);
-        VisitBlock(forLoop.Body);
-    }
-
-    private void VisitExpression(Tree.Expression.Function function)
-    {
-        VisitFunction(function);
-    }
-
-    private void VisitExpression(Tree.Expression.MethodCall methodCall)
-    {
-        throw new NotImplementedException();
-    }
-
-    private void VisitExpression(Tree.Expression.Call call)
-    {
-        VisitCall(call);
-    }
-
-    private void VisitExpression(Tree.Expression.Access access)
-    {
-        VisitExpression(access.Target);
-        VisitExpression(access.Key);
-
         var possiblyNil = false;
         var targetType = evaluator.GetTypeOfExpression(access.Target);
 
@@ -567,11 +405,8 @@ public class Checker(Project project, TypeEvaluator evaluator)
         }
     }
 
-    private void VisitExpression(Tree.Expression.Binary binary)
+    private void Visit(Tree.Expression.Binary binary)
     {
-        VisitExpression(binary.Left);
-        VisitExpression(binary.Right);
-
         if (binary.Operator.Kind is not (TokenKind.And or TokenKind.Or) &&
             evaluator.GetTypeOfBinaryExpression(binary) == null)
         {
@@ -582,18 +417,10 @@ public class Checker(Project project, TypeEvaluator evaluator)
         }
     }
 
-    private void VisitExpression(Tree.Expression.Unary unary)
-    {
-        VisitExpression(unary.Expression);
-    }
-
-    private void VisitExpression(Tree.Expression.Table table)
+    private void Visit(Tree.Expression.Table table)
     {
         foreach (var field in table.Fields)
         {
-            VisitExpression(field.Key);
-            VisitExpression(field.Value);
-
             if (field.Symbol != null && project.GetTreeSymbol(field.Key) == null)
             {
                 // If this table is the origin of an inferred table type, this field will be its symbol's definition.
@@ -603,7 +430,7 @@ public class Checker(Project project, TypeEvaluator evaluator)
         }
     }
 
-    private void VisitExpression(Tree.Expression.Name name)
+    private void Visit(Tree.Expression.Name name)
     {
         var symbol = evaluator.GetNameSymbol(name);
 
@@ -621,7 +448,7 @@ public class Checker(Project project, TypeEvaluator evaluator)
         }
     }
 
-    private void VisitType(Tree.Type.Function functionType)
+    private void Visit(Tree.Type.Function functionType)
     {
         foreach (var parameter in functionType.Parameters)
         {
@@ -629,15 +456,6 @@ public class Checker(Project project, TypeEvaluator evaluator)
             {
                 Report(new Diagnostic.ImplicitAnyType(parameter.Range, parameter.Name.Value));
             }
-        }
-    }
-
-    private void VisitType(Tree.Type.Table table)
-    {
-        foreach (var field in table.Fields)
-        {
-            VisitType(field.Key);
-            VisitType(field.Value);
         }
     }
 
@@ -726,7 +544,7 @@ public class Checker(Project project, TypeEvaluator evaluator)
     {
         var checker = new Checker(project, evaluator);
         checker.functionStack.Push(new(new Type.Function(TypeList.Any, TypeList.Any, []), false, source.File));
-        checker.VisitBlock(source.File);
+        checker.Start(source);
         return checker.Diagnostics;
     }
 }

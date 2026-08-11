@@ -5,7 +5,17 @@ namespace Leda.Lang;
 /// </summary>
 public abstract class Visitor
 {
-    protected abstract void Visit(Tree tree);
+    protected virtual void Visit(Tree tree, Tree? parent)
+    {
+        Visit(tree);
+    }
+
+    protected virtual void Visit(Tree tree) { }
+
+    /// <summary>
+    /// Called after this node and all its contents have been visited.
+    /// </summary>
+    protected virtual void PostVisit(Tree tree) { }
 
     /// <summary>
     /// Only nodes for which this function returns `true` will be visited recursively.
@@ -20,7 +30,7 @@ public abstract class Visitor
     /// </summary>
     protected bool Stop { get; set; }
 
-    private void VisitAll<T>(List<T>? trees) where T : Tree
+    private void VisitAll<T>(List<T>? trees, Tree? parent) where T : Tree
     {
         if (trees == null)
         {
@@ -29,7 +39,7 @@ public abstract class Visitor
 
         foreach (var tree in trees)
         {
-            VisitAll(tree);
+            VisitAll(tree, parent);
             if (Stop)
             {
                 return;
@@ -37,7 +47,7 @@ public abstract class Visitor
         }
     }
 
-    private void VisitAll(Tree.Block? block)
+    private void VisitAll(Tree.Block? block, Tree? parent)
     {
         if (block == null)
         {
@@ -46,7 +56,7 @@ public abstract class Visitor
 
         foreach (var statement in block.Statements)
         {
-            VisitAll(statement);
+            VisitAll(statement, parent);
             if (Stop)
             {
                 return;
@@ -55,7 +65,7 @@ public abstract class Visitor
 
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
-            VisitAll(typeDeclaration);
+            VisitAll(typeDeclaration, parent);
             if (Stop)
             {
                 return;
@@ -63,16 +73,16 @@ public abstract class Visitor
         }
     }
 
-    private void VisitAll(Tree.IfBranch branch)
+    private void VisitAll(Tree.IfBranch branch, Tree? parent)
     {
-        VisitAll(branch.Condition);
-        VisitAll(branch.Body);
+        VisitAll(branch.Condition, parent);
+        VisitAll(branch.Body, parent);
     }
 
     /// <summary>
     /// Recursively calls `Visit` on the tree and all its children.
     /// </summary>
-    private void VisitAll(Tree? tree)
+    private void VisitAll(Tree? tree, Tree? parent)
     {
         if (Stop)
         {
@@ -89,7 +99,7 @@ public abstract class Visitor
             return;
         }
 
-        Visit(tree);
+        Visit(tree, parent);
         if (Stop)
         {
             return;
@@ -98,36 +108,36 @@ public abstract class Visitor
         switch (tree)
         {
             case Tree.Declaration declaration:
-                VisitAll(declaration.Name);
-                VisitAll(declaration.Type);
+                VisitAll(declaration.Name, tree);
+                VisitAll(declaration.Type, tree);
                 break;
             case Tree.Expression.Access access:
-                VisitAll(access.Target);
-                VisitAll(access.Key);
+                VisitAll(access.Target, tree);
+                VisitAll(access.Key, tree);
                 break;
             case Tree.Expression.Binary binary:
-                VisitAll(binary.Left);
-                VisitAll(binary.Right);
+                VisitAll(binary.Left, tree);
+                VisitAll(binary.Right, tree);
                 break;
             case Tree.Expression.Call call:
-                VisitAll(call.Target);
-                VisitAll(call.Arguments);
-                VisitAll(call.TypeArguments);
+                VisitAll(call.Target, tree);
+                VisitAll(call.Arguments, tree);
+                VisitAll(call.TypeArguments, tree);
                 break;
             case Tree.Expression.Function function:
-                VisitAll(function.Type);
-                VisitAll(function.Chunk);
+                VisitAll(function.Type, tree);
+                VisitAll(function.Chunk, tree);
                 break;
             case Tree.Expression.MethodCall methodCall:
-                VisitAll(methodCall.Target);
-                VisitAll(methodCall.FuncName);
-                VisitAll(methodCall.Arguments);
+                VisitAll(methodCall.Target, tree);
+                VisitAll(methodCall.FuncName, tree);
+                VisitAll(methodCall.Arguments, tree);
                 break;
             case Tree.Expression.Table table:
                 foreach (var field in table.Fields)
                 {
-                    VisitAll(field.Key);
-                    VisitAll(field.Value);
+                    VisitAll(field.Key, tree);
+                    VisitAll(field.Value, tree);
                     if (Stop)
                     {
                         return;
@@ -136,88 +146,88 @@ public abstract class Visitor
 
                 break;
             case Tree.Expression.Unary unary:
-                VisitAll(unary.Expression);
+                VisitAll(unary.Expression, tree);
                 break;
             case Tree.Statement.Assignment assignment:
-                VisitAll(assignment.Targets);
-                VisitAll(assignment.Values);
+                VisitAll(assignment.Targets, tree);
+                VisitAll(assignment.Values, tree);
                 break;
             case Tree.Statement.Call callStatement:
-                VisitAll(callStatement.CallExpr);
+                VisitAll(callStatement.CallExpr, tree);
                 break;
             case Tree.Statement.Do @do:
-                VisitAll(@do.Body);
+                VisitAll(@do.Body, tree);
                 break;
             case Tree.Statement.Goto @goto:
-                VisitAll(@goto.Name);
+                VisitAll(@goto.Name, tree);
                 break;
             case Tree.Statement.If @if:
-                VisitAll(@if.Primary);
+                VisitAll(@if.Primary, tree);
                 foreach (var ifBranch in @if.ElseIfs)
                 {
-                    VisitAll(ifBranch);
+                    VisitAll(ifBranch, tree);
                     if (Stop)
                     {
                         return;
                     }
                 }
 
-                VisitAll(@if.ElseBody);
+                VisitAll(@if.ElseBody, tree);
                 break;
             case Tree.Statement.IteratorFor iteratorFor:
-                VisitAll(iteratorFor.Declarations);
-                VisitAll(iteratorFor.Iterator);
-                VisitAll(iteratorFor.Body);
+                VisitAll(iteratorFor.Declarations, tree);
+                VisitAll(iteratorFor.Iterator, tree);
+                VisitAll(iteratorFor.Body, tree);
                 break;
             case Tree.Statement.LabelDefinition labelDefinition:
-                VisitAll(labelDefinition.Name);
+                VisitAll(labelDefinition.Name, tree);
                 break;
             case Tree.Statement.LocalFunctionDeclaration localFunctionDeclaration:
-                VisitAll(localFunctionDeclaration.Name);
-                VisitAll(localFunctionDeclaration.Function);
+                VisitAll(localFunctionDeclaration.Name, tree);
+                VisitAll(localFunctionDeclaration.Function, tree);
                 break;
             case Tree.Statement.MethodCall methodCallStatement:
-                VisitAll(methodCallStatement.CallExpr);
+                VisitAll(methodCallStatement.CallExpr, tree);
                 break;
             case Tree.Statement.NumericalFor numericalFor:
-                VisitAll(numericalFor.Counter);
-                VisitAll(numericalFor.Start);
-                VisitAll(numericalFor.Limit);
-                VisitAll(numericalFor.Step);
-                VisitAll(numericalFor.Body);
+                VisitAll(numericalFor.Counter, tree);
+                VisitAll(numericalFor.Start, tree);
+                VisitAll(numericalFor.Limit, tree);
+                VisitAll(numericalFor.Step, tree);
+                VisitAll(numericalFor.Body, tree);
                 break;
             case Tree.Statement.RepeatUntil repeatUntil:
-                VisitAll(repeatUntil.Body);
-                VisitAll(repeatUntil.Condition);
+                VisitAll(repeatUntil.Body, tree);
+                VisitAll(repeatUntil.Condition, tree);
                 break;
             case Tree.Statement.Return @return:
-                VisitAll(@return.Values);
+                VisitAll(@return.Values, tree);
                 break;
             case Tree.Statement.VariableDeclaration variableDeclaration: // Covers both local and global declarations.
-                VisitAll(variableDeclaration.Declarations);
-                VisitAll(variableDeclaration.Values);
+                VisitAll(variableDeclaration.Declarations, tree);
+                VisitAll(variableDeclaration.Values, tree);
                 break;
             case Tree.Statement.While @while:
-                VisitAll(@while.Condition);
-                VisitAll(@while.Body);
+                VisitAll(@while.Condition, tree);
+                VisitAll(@while.Body, tree);
                 break;
             case Tree.TypeAliasDeclaration typeAliasDeclaration:
-                VisitAll(typeAliasDeclaration.Name);
-                VisitAll(typeAliasDeclaration.Type);
+                VisitAll(typeAliasDeclaration.Name, tree);
+                VisitAll(typeAliasDeclaration.Type, tree);
                 break;
             case Tree.Type.Function function:
-                VisitAll(function.Parameters);
-                VisitAll(function.ReturnTypes);
-                VisitAll(function.TypeParameters);
+                VisitAll(function.Parameters, tree);
+                VisitAll(function.ReturnTypes, tree);
+                VisitAll(function.TypeParameters, tree);
                 break;
             case Tree.Type.Nillable nillable:
-                VisitAll(nillable.Inner);
+                VisitAll(nillable.Inner, tree);
                 break;
             case Tree.Type.Table table:
                 foreach (var field in table.Fields)
                 {
-                    VisitAll(field.Key);
-                    VisitAll(field.Value);
+                    VisitAll(field.Key, tree);
+                    VisitAll(field.Value, tree);
                     if (Stop)
                     {
                         return;
@@ -226,9 +236,11 @@ public abstract class Visitor
 
                 break;
             case Tree.Type.Array array:
-                VisitAll(array.ElementType);
+                VisitAll(array.ElementType, tree);
                 break;
         }
+
+        PostVisit(tree);
     }
 
     private class CallbackVisitor(Action<Tree> callback) : Visitor
@@ -258,12 +270,17 @@ public abstract class Visitor
         }
     }
 
+    public void Start(Source source)
+    {
+        VisitAll(source.File, null);
+    }
+
     /// <summary>
     /// Calls the given callback on all the nodes in the source's syntax tree.
     /// </summary>
     public static void VisitAllWithCallback(Source source, Action<Tree> callback)
     {
-        new CallbackVisitor(callback).VisitAll(source.File);
+        new CallbackVisitor(callback).Start(source);
     }
 
     /// <summary>
@@ -272,7 +289,7 @@ public abstract class Visitor
     public static T? Search<T>(Source source, Func<Tree, T?> searchFunc, Func<Tree, bool> filterFunc)
     {
         var visitor = new SearchVisitor<T>(searchFunc, filterFunc);
-        visitor.VisitAll(source.File);
+        visitor.Start(source);
         return visitor.Result;
     }
 }
