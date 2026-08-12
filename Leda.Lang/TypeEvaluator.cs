@@ -21,6 +21,7 @@ public class TypeEvaluator(Project project)
     private readonly Dictionary<Tree.Expression.Function, Type.Function> functionTypeCache = [];
     private readonly Dictionary<Tree.Type.Function, Type.Function> functionAnnotationCache = [];
     private readonly Dictionary<Symbol.TypeAlias, Type> typeAliasCache = [];
+    private readonly Dictionary<Type, Type.Nillable> nillableTypeCache = [];
     private readonly Dictionary<Type, Type.Array> arrayTypeCache = [];
 
     /// <summary>
@@ -559,6 +560,11 @@ public class TypeEvaluator(Project project)
         return Type.Unknown;
     }
 
+    private static Type.Nillable CreateNillableTypeUncached(Type inner)
+    {
+        return new Type.Nillable(inner);
+    }
+
     private Type.Nillable CreateNillableType(Type inner)
     {
         if (inner is Type.Nillable nillable)
@@ -566,7 +572,7 @@ public class TypeEvaluator(Project project)
             return nillable;
         }
 
-        return new Type.Nillable(inner);
+        return GetQueryOrCached(CreateNillableTypeUncached, inner, nillableTypeCache);
     }
 
     private static Type.Array CreateArrayTypeUncached(Type elementType)
