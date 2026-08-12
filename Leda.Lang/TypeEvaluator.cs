@@ -853,6 +853,19 @@ public class TypeEvaluator(Project project)
         return true;
     }
 
+    private bool IsAssignableFrom(Type.Array targetArray, Type.Array sourceArray,
+        [NotNullWhen(false)] out TypeMismatch? reason)
+    {
+        // NOTE: this means that if B is a subtype of A, B[] will be assignable to A[], which may not be desired
+        // (TypeScript accepts this assignment too)
+        if (!IsAssignableFrom(targetArray.ElementType, sourceArray.ElementType, out reason))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     internal bool IsAssignableFrom(Type targetType, Type sourceType, [NotNullWhen(false)] out TypeMismatch? reason)
     {
         reason = null;
@@ -907,6 +920,13 @@ public class TypeEvaluator(Project project)
         {
             if (sourceType is Type.StringLiteral sourceLiteral &&
                 stringLiteral.Literal == sourceLiteral.Literal)
+            {
+                return true;
+            }
+        }
+        else if (targetType is Type.Array targetArray && sourceType is Type.Array sourceArray)
+        {
+            if (IsAssignableFrom(targetArray, sourceArray, out subReason))
             {
                 return true;
             }
