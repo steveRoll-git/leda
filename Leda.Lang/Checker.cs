@@ -458,7 +458,8 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
     }
 
     /// <summary>
-    /// Checks an assignment of a single value to a target type. If applicable, errors in the source value will be shown.
+    /// Checks an assignment of a single value to a target type.
+    /// If the source value is a table, errors will be shown in its keys and values, when applicable.
     /// </summary>
     /// <param name="targetType">The type of the target being assigned to.</param>
     /// <param name="sourceValue">The value being assigned.</param>
