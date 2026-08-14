@@ -581,7 +581,7 @@ public class Binder
     {
         return index >= declaration.Values.Count &&
                (declaration.Values.Count <= 0 ||
-                declaration.Values[^1] is not Tree.Expression.Call or Tree.Expression.Vararg);
+                declaration.Values[^1] is not (Tree.Expression.Call or Tree.Expression.Vararg));
     }
 
     private FlowNode.VariableDeclaration? VisitStatement(Tree.Statement.LocalDeclaration localDeclaration,
