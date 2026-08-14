@@ -2,6 +2,7 @@ local a: number, b: string
 
 local function f()
   local okay = a .. b
+  return 2, ""
 end
 
 local result = a .. b
@@ -25,4 +26,15 @@ else
 end
 
 local result3 = a .. b
+
+do
+  local x, y = 123
+  local z = y
+end
+
+do
+  local x, y = f() -- if the last value in a list is a function call or vararg, it counts as being initialized.
+  local z = y
+end
+
 
