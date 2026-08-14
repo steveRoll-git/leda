@@ -224,10 +224,14 @@ public abstract record Diagnostic(Range Range)
         public override string Message => "This value is not assigned to any variable.";
     }
 
-    public record TooManyValues(Range Range, TypeListKind Kind, int Maximum, int Got) : Diagnostic(Range)
+    public record TooManyValues(Range Range, int Maximum, int Got, TypeListKind Kind, bool Exact) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"Expected at most {Maximum} {TypeList.ItemNoun(Kind)}s, but got {Got}.";
+
+        private string AmountPhrase => Exact ? "" : "at most ";
+
+        public override string Message =>
+            $"Expected {AmountPhrase}{Maximum} {TypeList.ItemNoun(Kind)}s, but got {Got}.";
     }
 
     public record FunctionDoesntReturnValue(Range Range) : Diagnostic(Range)

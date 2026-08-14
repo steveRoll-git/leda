@@ -1027,7 +1027,7 @@ public class TypeEvaluator(Project project)
         var sourceMinimum = GetTypeListMinimum(sources);
         if (sourceMinimum < targetMinimum)
         {
-            reasons.Add(new TypeMismatch.NotEnoughValues(targetMinimum, sourceMinimum, kind));
+            reasons.Add(new TypeMismatch.NotEnoughValues(targetMinimum, sourceMinimum, kind, false));
             return false;
         }
 

@@ -37,14 +37,17 @@ public abstract record TypeMismatch
         public override string Message => $"Type '{Source}' is not assignable to type '{Target}'.";
     }
 
-    public record NotEnoughValues(int Expected, int Got, TypeListKind Kind) : TypeMismatch
+    public record NotEnoughValues(int Minimum, int Got, TypeListKind Kind, bool Exact) : TypeMismatch
     {
+        private string AmountPhrase => Exact ? "" : "at least ";
+
         public override string Message =>
             Kind switch
             {
                 TypeListKind.FunctionTypeParameter =>
-                    $"Target type doesn't provide enough parameters. Expected at least {Expected}, got {Got}.",
-                _ => $"Not enough {TypeList.ItemNoun(Kind)}(s) are given. Expected at least {Expected} but got {Got}."
+                    $"Target type doesn't provide enough parameters. Expected {AmountPhrase}{Minimum}, got {Got}.",
+                _ =>
+                    $"Not enough {TypeList.ItemNoun(Kind)}(s) are given. Expected {AmountPhrase}{Minimum} but got {Got}.",
             };
     }
 

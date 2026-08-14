@@ -249,24 +249,24 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
     private void CheckAssignment(TypeList targets, List<Tree.Expression> sources, TypeListKind kind,
         Range sideErrorRange)
     {
-        var expectedValues = evaluator.GetTypeListMinimum(targets);
+        var minimumValues = evaluator.GetTypeListMinimum(targets);
+        var maximumValues = evaluator.GetTypeListMaximum(targets);
         var gotValues = evaluator.GetMinimumNumberOfValues(sources);
-        if (gotValues < expectedValues)
+        if (gotValues < minimumValues)
         {
             Report(new Diagnostic.TypeMismatch(sideErrorRange,
-                new TypeMismatch.NotEnoughValues(expectedValues, gotValues, kind)));
+                new TypeMismatch.NotEnoughValues(minimumValues, gotValues, kind, minimumValues == maximumValues)));
             return;
         }
 
         var targetsHaveRest = evaluator.DoesTypeListHaveRest(targets);
-        var maximum = evaluator.GetTypeListMaximum(targets);
 
-        for (var i = 0; i < sources.Count && (targetsHaveRest || i < maximum); i++)
+        for (var i = 0; i < sources.Count && (targetsHaveRest || i < maximumValues); i++)
         {
             var value = sources[i];
             // If the last expression is one that returns a TypeList (and that TypeList returns more than one value),
             // check it with `evaluator.IsAssignableFrom`.
-            if (i == sources.Count - 1 && i < maximum - 1 &&
+            if (i == sources.Count - 1 && i < maximumValues - 1 &&
                 evaluator.GetTypeListOfExpression(value) is { } sourceTypeList &&
                 evaluator.GetTypeListMinimum(sourceTypeList) > 1)
             {
@@ -285,12 +285,12 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
                 targets is TypeList.AssignmentTargets { Targets: var targetValues } ? targetValues[i] : null);
         }
 
-        if (!targetsHaveRest && sources.Count > maximum)
+        if (!targetsHaveRest && sources.Count > maximumValues)
         {
-            var firstExcessive = sources[maximum];
+            var firstExcessive = sources[maximumValues];
             var lastExcessive = sources[^1];
-            Report(new Diagnostic.TooManyValues(firstExcessive.Range.Union(lastExcessive.Range), kind, maximum,
-                sources.Count));
+            Report(new Diagnostic.TooManyValues(firstExcessive.Range.Union(lastExcessive.Range), maximumValues,
+                sources.Count, kind, minimumValues == maximumValues));
         }
     }
 
