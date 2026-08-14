@@ -163,6 +163,16 @@ public class TypeEvaluator(Project project)
         return result;
     }
 
+    private static TypeList CreateTypeListFromValues(List<Tree.Expression> values)
+    {
+        if (values.Count > 0)
+        {
+            return new TypeList.FromValues(values);
+        }
+
+        return TypeList.Empty;
+    }
+
     private Type.Function GetTypeOfFunctionUncached(Tree.Expression.Function function)
     {
         var parameters = new TypeList.Parameters(function);
@@ -175,7 +185,7 @@ public class TypeEvaluator(Project project)
         else if (function.Chunk.ReturnStatements.Count > 0)
         {
             // TODO make union of all return statements
-            returns = new TypeList.FromValues(function.Chunk.ReturnStatements[0].Values);
+            returns = CreateTypeListFromValues(function.Chunk.ReturnStatements[0].Values);
         }
         else
         {
