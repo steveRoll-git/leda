@@ -4,33 +4,42 @@ namespace Leda.Test;
 
 public class DiagnosticTest
 {
+    private const string ProjectPath = "../../../";
+    private static readonly string TestsPath = Path.Join(ProjectPath, "tests");
+    private static readonly string ResultsPath = Path.Join(ProjectPath, "results");
+
     [Theory]
     [ClassData(typeof(DiagnosticTestData))]
-    public void TestDiagnostics(TestScenario testScenario)
+    public void TestDiagnostics(string path)
     {
+        var filename = Path.GetFileNameWithoutExtension(path);
+        var code = File.ReadAllText(path);
+        var expectedDiagnostics = File.ReadAllText(Path.Join(ResultsPath, filename + ".diagnostics"));
+        var expectedCode = File.ReadAllText(Path.Join(ResultsPath, filename + ".lua"));
+
         var project = new Project();
-        var source = new Source(testScenario.Filename, testScenario.Code);
+        var source = new Source(filename, code);
         project.AddSource(source);
 
         var diagnostics = project.GetDiagnostics(source);
 
         var actualDiagnostics = DiagnosticPrinter.DiagnosticsOutput(diagnostics);
 
-        if (testScenario.ExpectedDiagnostics != actualDiagnostics)
+        if (expectedDiagnostics != actualDiagnostics)
         {
             Assert.Fail(
                 $"""
                  Diagnostics differ
 
                  Expected:
-                 {testScenario.ExpectedDiagnostics}
+                 {expectedDiagnostics}
                  Actual:
                  {actualDiagnostics}
                  """);
         }
 
         var actualCode = Emitter.Emit(source.File);
-        if (testScenario.ExpectedCode != actualCode)
+        if (expectedCode != actualCode)
         {
             Assert.Fail($"""
                          Emitted code differs
@@ -39,30 +48,19 @@ public class DiagnosticTest
                          """);
         }
     }
-}
 
-public record TestScenario(string Filename, string Code, string ExpectedDiagnostics, string ExpectedCode)
-{
-    public override string ToString()
+    private sealed class DiagnosticTestData : TheoryData<string>
     {
-        return Filename;
-    }
-}
-
-public sealed class DiagnosticTestData : TheoryData<TestScenario>
-{
-    private const string ProjectPath = "../../../";
-
-    public DiagnosticTestData()
-    {
-        foreach (var file in Directory.EnumerateFiles(Path.Join(ProjectPath, "tests")))
+        public DiagnosticTestData()
         {
-            var filename = Path.GetFileNameWithoutExtension(file);
-            var code = File.ReadAllText(file);
-            var expectedDiagnostics = File.ReadAllText(Path.Join(ProjectPath, "results", filename + ".diagnostics"));
-            var expectedCode = File.ReadAllText(Path.Join(ProjectPath, "results", filename + ".lua"));
-
-            Add(new TestScenario(filename, code, expectedDiagnostics, expectedCode));
+            foreach (var path in Directory.EnumerateFiles(TestsPath))
+            {
+                Add(new TheoryDataRow<string>(path)
+                {
+                    TestDisplayName = Path.GetFileNameWithoutExtension(path),
+                    Label = "",
+                });
+            }
         }
     }
 }
