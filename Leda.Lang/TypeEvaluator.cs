@@ -958,15 +958,14 @@ public class TypeEvaluator(Project project)
         [NotNullWhen(false)] out TypeMismatch? reason)
     {
         MismatchList reasons = [];
+        List<string> missingKeys = [];
 
         foreach (var (targetKey, targetStringField) in targetTable.StringLiterals)
         {
             var sourceType = GetTypeOfStringFieldInTable(sourceTable, targetKey);
             if (sourceType == null)
             {
-                reasons.Add(new TypeMismatch.SourceMissingKey(TypeToString(targetTable),
-                    TypeToString(sourceTable),
-                    '"' + targetKey + '"'));
+                missingKeys.Add($"\"{targetKey}\"");
                 continue;
             }
 
@@ -977,6 +976,12 @@ public class TypeEvaluator(Project project)
             }
         }
         // TODO check number literals too
+
+        if (missingKeys.Count > 0)
+        {
+            reason = new TypeMismatch.MissingKeys(TypeToString(targetTable), TypeToString(sourceTable), missingKeys);
+            return false;
+        }
 
         if (reasons.Count > 0)
         {

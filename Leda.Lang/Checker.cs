@@ -511,9 +511,10 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
 
             if (missingStrings.Count > 0)
             {
-                Report(new Diagnostic.MissingStringKeys(errorRange, evaluator.TypeToString(targetType),
+                Report(new Diagnostic.TypeMismatch(errorRange, new TypeMismatch.MissingKeys(
+                    evaluator.TypeToString(targetType),
                     evaluator.TypeToString(evaluator.GetTypeOfExpression(sourceValue)),
-                    missingStrings.ToList()));
+                    missingStrings.Select(s => $"\"{s}\"").ToList())));
             }
         }
         else

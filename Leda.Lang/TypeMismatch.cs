@@ -56,10 +56,11 @@ public abstract record TypeMismatch
         public override string Message => $"Type of {TypeList.ItemNoun(Kind)} #{Index + 1} is incompatible:";
     }
 
-    public record SourceMissingKey(string Target, string Source, string Key) : TypeMismatch
+    public record MissingKeys(string Target, string Source, List<string> Keys) : TypeMismatch
     {
-        public override string Message =>
-            $"Type '{Source}' does not have a key of type '{Key}' required by type '{Target}'.";
+        public override string Message => Keys.Count == 1
+            ? $"Key {Keys[0]} is missing in type '{Source}' but required in type '{Target}'."
+            : $"Type '{Source}' is missing the following keys from type '{Target}': {string.Join(", ", Keys)}";
     }
 
     public record TableKeyIncompatible(string Key) : TypeMismatch
