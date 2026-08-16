@@ -12,10 +12,11 @@ const string projectPath = "Leda.Test/";
 var testFilesPath = Path.Join(projectPath, "tests");
 var resultFilesPath = Path.Join(projectPath, "results");
 
-var pattern = args[0];
-
 Matcher matcher = new();
-matcher.AddInclude(pattern);
+foreach (var pattern in args)
+{
+    matcher.AddInclude(pattern);
+}
 
 var empty = true;
 
@@ -44,5 +45,5 @@ foreach (var testCodePath in matcher.GetResultsInFullPath(testFilesPath))
 
 if (empty)
 {
-    Console.WriteLine($"No files matching {pattern} were found");
+    Console.WriteLine("No matching files were found.");
 }
