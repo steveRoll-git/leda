@@ -957,7 +957,7 @@ public class TypeEvaluator(Project project)
     private bool IsAssignableFrom(Type.Table targetTable, Type.Table sourceTable,
         [NotNullWhen(false)] out TypeMismatch? reason)
     {
-        MismatchList reasons = [];
+        List<TypeMismatch> reasons = [];
         List<string> missingKeys = [];
 
         foreach (var (targetKey, targetStringField) in targetTable.StringLiterals)
@@ -997,7 +997,7 @@ public class TypeEvaluator(Project project)
     internal bool IsAssignableFrom(Type.Function targetFunction, Type.Function sourceFunction,
         [NotNullWhen(false)] out TypeMismatch? reason)
     {
-        MismatchList reasons = [];
+        List<TypeMismatch> reasons = [];
         if (!IsAssignableFrom(sourceFunction.Parameters, targetFunction.Parameters, out var parameterReasons,
                 TypeListKind.FunctionTypeParameter))
         {
@@ -1022,7 +1022,7 @@ public class TypeEvaluator(Project project)
     }
 
     internal bool IsAssignableFrom(TypeList targets, TypeList sources,
-        [NotNullWhen(false)] out MismatchList? reasons,
+        [NotNullWhen(false)] out List<TypeMismatch>? reasons,
         TypeListKind kind,
         int targetIndex = 0)
     {
