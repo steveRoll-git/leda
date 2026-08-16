@@ -380,23 +380,15 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
             Report(new Diagnostic.ValuePossiblyNil(range, name != null ? "'" + name + "'" : null));
         }
 
-        var found = false;
 
-        if (access.Key is Tree.Expression.String literal &&
-            TypeEvaluator.GetStringFieldInType(targetType, literal.Value) is { } stringField)
+        if (evaluator.GetTypeOfAccess(access) is (not null, var symbol))
         {
-            found = true;
-            if (stringField.Symbol != null)
+            if (symbol != null && access.Key is Tree.Expression.String)
             {
-                project.AttachNonLocalSymbol(literal, stringField.Symbol);
+                project.AttachNonLocalSymbol(access.Key, symbol);
             }
         }
         else
-        {
-            found = evaluator.GetTypeOfAccess(access) != null;
-        }
-
-        if (!found)
         {
             Report(new Diagnostic.TypeDoesntHaveKey(access.Key.Range, evaluator.TypeToString(targetType),
                 evaluator.TypeToString(evaluator.GetTypeOfExpression(access.Key, true))));
@@ -468,59 +460,42 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
     {
         var errorRange = (targetValue ?? sourceValue).Range;
 
-        if (sourceValue is Tree.Expression.Table sourceTable && targetType is Type.Table targetTable)
+        // We only comprehensively check table values against types that can be tables (Table or Array).
+        if (sourceValue is not Tree.Expression.Table sourceTable || targetType is not (Type.Table or Type.Array))
         {
-            var missingStrings = new HashSet<string>(targetTable.StringLiterals.Select(p => p.Key));
-            // TODO check number literals too
-            foreach (var sourceField in sourceTable.Fields)
+            CheckTypeToType(targetType, evaluator.GetTypeOfExpression(sourceValue), errorRange);
+            return;
+        }
+
+        // TODO check number literals too
+        foreach (var sourceField in sourceTable.Fields)
+        {
+            var sourceKeyType = evaluator.GetTypeOfExpression(sourceField.Key, true);
+            var (targetValueType, targetSymbol) = evaluator.GetTypeOfAccessToType(targetType, sourceKeyType);
+
+            if (targetSymbol != null && sourceField.Key is Tree.Expression.String)
             {
-                var sourceKeyType = evaluator.GetTypeOfExpression(sourceField.Key, true);
-                Type? targetValueType;
-                if (sourceKeyType is Type.StringLiteral stringLiteral)
-                {
-                    missingStrings.Remove(stringLiteral.Literal);
-
-                    var stringField = targetTable.StringLiterals.GetValueOrDefault(stringLiteral.Literal);
-                    targetValueType = stringField != null
-                        ? evaluator.GetTypeOfStringField(targetTable, stringField)
-                        : null;
-                    if (stringField?.Symbol != null && sourceField.Key is Tree.Expression.String)
-                    {
-                        project.AttachNonLocalSymbol(sourceField.Key, stringField.Symbol);
-                    }
-                }
-                else
-                {
-                    targetValueType = targetTable.Indexers
-                        .FirstOrDefault(p => evaluator.IsAssignableFrom(p.Key, sourceKeyType))
-                        .Value;
-                }
-
-                if (targetValueType == null)
-                {
-                    Report(new Diagnostic.TableLiteralOnlyKnownKeys(sourceField.Key.Range,
-                        evaluator.TypeToString(targetTable),
-                        evaluator.TypeToString(sourceKeyType)));
-                }
-                else
-                {
-                    // TODO check for duplicate fields
-                    CheckValueToType(targetValueType, sourceField.Value, sourceField.Key);
-                }
+                project.AttachNonLocalSymbol(sourceField.Key, targetSymbol);
             }
 
-            if (missingStrings.Count > 0)
+            if (targetValueType == null)
             {
-                Report(new Diagnostic.TypeMismatch(errorRange, new TypeMismatch.MissingKeys(
+                Report(new Diagnostic.TableLiteralOnlyKnownKeys(sourceField.Key.Range,
                     evaluator.TypeToString(targetType),
-                    evaluator.TypeToString(evaluator.GetTypeOfExpression(sourceValue)),
-                    missingStrings.Select(s => $"\"{s}\"").ToList())));
+                    evaluator.TypeToString(sourceKeyType)));
+            }
+            else
+            {
+                // TODO check for duplicate fields
+                CheckValueToType(targetValueType, sourceField.Value, sourceField.Key);
             }
         }
-        else
+
+        if (targetType is Type.Table targetTable &&
+            evaluator.GetTypeOfTableValue(sourceTable) is Type.Table sourceTableType &&
+            !evaluator.DoesTableHaveAllTargetKeys(targetTable, sourceTableType, out var reason))
         {
-            var valueType = evaluator.GetTypeOfExpression(sourceValue);
-            CheckTypeToType(targetType, valueType, errorRange);
+            Report(new Diagnostic.TypeMismatch(errorRange, reason));
         }
     }
 

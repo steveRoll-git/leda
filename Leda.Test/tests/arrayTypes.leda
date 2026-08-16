@@ -4,7 +4,15 @@ local function f(arr: number[])
 end
 
 local a = {1,2}
-
 f(a)
 
-f({""})
+f({1, "abc", 3})
+
+local b = {"a", "b"}
+f(b)
+
+local c: function(a: number, b: number)[] = {
+  function(a, b)
+    local c: number = a + b
+  end
+}

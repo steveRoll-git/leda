@@ -1,3 +1,5 @@
-TypeMismatch(10:3 10:7)
+TypeMismatch(9:7 9:12)
+Error: Type 'string' is not assignable to type 'number'.
+TypeMismatch(12:3 12:4)
 Error: Type 'string[]' is not assignable to type 'number[]'.
   Type 'string' is not assignable to type 'number'.

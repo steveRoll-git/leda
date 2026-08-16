@@ -145,7 +145,7 @@ public class TypeEvaluator(Project project)
             Tree.Expression.String s => isConstant ? new Type.StringLiteral(s.Value) : Type.StringPrimitive,
             Tree.Expression.Function function => GetTypeOfFunction(function),
             Tree.Expression.Table table => GetTypeOfTableValue(table),
-            Tree.Expression.Access access => GetTypeOfAccess(access) ?? Type.Unknown,
+            Tree.Expression.Access access => GetTypeOfAccess(access).type ?? Type.Unknown,
             Tree.Expression.Call call => GetTypeInTypeList(GetTypeListOfCall(call), 0),
             Tree.Expression.Binary binary => GetTypeOfBinaryExpression(binary) ?? Type.Unknown,
             Tree.Expression.False => isConstant ? Type.False : Type.Boolean,
@@ -231,7 +231,7 @@ public class TypeEvaluator(Project project)
         return type;
     }
 
-    private Type GetTypeOfTableValue(Tree.Expression.Table table)
+    internal Type GetTypeOfTableValue(Tree.Expression.Table table)
     {
         return GetQueryOrCached(GetTypeOfTableValueUncached, table, inferredTableCache);
     }
@@ -278,31 +278,30 @@ public class TypeEvaluator(Project project)
         return stringField.CachedType!;
     }
 
-    public Type? GetTypeOfStringFieldInTable(Type.Table table, string key)
+    private (Type? type, Symbol? symbol) GetTypeOfStringFieldInTable(Type.Table table, string key)
     {
-        if (!table.StringLiterals.TryGetValue(key, out var field))
+        if (table.StringLiterals.TryGetValue(key, out var field))
         {
-            return null;
+            return (GetTypeOfStringField(table, field), field.Symbol);
         }
 
-        return GetTypeOfStringField(table, field);
+        return default;
     }
 
-    private Type? GetTypeOfTableAccess(Type.Table table, Tree.Expression key)
+    private (Type? type, Symbol? symbol) GetTypeOfTableAccess(Type.Table table, Type keyType)
     {
-        var keyType = GetTypeOfExpression(key, true);
         if (keyType is Type.StringLiteral stringLiteral)
         {
             return GetTypeOfStringFieldInTable(table, stringLiteral.Literal);
         }
 
         // TODO check number literals, indexers
-        return null;
+        return default;
     }
 
-    private Type? GetTypeOfArrayAccess(Type.Array array, Tree.Expression key)
+    private Type? GetTypeOfArrayAccess(Type.Array array, Type keyType)
     {
-        if (IsAssignableFrom(Type.NumberPrimitive, GetTypeOfExpression(key)))
+        if (IsAssignableFrom(Type.NumberPrimitive, keyType))
         {
             return array.ElementType;
         }
@@ -310,10 +309,8 @@ public class TypeEvaluator(Project project)
         return null;
     }
 
-    internal Type? GetTypeOfAccess(Tree.Expression.Access access)
+    internal (Type? type, Symbol? symbol) GetTypeOfAccessToType(Type targetType, Type keyType)
     {
-        var targetType = GetTypeOfExpression(access.Target);
-
         if (targetType is Type.Nillable { Inner: var inner })
         {
             targetType = inner;
@@ -321,34 +318,25 @@ public class TypeEvaluator(Project project)
 
         if (targetType == Type.Any)
         {
-            return Type.Any;
+            return (Type.Any, null);
         }
 
         if (targetType is Type.Table table)
         {
-            return GetTypeOfTableAccess(table, access.Key);
+            return GetTypeOfTableAccess(table, keyType);
         }
 
         if (targetType is Type.Array array)
         {
-            return GetTypeOfArrayAccess(array, access.Key);
+            return (GetTypeOfArrayAccess(array, keyType), null);
         }
 
-        return Type.Unknown;
+        return (Type.Unknown, null);
     }
 
-    /// <summary>
-    /// Gets a string field in a value, whose type may not necessarily be a table.
-    /// (For example, other types with a `__index`.)
-    /// </summary>
-    internal static Type.Table.StringField? GetStringFieldInType(Type type, string key)
+    internal (Type? type, Symbol? symbol) GetTypeOfAccess(Tree.Expression.Access access)
     {
-        if (type is Type.Table table)
-        {
-            return table.StringLiterals.GetValueOrDefault(key);
-        }
-
-        return null;
+        return GetTypeOfAccessToType(GetTypeOfExpression(access.Target), GetTypeOfExpression(access.Key, true));
     }
 
     private static Type.Function GetTypeOfFunctionAnnotationUncached(Tree.Type.Function function)
@@ -388,8 +376,7 @@ public class TypeEvaluator(Project project)
                 when returnStmt.ParentChunk.ParentFunction is { } function =>
                 GetTypeInTypeList(GetTypeOfFunction(function).Returns, returnIndex),
             ValueLocation.TableField { Field: var field, Parent: var parent }
-                when GetTypeAtValueLocation(parent) is Type.Table parentTable &&
-                     GetTypeOfTableAccess(parentTable, field.Key) is { } keyType =>
+                when GetTypeOfAccessToType(GetTypeAtValueLocation(parent), GetTypeOfExpression(field.Key, true)) is ({ } keyType, _) =>
                 keyType,
             _ => Type.Unknown,
         };
@@ -954,18 +941,46 @@ public class TypeEvaluator(Project project)
         return IsAssignableFrom(targetType, sourceType, out _);
     }
 
-    private bool IsAssignableFrom(Type.Table targetTable, Type.Table sourceTable,
+    internal bool DoesTableHaveAllTargetKeys(Type.Table targetTable, Type.Table sourceTable,
         [NotNullWhen(false)] out TypeMismatch? reason)
     {
-        List<TypeMismatch> reasons = [];
         List<string> missingKeys = [];
 
-        foreach (var (targetKey, targetStringField) in targetTable.StringLiterals)
+        foreach (var (targetKey, _) in targetTable.StringLiterals)
         {
-            var sourceType = GetTypeOfStringFieldInTable(sourceTable, targetKey);
+            var sourceType = GetTypeOfStringFieldInTable(sourceTable, targetKey).type;
             if (sourceType == null)
             {
                 missingKeys.Add($"\"{targetKey}\"");
+            }
+        }
+        // TODO check number literals too
+
+        if (missingKeys.Count > 0)
+        {
+            reason = new TypeMismatch.MissingKeys(TypeToString(targetTable), TypeToString(sourceTable), missingKeys);
+            return false;
+        }
+
+        reason = null;
+        return true;
+    }
+
+    private bool IsAssignableFrom(Type.Table targetTable, Type.Table sourceTable,
+        [NotNullWhen(false)] out TypeMismatch? reason)
+    {
+        if (!DoesTableHaveAllTargetKeys(targetTable, sourceTable, out reason))
+        {
+            return false;
+        }
+
+        List<TypeMismatch> reasons = [];
+
+        foreach (var (targetKey, targetStringField) in targetTable.StringLiterals)
+        {
+            var sourceType = GetTypeOfStringFieldInTable(sourceTable, targetKey).type;
+            if (sourceType == null)
+            {
                 continue;
             }
 
@@ -977,16 +992,12 @@ public class TypeEvaluator(Project project)
         }
         // TODO check number literals too
 
-        if (missingKeys.Count > 0)
-        {
-            reason = new TypeMismatch.MissingKeys(TypeToString(targetTable), TypeToString(sourceTable), missingKeys);
-            return false;
-        }
-
         if (reasons.Count > 0)
         {
-            reason = new TypeMismatch.Primitive(TypeToString(targetTable),
-                TypeToString(sourceTable)) { Children = reasons };
+            reason = new TypeMismatch.Primitive(TypeToString(targetTable), TypeToString(sourceTable))
+            {
+                Children = reasons,
+            };
             return false;
         }
 

@@ -4,4 +4,9 @@ local function f(arr)
 end
 local a = {1, 2}
 f(a)
-f({""})
+f({1, "abc", 3})
+local b = {"a", "b"}
+f(b)
+local c = {function(a, b)
+  local c = a + b
+end}
