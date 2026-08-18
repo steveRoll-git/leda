@@ -1,7 +1,8 @@
 namespace Leda.Lang;
 
 /// <summary>
-/// Visits all the nodes in the syntax tree, and calls the Visit method on them.
+/// Visits all the nodes in the syntax tree, and calls the Visit method on them.<br/>
+/// Inheritors should override one of the `Visit` methods.
 /// </summary>
 public abstract class Visitor
 {
@@ -240,7 +241,10 @@ public abstract class Visitor
                 break;
         }
 
-        PostVisit(tree);
+        if (!Stop)
+        {
+            PostVisit(tree);
+        }
     }
 
     private class CallbackVisitor(Action<Tree> callback) : Visitor
