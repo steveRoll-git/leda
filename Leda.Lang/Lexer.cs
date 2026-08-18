@@ -81,7 +81,7 @@ public class Lexer(Source source)
     /// </summary>
     private void AdvanceChar(int n)
     {
-        for (int i = 0; i < n; i++)
+        for (var i = 0; i < n; i++)
         {
             AdvanceChar();
         }
@@ -177,7 +177,7 @@ public class Lexer(Source source)
         if (CurChar == '~' && CharAt(index + 1) == '=')
         {
             AdvanceChar(2);
-            return new Token(TokenKind.NotEqual, new(start, position), "~=");
+            return new Token(TokenKind.TildeEqual, new(start, position), "~=");
         }
 
         // Otherwise, see if the current character matches any known tokens.
@@ -358,7 +358,7 @@ public class Lexer(Source source)
         } while (!ReachedEnd && IsNumberChar(CurChar));
 
         var value = Code.Substring(startIndex, index - startIndex);
-        double numberValue = double.NaN;
+        var numberValue = double.NaN;
         if (valid)
         {
             if (isHex)

@@ -350,7 +350,7 @@ public class Parser
             return ParseFunctionDeclaration();
         }
 
-        if (token.Kind == TokenKind.DoubleColon)
+        if (token.Kind == TokenKind.ColonColon)
         {
             return ParseLabelDefinition();
         }
@@ -397,7 +397,7 @@ public class Parser
                 }
             }
 
-            Expect(TokenKind.Assign);
+            Expect(TokenKind.Equal);
 
             var expressions = ParseExpressionList();
 
@@ -476,10 +476,10 @@ public class Parser
         Expect(TokenKind.For);
 
         // 'for' name '=' exp ',' exp [',' exp] 'do' block 'end'
-        if (Lookahead(1).Kind == TokenKind.Assign)
+        if (Lookahead(1).Kind == TokenKind.Equal)
         {
             var counter = ParseValueName();
-            Expect(TokenKind.Assign);
+            Expect(TokenKind.Equal);
             var start = ParseExpression();
             Expect(TokenKind.Comma);
             var end = ParseExpression();
@@ -690,7 +690,7 @@ public class Parser
         var declarations = ParseDeclarationList();
 
         List<Tree.Expression> values = [];
-        if (Accept(TokenKind.Assign))
+        if (Accept(TokenKind.Equal))
         {
             values = ParseExpressionList();
         }
@@ -718,7 +718,7 @@ public class Parser
         var declarations = ParseDeclarationList();
 
         List<Tree.Expression> values = [];
-        if (Accept(TokenKind.Assign))
+        if (Accept(TokenKind.Equal))
         {
             values = ParseExpressionList();
         }
@@ -761,9 +761,9 @@ public class Parser
         // '::' name '::'
         StartTree();
 
-        Expect(TokenKind.DoubleColon);
+        Expect(TokenKind.ColonColon);
         var name = ParseLabelName();
-        Expect(TokenKind.DoubleColon);
+        Expect(TokenKind.ColonColon);
 
         return EndTree(new Tree.Statement.LabelDefinition(name));
     }
@@ -1040,10 +1040,10 @@ public class Parser
             {
                 key = ParseExpression();
                 Expect(TokenKind.RSquare);
-                Expect(TokenKind.Assign);
+                Expect(TokenKind.Equal);
             }
             // name '=' exp
-            else if (token.Kind == TokenKind.Name && Lookahead(1).Kind == TokenKind.Assign)
+            else if (token.Kind == TokenKind.Name && Lookahead(1).Kind == TokenKind.Equal)
             {
                 key = ConsumeTree(new Tree.Expression.String(token.Value));
                 NextToken(); // skip '='
@@ -1086,7 +1086,7 @@ public class Parser
             return EndTree(new Tree.Expression.Unary(expression, op));
         }
 
-        if (token.Kind == TokenKind.Vararg)
+        if (token.Kind == TokenKind.DotDotDot)
         {
             return ConsumeTree(new Tree.Expression.Vararg());
         }
@@ -1147,7 +1147,7 @@ public class Parser
 
         var name = ParseTypeName();
 
-        Expect(TokenKind.Assign);
+        Expect(TokenKind.Equal);
 
         var type = ParseType();
 

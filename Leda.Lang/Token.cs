@@ -32,18 +32,18 @@ public enum TokenKind
     Goto,
     Plus,
     Minus,
-    Multiply,
-    Divide,
-    Modulo,
-    Power,
-    Length,
-    Equal,
-    NotEqual,
+    Asterisk,
+    Slash,
+    Percent,
+    Caret,
+    NumberSign,
+    EqualEqual,
+    TildeEqual,
     LessEqual,
     GreaterEqual,
     Less,
     Greater,
-    Assign,
+    Equal,
     LParen,
     RParen,
     LCurly,
@@ -52,11 +52,11 @@ public enum TokenKind
     RSquare,
     Semicolon,
     Colon,
-    DoubleColon,
+    ColonColon,
     Comma,
     Dot,
-    Concat,
-    Vararg,
+    DotDot,
+    DotDotDot,
     QuestionMark,
 }
 
@@ -118,18 +118,18 @@ public record Token(TokenKind Kind, Range Range, string Value)
         { "goto", TokenKind.Goto },
         { "+", TokenKind.Plus },
         { "-", TokenKind.Minus },
-        { "*", TokenKind.Multiply },
-        { "/", TokenKind.Divide },
-        { "%", TokenKind.Modulo },
-        { "^", TokenKind.Power },
-        { "#", TokenKind.Length },
-        { "==", TokenKind.Equal },
-        { "~=", TokenKind.NotEqual },
+        { "*", TokenKind.Asterisk },
+        { "/", TokenKind.Slash },
+        { "%", TokenKind.Percent },
+        { "^", TokenKind.Caret },
+        { "#", TokenKind.NumberSign },
+        { "==", TokenKind.EqualEqual },
+        { "~=", TokenKind.TildeEqual },
         { "<=", TokenKind.LessEqual },
         { ">=", TokenKind.GreaterEqual },
         { "<", TokenKind.Less },
         { ">", TokenKind.Greater },
-        { "=", TokenKind.Assign },
+        { "=", TokenKind.Equal },
         { "(", TokenKind.LParen },
         { ")", TokenKind.RParen },
         { "{", TokenKind.LCurly },
@@ -138,19 +138,20 @@ public record Token(TokenKind Kind, Range Range, string Value)
         { "]", TokenKind.RSquare },
         { ";", TokenKind.Semicolon },
         { ":", TokenKind.Colon },
-        { "::", TokenKind.DoubleColon },
+        { "::", TokenKind.ColonColon },
         { ",", TokenKind.Comma },
         { ".", TokenKind.Dot },
-        { "..", TokenKind.Concat },
-        { "...", TokenKind.Vararg },
+        { "..", TokenKind.DotDot },
+        { "...", TokenKind.DotDotDot },
         { "?", TokenKind.QuestionMark },
     };
 
     private static readonly Dictionary<TokenKind, string> TokenStringMap =
         new(StringTokenMap.Select(pair => new KeyValuePair<TokenKind, string>(pair.Value, pair.Key)));
 
-    public static string GetKindName(TokenKind kind) =>
-        kind switch
+    public static string GetKindName(TokenKind kind)
+    {
+        return kind switch
         {
             TokenKind.Unknown => "unknown",
             TokenKind.Eof => "EOF",
@@ -160,29 +161,35 @@ public record Token(TokenKind Kind, Range Range, string Value)
             TokenKind.LongString => "long string",
             _ => '"' + TokenStringMap[kind] + '"',
         };
+    }
 
     /// <summary>
     /// Returns whether the token is a unary operator.
     /// </summary>
     /// <param name="token"></param>
-    /// <returns></returns>
-    internal static bool IsUnary(Token token) => token.Kind is TokenKind.Minus or TokenKind.Length or TokenKind.Not;
+    internal static bool IsUnary(Token token)
+    {
+        return token.Kind is TokenKind.Minus or TokenKind.NumberSign or TokenKind.Not;
+    }
 
     /// <summary>
     /// Returns the binary precedence of the token if it's a binary operator, or -1 if it isn't.
     /// </summary>
-    public static int Precedence(Token token) => token.Kind switch
+    public static int Precedence(Token token)
     {
-        TokenKind.Or => 0,
-        TokenKind.And => 1,
-        TokenKind.Less or TokenKind.Greater or TokenKind.LessEqual or TokenKind.GreaterEqual or TokenKind.NotEqual
-            or TokenKind.Equal => 2,
-        TokenKind.Concat => 3,
-        TokenKind.Plus or TokenKind.Minus => 4,
-        TokenKind.Multiply or TokenKind.Divide or TokenKind.Modulo => 5,
-        TokenKind.Power => 6,
-        _ => -1
-    };
+        return token.Kind switch
+        {
+            TokenKind.Or => 0,
+            TokenKind.And => 1,
+            TokenKind.Less or TokenKind.Greater or TokenKind.LessEqual or TokenKind.GreaterEqual or TokenKind.TildeEqual
+                or TokenKind.EqualEqual => 2,
+            TokenKind.DotDot => 3,
+            TokenKind.Plus or TokenKind.Minus => 4,
+            TokenKind.Asterisk or TokenKind.Slash or TokenKind.Percent => 5,
+            TokenKind.Caret => 6,
+            _ => -1,
+        };
+    }
 
     /// <summary>
     /// Returns whether the token is a binary operator, along with its binary precedence.
@@ -196,5 +203,8 @@ public record Token(TokenKind Kind, Range Range, string Value)
     /// <summary>
     /// If the token is a binary operator, returns whether it's right associative.
     /// </summary>
-    internal static bool IsRightAssociative(Token token) => token.Kind is TokenKind.Concat or TokenKind.Power;
+    internal static bool IsRightAssociative(Token token)
+    {
+        return token.Kind is TokenKind.DotDot or TokenKind.Caret;
+    }
 }

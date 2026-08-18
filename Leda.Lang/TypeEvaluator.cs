@@ -491,8 +491,8 @@ public class TypeEvaluator(Project project)
 
         switch (binary.Operator.Kind)
         {
-            case TokenKind.Plus or TokenKind.Minus or TokenKind.Multiply or TokenKind.Divide or TokenKind.Modulo
-                or TokenKind.Power:
+            case TokenKind.Plus or TokenKind.Minus or TokenKind.Asterisk or TokenKind.Slash or TokenKind.Percent
+                or TokenKind.Caret:
             {
                 if (IsAssignableFrom(Type.NumberPrimitive, left) && IsAssignableFrom(Type.NumberPrimitive, right))
                 {
@@ -513,10 +513,10 @@ public class TypeEvaluator(Project project)
                 break;
             }
 
-            case TokenKind.Equal or TokenKind.NotEqual:
+            case TokenKind.EqualEqual or TokenKind.TildeEqual:
                 return Type.Boolean;
 
-            case TokenKind.Concat:
+            case TokenKind.DotDot:
             {
                 if ((IsAssignableFrom(Type.NumberPrimitive, left) || IsAssignableFrom(Type.StringPrimitive, left)) &&
                     (IsAssignableFrom(Type.NumberPrimitive, right) || IsAssignableFrom(Type.StringPrimitive, right)))
