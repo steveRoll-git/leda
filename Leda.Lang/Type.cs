@@ -15,7 +15,7 @@ public abstract class Type
     /// </summary>
     public class PrimitiveType(Func<Type, bool> assignableFunc) : Type
     {
-        public Func<Type, bool> AssignableFunc => assignableFunc;
+        public Func<Type, bool> AssignableFunc { get; } = assignableFunc;
     }
 
     /// <summary>
@@ -57,7 +57,7 @@ public abstract class Type
 
     public class NumberLiteral(double literal) : Type
     {
-        public double Literal => literal;
+        public double Literal { get; } = literal;
     }
 
     /// <summary>
@@ -71,7 +71,7 @@ public abstract class Type
     /// </summary>
     public class StringLiteral(string literal) : Type
     {
-        public string Literal => literal;
+        public string Literal { get; } = literal;
     }
 
     /// <summary>
@@ -84,14 +84,14 @@ public abstract class Type
         /// <summary>
         /// The types of this function's parameters.
         /// </summary>
-        public TypeList Parameters => parameters;
+        public TypeList Parameters { get; } = parameters;
 
         /// <summary>
         /// This function's return types.
         /// </summary>
-        public TypeList Returns => returns;
+        public TypeList Returns { get; } = returns;
 
-        public List<TypeParameter> TypeParameters => typeParameters;
+        public List<TypeParameter> TypeParameters { get; } = typeParameters;
 
         public bool IsGeneric => TypeParameters.Count > 0;
     }
@@ -112,7 +112,7 @@ public abstract class Type
         /// </summary>
         public abstract class StringField(Symbol? symbol)
         {
-            public Symbol? Symbol => symbol;
+            public Symbol? Symbol { get; } = symbol;
             public Type? CachedType = null;
         }
 
@@ -121,7 +121,7 @@ public abstract class Type
         /// </summary>
         public class ValueStringField(Symbol? symbol, Tree.Expression.Table.Field tableField) : StringField(symbol)
         {
-            public Tree.Expression.Table.Field Field => tableField;
+            public Tree.Expression.Table.Field Field { get; } = tableField;
         }
 
         /// <summary>
@@ -129,7 +129,7 @@ public abstract class Type
         /// </summary>
         public class TypeStringField(Symbol? symbol, Tree.Type.Table.Field tableField) : StringField(symbol)
         {
-            public Tree.Type.Table.Field Field => tableField;
+            public Tree.Type.Table.Field Field { get; } = tableField;
         }
 
         /// <summary>
@@ -174,7 +174,7 @@ public abstract class Type
 
     public class Array(Type elementType) : Type
     {
-        public Type ElementType => elementType;
+        public Type ElementType { get; } = elementType;
     }
 
     /// <summary>
@@ -182,7 +182,7 @@ public abstract class Type
     /// </summary>
     public class Nillable(Type inner) : Type
     {
-        public Type Inner => inner;
+        public Type Inner { get; } = inner;
     }
 
     /// <summary>

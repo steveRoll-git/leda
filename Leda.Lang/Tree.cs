@@ -31,7 +31,7 @@ public abstract class Tree
         /// </summary>
         public class Name(string value) : Type
         {
-            public string Value => value;
+            public string Value { get; } = value;
 
             public override string ToString()
             {
@@ -41,12 +41,12 @@ public abstract class Tree
 
         public class StringLiteral(string value) : Type
         {
-            public string Value => value;
+            public string Value { get; } = value;
         }
 
         public class NumberLiteral(double value) : Type
         {
-            public double Value => value;
+            public double Value { get; } = value;
         }
 
         /// <summary>
@@ -54,15 +54,15 @@ public abstract class Tree
         /// </summary>
         public class Table(List<Table.Field> fields) : Type
         {
-            public List<Field> Fields => fields;
+            public List<Field> Fields { get; } = fields;
 
             /// <summary>
             /// A pair of key and value types.
             /// </summary>
             public class Field(Type key, Type value)
             {
-                public Type Key => key;
-                public Type Value => value;
+                public Type Key { get; } = key;
+                public Type Value { get; } = value;
 
                 /// <summary>
                 /// The symbol that this field defines.<br/>
@@ -77,14 +77,14 @@ public abstract class Tree
         /// </summary>
         public class Function(List<Declaration> parameters, List<Type>? returnTypes, List<Name>? typeParameters) : Type
         {
-            public List<Declaration> Parameters => parameters;
-            public List<Type>? ReturnTypes => returnTypes;
-            public List<Name>? TypeParameters => typeParameters;
+            public List<Declaration> Parameters { get; } = parameters;
+            public List<Type>? ReturnTypes { get; } = returnTypes;
+            public List<Name>? TypeParameters { get; } = typeParameters;
         }
 
         public class Array(Type elementType) : Type
         {
-            public Type ElementType => elementType;
+            public Type ElementType { get; } = elementType;
         }
 
         /// <summary>
@@ -92,12 +92,12 @@ public abstract class Tree
         /// </summary>
         public class Nillable(Type inner) : Type
         {
-            public Type Inner => inner;
+            public Type Inner { get; } = inner;
         }
 
         // public class Union(List<Type> types) : Type
         // {
-        //     public List<Type> Types => types;
+        //     public List<Type> Types { get; } = types;
         // }
     }
 
@@ -109,14 +109,14 @@ public abstract class Tree
         List<TypeAliasDeclaration> typeDeclarations,
         List<Statement.LabelDefinition> labels)
     {
-        public List<Statement> Statements => statements;
+        public List<Statement> Statements { get; } = statements;
 
         /// <summary>
         /// All types that were declared in this block.
         /// </summary>
-        public List<TypeAliasDeclaration> TypeDeclarations => typeDeclarations;
+        public List<TypeAliasDeclaration> TypeDeclarations { get; } = typeDeclarations;
 
-        public List<Statement.LabelDefinition> Labels => labels;
+        public List<Statement.LabelDefinition> Labels { get; } = labels;
     }
 
     /// <summary>
@@ -183,7 +183,7 @@ public abstract class Tree
         /// </summary>
         public class Do(Block body) : Statement
         {
-            public Block Body => body;
+            public Block Body { get; } = body;
         }
 
         /// <summary>
@@ -191,9 +191,9 @@ public abstract class Tree
         /// </summary>
         public class If(IfBranch primary, List<IfBranch> elseIfs, Block? elseBody) : Statement
         {
-            public IfBranch Primary => primary;
-            public List<IfBranch> ElseIfs => elseIfs;
-            public Block? ElseBody => elseBody;
+            public IfBranch Primary { get; } = primary;
+            public List<IfBranch> ElseIfs { get; } = elseIfs;
+            public Block? ElseBody { get; } = elseBody;
         }
 
         /// <summary>
@@ -206,11 +206,11 @@ public abstract class Tree
             Expression? step,
             Block body) : Statement
         {
-            public Expression.Name Counter => counter;
-            public Expression Start => start;
-            public Expression Limit => limit;
-            public Expression? Step => step;
-            public Block Body => body;
+            public Expression.Name Counter { get; } = counter;
+            public Expression Start { get; } = start;
+            public Expression Limit { get; } = limit;
+            public Expression? Step { get; } = step;
+            public Block Body { get; } = body;
         }
 
         /// <summary>
@@ -218,9 +218,9 @@ public abstract class Tree
         /// </summary>
         public class IteratorFor(List<Declaration> declarations, Expression iterator, Block body) : Statement
         {
-            public List<Declaration> Declarations => declarations;
-            public Expression Iterator => iterator;
-            public Block Body => body;
+            public List<Declaration> Declarations { get; } = declarations;
+            public Expression Iterator { get; } = iterator;
+            public Block Body { get; } = body;
         }
 
         /// <summary>
@@ -228,8 +228,8 @@ public abstract class Tree
         /// </summary>
         public class While(Expression condition, Block body) : Statement
         {
-            public Expression Condition => condition;
-            public Block Body => body;
+            public Expression Condition { get; } = condition;
+            public Block Body { get; } = body;
         }
 
         /// <summary>
@@ -237,8 +237,8 @@ public abstract class Tree
         /// </summary>
         public class RepeatUntil(Block body, Expression condition) : Statement
         {
-            public Block Body => body;
-            public Expression Condition => condition;
+            public Block Body { get; } = body;
+            public Expression Condition { get; } = condition;
         }
 
         /// <summary>
@@ -246,8 +246,8 @@ public abstract class Tree
         /// </summary>
         public class VariableDeclaration(List<Declaration> declarations, List<Expression> values) : Statement
         {
-            public List<Declaration> Declarations => declarations;
-            public List<Expression> Values => values;
+            public List<Declaration> Declarations { get; } = declarations;
+            public List<Expression> Values { get; } = values;
         }
 
         /// <summary>
@@ -269,8 +269,8 @@ public abstract class Tree
         /// </summary>
         public class LocalFunctionDeclaration(Expression.Name name, Expression.Function function) : Statement
         {
-            public Expression.Name Name => name;
-            public Expression.Function Function => function;
+            public Expression.Name Name { get; } = name;
+            public Expression.Function Function { get; } = function;
         }
 
         /// <summary>
@@ -278,7 +278,7 @@ public abstract class Tree
         /// </summary>
         public class Return(List<Expression> values) : Statement
         {
-            public List<Expression> Values => values;
+            public List<Expression> Values { get; } = values;
             public Chunk ParentChunk { get; internal set; } = null!;
         }
 
@@ -292,8 +292,8 @@ public abstract class Tree
         /// </summary>
         public class Assignment(List<Expression> targets, List<Expression> values) : Statement
         {
-            public List<Expression> Targets => targets;
-            public List<Expression> Values => values;
+            public List<Expression> Targets { get; } = targets;
+            public List<Expression> Values { get; } = values;
         }
 
         /// <summary>
@@ -301,7 +301,7 @@ public abstract class Tree
         /// </summary>
         public class Call(Expression.Call call) : Statement
         {
-            public Expression.Call CallExpr => call;
+            public Expression.Call CallExpr { get; } = call;
         }
 
         /// <summary>
@@ -309,7 +309,7 @@ public abstract class Tree
         /// </summary>
         public class MethodCall(Expression.MethodCall methodCall) : Statement
         {
-            public Expression.MethodCall CallExpr => methodCall;
+            public Expression.MethodCall CallExpr { get; } = methodCall;
         }
 
         /// <summary>
@@ -317,7 +317,7 @@ public abstract class Tree
         /// </summary>
         public class LabelDefinition(LabelName name) : Statement
         {
-            public LabelName Name => name;
+            public LabelName Name { get; } = name;
         }
 
         /// <summary>
@@ -325,7 +325,7 @@ public abstract class Tree
         /// </summary>
         public class Goto(LabelName name) : Statement
         {
-            public LabelName Name => name;
+            public LabelName Name { get; } = name;
         }
     }
 
@@ -344,7 +344,7 @@ public abstract class Tree
         /// </summary>
         public class Name(string value) : Expression
         {
-            public string Value => value;
+            public string Value { get; } = value;
 
             public bool IsAssignmentTarget { get; internal set; }
 
@@ -374,8 +374,8 @@ public abstract class Tree
         /// </summary>
         public class Number(string value, double numberValue) : Expression
         {
-            public string Value => value;
-            public double NumberValue => numberValue;
+            public string Value { get; } = value;
+            public double NumberValue { get; } = numberValue;
 
             public override string ToString()
             {
@@ -409,12 +409,12 @@ public abstract class Tree
         /// </summary>
         public class Table(List<Table.Field> fields, bool isArray) : Expression
         {
-            public List<Field> Fields => fields;
+            public List<Field> Fields { get; } = fields;
 
             /// <summary>
             /// Whether all this table's fields are list elements.
             /// </summary>
-            public bool IsArray => isArray;
+            public bool IsArray { get; } = isArray;
 
             public ValueLocation? ValueLocation { get; internal set; }
 
@@ -423,8 +423,8 @@ public abstract class Tree
             /// </summary>
             public class Field(Expression key, Expression value)
             {
-                public Expression Key => key;
-                public Expression Value => value;
+                public Expression Key { get; } = key;
+                public Expression Value { get; } = value;
 
                 /// <summary>
                 /// The symbol that this field defines. Used only for table types that are inferred from the containing
@@ -471,8 +471,8 @@ public abstract class Tree
 
         public class Unary(Expression expression, Token op) : Expression
         {
-            public Expression Expression => expression;
-            public Token Operator => op;
+            public Expression Expression { get; } = expression;
+            public Token Operator { get; } = op;
         }
 
         /// <summary>
@@ -480,9 +480,9 @@ public abstract class Tree
         /// </summary>
         public class Binary(Expression left, Expression right, Token op) : Expression
         {
-            public Expression Left => left;
-            public Expression Right => right;
-            public Token Operator => op;
+            public Expression Left { get; } = left;
+            public Expression Right { get; } = right;
+            public Token Operator { get; } = op;
         }
 
         /// <summary>
@@ -490,8 +490,8 @@ public abstract class Tree
         /// </summary>
         public class Access(Expression target, Expression key) : Expression
         {
-            public Expression Target => target;
-            public Expression Key => key;
+            public Expression Target { get; } = target;
+            public Expression Key { get; } = key;
         }
 
         /// <summary>
@@ -499,9 +499,9 @@ public abstract class Tree
         /// </summary>
         public class Call(Expression target, List<Expression> arguments, List<Type>? typeArguments) : Expression
         {
-            public Expression Target => target;
-            public List<Expression> Arguments => arguments;
-            public List<Type>? TypeArguments => typeArguments;
+            public Expression Target { get; } = target;
+            public List<Expression> Arguments { get; } = arguments;
+            public List<Type>? TypeArguments { get; } = typeArguments;
         }
 
         /// <summary>
@@ -509,15 +509,15 @@ public abstract class Tree
         /// </summary>
         public class MethodCall(Expression target, String funcName, List<Expression> arguments) : Expression
         {
-            public Expression Target => target;
-            public String FuncName => funcName;
-            public List<Expression> Arguments => arguments;
+            public Expression Target { get; } = target;
+            public String FuncName { get; } = funcName;
+            public List<Expression> Arguments { get; } = arguments;
         }
     }
 
     public class LabelName(string value) : Tree
     {
-        public string Value => value;
+        public string Value { get; } = value;
     }
 
     /// <summary>
@@ -525,8 +525,8 @@ public abstract class Tree
     /// </summary>
     public class IfBranch(Expression condition, Block body)
     {
-        public Expression Condition => condition;
-        public Block Body => body;
+        public Expression Condition { get; } = condition;
+        public Block Body { get; } = body;
     }
 
     /// <summary>
@@ -534,8 +534,8 @@ public abstract class Tree
     /// </summary>
     public class Declaration(Expression.Name name, Type? type) : Tree
     {
-        public Expression.Name Name => name;
-        public Type? Type => type;
+        public Expression.Name Name { get; } = name;
+        public Type? Type { get; } = type;
     }
 
     /// <summary>
@@ -564,8 +564,8 @@ public abstract class Tree
     /// </summary>
     public class TypeAliasDeclaration(Type.Name name, Type type) : Statement
     {
-        public Type.Name Name => name;
-        public Type Type => type;
+        public Type.Name Name { get; } = name;
+        public Type Type { get; } = type;
     }
 }
 

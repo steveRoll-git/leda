@@ -38,8 +38,8 @@ public abstract class TypeList
     /// </summary>
     public class Parameters(Tree.Expression.Function function) : TypeList
     {
-        public Tree.Expression.Function Function => function;
-        public override int Count => function.Type.Parameters.Count;
+        public Tree.Expression.Function Function { get; } = function;
+        public override int Count => Function.Type.Parameters.Count;
     }
 
     /// <summary>
@@ -47,8 +47,8 @@ public abstract class TypeList
     /// </summary>
     public class FromTypes(List<Tree.Type> types) : TypeList
     {
-        public List<Tree.Type> Types => types;
-        public override int Count => types.Count;
+        public List<Tree.Type> Types { get; } = types;
+        public override int Count => Types.Count;
     }
 
     /// <summary>
@@ -56,14 +56,14 @@ public abstract class TypeList
     /// </summary>
     public class FromValues(List<Tree.Expression> values) : TypeList
     {
-        public List<Tree.Expression> Values => values;
-        public override int Count => values.Count;
+        public List<Tree.Expression> Values { get; } = values;
+        public override int Count => Values.Count;
     }
 
     public class FromDeclarations(List<Tree.Declaration> declarations) : TypeList
     {
-        public List<Tree.Declaration> Declarations => declarations;
-        public override int Count => declarations.Count;
+        public List<Tree.Declaration> Declarations { get; } = declarations;
+        public override int Count => Declarations.Count;
     }
 
     /// <summary>
@@ -75,28 +75,31 @@ public abstract class TypeList
     /// </remarks>
     public class AssignmentTargets(List<Tree.Expression> targets) : TypeList
     {
-        public List<Tree.Expression> Targets => targets;
-        public override int Count => targets.Count;
+        public List<Tree.Expression> Targets { get; } = targets;
+        public override int Count => Targets.Count;
     }
 
     public class Instantiation(TypeList inner, TypeMap map) : TypeList
     {
-        public TypeList Inner => inner;
-        public TypeMap Map => map;
+        public TypeList Inner { get; } = inner;
+        public TypeMap Map { get; } = map;
 
-        public override int Count => inner.Count;
+        public override int Count => Inner.Count;
     }
 
     /// <summary>
     /// Returns a string that represents an item in this kind of TypeList.
     /// </summary>
-    public static string ItemNoun(TypeListKind kind) => kind switch
+    public static string ItemNoun(TypeListKind kind)
     {
-        TypeListKind.Argument => "argument",
-        TypeListKind.FunctionTypeParameter => "parameter",
-        TypeListKind.Return or TypeListKind.FunctionTypeReturn => "return value",
-        _ => "value",
-    };
+        return kind switch
+        {
+            TypeListKind.Argument => "argument",
+            TypeListKind.FunctionTypeParameter => "parameter",
+            TypeListKind.Return or TypeListKind.FunctionTypeReturn => "return value",
+            _ => "value",
+        };
+    }
 }
 
 /// <summary>

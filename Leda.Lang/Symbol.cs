@@ -10,7 +10,7 @@ public abstract class Symbol(string name)
     /// </summary>
     public Location Definition { get; internal set; }
 
-    public string Name => name;
+    public string Name { get; } = name;
 
     /// <summary>
     /// A local or global variable.
@@ -22,10 +22,10 @@ public abstract class Symbol(string name)
         Tree.Chunk chunk)
         : Symbol(declaration.Declarations[index].Name.Value)
     {
-        public Tree.Statement.VariableDeclaration Declaration => declaration;
-        public int Index => index;
-        public bool Uninitialized => uninitialized;
-        public Tree.Chunk Chunk => chunk;
+        public Tree.Statement.VariableDeclaration Declaration { get; } = declaration;
+        public int Index { get; } = index;
+        public bool Uninitialized { get; } = uninitialized;
+        public Tree.Chunk Chunk { get; } = chunk;
     }
 
     /// <summary>
@@ -53,7 +53,7 @@ public abstract class Symbol(string name)
     /// </summary>
     public class LocalFunction(Tree.Statement.LocalFunctionDeclaration declaration) : Symbol(declaration.Name.Value)
     {
-        public Tree.Statement.LocalFunctionDeclaration Declaration => declaration;
+        public Tree.Statement.LocalFunctionDeclaration Declaration { get; } = declaration;
     }
 
     /// <summary>
@@ -62,8 +62,8 @@ public abstract class Symbol(string name)
     public class Parameter(Tree.Expression.Function function, int index)
         : Symbol(function.Type.Parameters[index].Name.Value)
     {
-        public Tree.Expression.Function Function => function;
-        public int Index => index;
+        public Tree.Expression.Function Function { get; } = function;
+        public int Index { get; } = index;
     }
 
     /// <summary>
@@ -77,8 +77,8 @@ public abstract class Symbol(string name)
     public class ForVariable(Tree.Statement.IteratorFor forLoop, int index)
         : Symbol(forLoop.Declarations[index].Name.Value)
     {
-        public Tree.Statement.IteratorFor ForLoop => forLoop;
-        public int Index => index;
+        public Tree.Statement.IteratorFor ForLoop { get; } = forLoop;
+        public int Index { get; } = index;
     }
 
     /// <summary>
@@ -86,7 +86,7 @@ public abstract class Symbol(string name)
     /// </summary>
     public class IntrinsicType(Type type) : Symbol(type.Name!)
     {
-        public Type Type => type;
+        public Type Type { get; } = type;
     }
 
     /// <summary>
@@ -94,7 +94,7 @@ public abstract class Symbol(string name)
     /// </summary>
     public class TypeAlias(Tree.TypeAliasDeclaration declaration) : Symbol(declaration.Name.Value)
     {
-        public Tree.TypeAliasDeclaration Declaration => declaration;
+        public Tree.TypeAliasDeclaration Declaration { get; } = declaration;
     }
 
     /// <summary>
@@ -114,7 +114,7 @@ public abstract class Symbol(string name)
     /// </summary>
     public class StringField(string key) : Symbol(key)
     {
-        public string Key => Name;
+        public string Key { get; } = key;
     }
 
     public class Label(Tree.LabelName name) : Symbol(name.Value);

@@ -19,12 +19,12 @@ public class Binder
         /// <summary>
         /// The chunk that contains this scope.
         /// </summary>
-        public Tree.Chunk? Chunk => chunk;
+        public Tree.Chunk? Chunk { get; } = chunk;
 
         /// <summary>
         /// The loop that contains this scope.
         /// </summary>
-        public Tree? Loop => loop;
+        public Tree? Loop { get; } = loop;
     }
 
     /// <summary>

@@ -16,7 +16,7 @@ public abstract record Diagnostic(Range Range)
     /// Whether the language server should mark this diagnostic with the "unnecessary" tag (appears faded out in most
     /// editors.)
     /// </summary>
-    public virtual bool Unnecessary => false;
+    public virtual bool Unnecessary { get; } = false;
 
     private static string NameContextNoun(Tree.NameContext context)
     {
@@ -241,7 +241,7 @@ public abstract record Diagnostic(Range Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Warning;
         public override string Message => "Unreachable code.";
-        public override bool Unnecessary => true;
+        public override bool Unnecessary { get; } = true;
     }
 
     public record VariableUsedBeforeAssignment(Range Range, string Variable) : Diagnostic(Range)

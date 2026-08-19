@@ -18,7 +18,7 @@ public abstract class FlowNode
         /// <summary>
         /// List of FlowNodes whose execution leads to this node.
         /// </summary>
-        public List<FlowNode> Antecedents => antecedents;
+        public List<FlowNode> Antecedents { get; } = antecedents;
     }
 
     /// <summary>
@@ -29,7 +29,7 @@ public abstract class FlowNode
         /// <summary>
         /// The FlowNode whose execution leads to this node.
         /// </summary>
-        public FlowNode Antecedent => antecedent;
+        public FlowNode Antecedent { get; } = antecedent;
     }
 
     /// <summary>
@@ -37,8 +37,8 @@ public abstract class FlowNode
     /// </summary>
     public class Condition(FlowNode antecedent, Tree.Expression expression, bool isTrue) : Basic(antecedent)
     {
-        public Tree.Expression Expression => expression;
-        public bool IsTrue => isTrue;
+        public Tree.Expression Expression { get; } = expression;
+        public bool IsTrue { get; } = isTrue;
     }
 
     /// <summary>
@@ -47,7 +47,7 @@ public abstract class FlowNode
     public class VariableDeclaration(FlowNode antecedent, Tree.Statement.VariableDeclaration declaration)
         : Basic(antecedent)
     {
-        public Tree.Statement.VariableDeclaration Declaration => declaration;
+        public Tree.Statement.VariableDeclaration Declaration { get; } = declaration;
     }
 
     /// <summary>
@@ -55,7 +55,7 @@ public abstract class FlowNode
     /// </summary>
     public class Assignment(FlowNode antecedent, Tree.Statement.Assignment assignment) : Basic(antecedent)
     {
-        public Tree.Statement.Assignment AssignmentStatement => assignment;
+        public Tree.Statement.Assignment AssignmentStatement { get; } = assignment;
     }
 
     /// <summary>
