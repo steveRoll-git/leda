@@ -27,7 +27,7 @@ public class Parser
     /// <summary>
     /// The last token that was consumed.
     /// </summary>
-    private Token lastToken = null!;
+    private Token? lastToken;
 
     /// <summary>
     /// Stores tokens that were received when Lookahead was called.
@@ -37,7 +37,7 @@ public class Parser
     /// <summary>
     /// Stores the positions that were started with `StartTree`.
     /// </summary>
-    private readonly Stack<Position> startPositions = new();
+    private readonly Stack<(Position position, Position preSpacePosition)> startPositions = new();
 
     private record ChunkInfo(List<Tree.Statement.Return> ReturnStatements);
 
@@ -135,9 +135,18 @@ public class Parser
     /// <summary>
     /// Makes this position the start position of the currently parsed tree.
     /// </summary>
-    private void StartTree(Position position)
+    private void StartTree(Position position, Position preSpacePosition)
     {
-        startPositions.Push(position);
+        startPositions.Push((position, preSpacePosition));
+    }
+
+    /// <summary>
+    /// Sets the next tree's start position to the same one as an existing tree.
+    /// Useful for when a new tree is composed of an already parsed tree inside of it.
+    /// </summary>
+    private void StartTree(Tree existingTree)
+    {
+        StartTree(existingTree.Range.Start, existingTree.FullRange.Start);
     }
 
     /// <summary>
@@ -145,7 +154,7 @@ public class Parser
     /// </summary>
     private void StartTree()
     {
-        StartTree(token.Range.Start);
+        StartTree(token.Range.Start, lastToken?.Range.End ?? new(0, 0));
     }
 
     /// <summary>
@@ -155,18 +164,9 @@ public class Parser
     /// <returns>The same tree for convenience.</returns>
     private T EndTree<T>(T tree) where T : Tree
     {
-        var start = startPositions.Pop();
-        tree.Range = new(start, lastToken.Range.End);
-        return tree;
-    }
-
-    /// <summary>
-    /// Sets the tree's range to the last token's range.
-    /// </summary>
-    /// <returns>The same tree for convenience.</returns>
-    private T StartEndTree<T>(T tree) where T : Tree
-    {
-        tree.Range = lastToken.Range;
+        var (start, preSpaceStart) = startPositions.Pop();
+        tree.Range = new(start, lastToken!.Range.End);
+        tree.FullRange = new(preSpaceStart, token.Range.Start);
         return tree;
     }
 
@@ -175,7 +175,9 @@ public class Parser
     /// </summary>
     private T ConsumeTree<T>(T tree) where T : Tree
     {
+        var previous = lastToken!.Range.End;
         tree.Range = Consume().Range;
+        tree.FullRange = new(previous, token.Range.Start);
         return tree;
     }
 
@@ -198,19 +200,29 @@ public class Parser
         return lookaheadTokens[index - 1];
     }
 
+    /// <summary>
+    /// Expects a Name token and creates a tree with its value.
+    /// </summary>
+    private T ExpectName<T>(Func<string, T> func) where T : Tree
+    {
+        StartTree();
+        var name = Expect(TokenKind.Name);
+        return EndTree(func(name.Value));
+    }
+
     private Tree.Expression.Name ParseValueName()
     {
-        return StartEndTree(new Tree.Expression.Name(Expect(TokenKind.Name).Value));
+        return ExpectName(name => new Tree.Expression.Name(name));
     }
 
     private Tree.Type.Name ParseTypeName()
     {
-        return StartEndTree(new Tree.Type.Name(Expect(TokenKind.Name).Value));
+        return ExpectName(name => new Tree.Type.Name(name));
     }
 
     private Tree.LabelName ParseLabelName()
     {
-        return StartEndTree(new Tree.LabelName(Expect(TokenKind.Name).Value));
+        return ExpectName(name => new Tree.LabelName(name));
     }
 
     /// <summary>
@@ -218,7 +230,7 @@ public class Parser
     /// </summary>
     private Tree.Expression.String ParseStringIdentifier()
     {
-        return StartEndTree(new Tree.Expression.String(Expect(TokenKind.Name).Value));
+        return ExpectName(name => new Tree.Expression.String(name));
     }
 
     /// <summary>
@@ -554,23 +566,25 @@ public class Parser
     {
         Tree.Type type;
 
-        if (Accept(TokenKind.Nil))
+        if (token.Kind == TokenKind.Nil)
         {
-            type = StartEndTree(new Tree.Type.Name("nil"));
+            type = ConsumeTree(new Tree.Type.Name("nil"));
         }
-        else if (Accept(TokenKind.String, out var str))
+        else if (token is { Kind: TokenKind.String } str)
         {
-            type = StartEndTree(new Tree.Type.StringLiteral(str.Value));
+            type = ConsumeTree(new Tree.Type.StringLiteral(str.Value));
         }
-        else if (Accept(TokenKind.Function))
+        else if (token.Kind == TokenKind.Function)
         {
+            StartTree();
+            NextToken(); // skip 'function'
             if (token.Kind == TokenKind.LParen)
             {
-                type = ParseFunctionType();
+                type = EndTree(ParseFunctionType());
             }
             else
             {
-                type = StartEndTree(new Tree.Type.Name("function"));
+                type = EndTree(new Tree.Type.Name("function"));
             }
         }
         else if (token.Kind == TokenKind.LCurly)
@@ -587,7 +601,7 @@ public class Parser
 
     private Tree.Type ParseTypePostfix(Tree.Type prev)
     {
-        StartTree(prev.Range.Start);
+        StartTree(prev);
 
         if (Accept(TokenKind.QuestionMark))
         {
@@ -737,7 +751,7 @@ public class Parser
         var isMethod = false;
         while (token.Kind is TokenKind.Dot or TokenKind.Colon)
         {
-            StartTree(path.Range.Start);
+            StartTree(path);
 
             var separator = Consume();
             var nextName = ParseStringIdentifier();
@@ -882,7 +896,7 @@ public class Parser
 
     private Tree.Expression ParsePrefixExpression(Tree.Expression previous)
     {
-        StartTree(previous.Range.Start);
+        StartTree(previous);
 
         if (Accept(TokenKind.Dot))
         {
@@ -947,7 +961,7 @@ public class Parser
     ///
     /// Unlike other parsing functions, expects the caller to start and end the tree.
     /// </summary>
-    private Tree.Expression.Call ParseCall(Tree.Expression previous, List<Tree.Type>? typeParameters)
+    private Tree.Expression.Call ParseCall(Tree.Expression previous, List<Tree.Type>? typeArguments)
     {
         // Function call: '(' [explist] ')'
 
@@ -961,12 +975,12 @@ public class Parser
 
         if (Accept(TokenKind.RParen))
         {
-            return new Tree.Expression.Call(previous, [], typeParameters);
+            return new Tree.Expression.Call(previous, [], typeArguments);
         }
 
-        var parameters = ParseExpressionList();
+        var arguments = ParseExpressionList();
         Expect(TokenKind.RParen);
-        return new Tree.Expression.Call(previous, parameters, typeParameters);
+        return new Tree.Expression.Call(previous, arguments, typeArguments);
     }
 
     /// <summary>
@@ -1004,7 +1018,7 @@ public class Parser
     {
         while (Token.IsBinary(token, out var opPrecedence) && opPrecedence >= minPrecedence)
         {
-            StartTree(left.Range.Start);
+            StartTree(left);
 
             var op = Consume();
             var right = ParsePrimary();

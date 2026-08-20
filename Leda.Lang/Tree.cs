@@ -6,9 +6,15 @@ namespace Leda.Lang;
 public abstract class Tree
 {
     /// <summary>
-    /// The range in the source code that this tree occupies.
+    /// The range in the source code that this tree's text occupies.
     /// </summary>
     public Range Range { get; internal set; }
+
+    /// <summary>
+    /// The range that is occupied by this tree's text along with leading and trailing whitespace.<br/>
+    /// It is useful only if this tree is delimited by tokens that do not belong to any node, e.g. call arguments.
+    /// </summary>
+    public Range FullRange { get; internal set; }
 
     /// <summary>
     /// The FlowNode that this tree node is executed on. Initialized by the Binder.
