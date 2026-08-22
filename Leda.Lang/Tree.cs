@@ -503,11 +503,17 @@ public abstract class Tree
         /// <summary>
         /// A function call.
         /// </summary>
-        public class Call(Expression target, List<Expression> arguments, List<Type>? typeArguments) : Expression
+        public class Call(Expression target, List<Expression> arguments, List<Type>? typeArguments, Range argsRange) : Expression
         {
             public Expression Target { get; } = target;
             public List<Expression> Arguments { get; } = arguments;
             public List<Type>? TypeArguments { get; } = typeArguments;
+
+            /// <summary>
+            /// The range inside the call's argument list.<br/>
+            /// It is primarily used by the LSP's signature help.
+            /// </summary>
+            public Range ArgsRange { get; } = argsRange;
         }
 
         /// <summary>

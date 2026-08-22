@@ -994,14 +994,20 @@ public class Parser
             Report(new Diagnostic.AmbiguousSyntax(lParen.Range));
         }
 
-        if (Accept(TokenKind.RParen))
+        if (Accept(TokenKind.RParen, out var rParen))
         {
-            return new Tree.Expression.Call(previous, [], typeArguments);
+            return new Tree.Expression.Call(previous, [], typeArguments, ArgsRange());
         }
 
         var arguments = ParseExpressionList();
-        Expect(TokenKind.RParen);
-        return new Tree.Expression.Call(previous, arguments, typeArguments);
+        rParen = Expect(TokenKind.RParen);
+        return new Tree.Expression.Call(previous, arguments, typeArguments, ArgsRange());
+
+        // Returns the range inside the call's parentheses.
+        Range ArgsRange()
+        {
+            return new(lParen.Range.End, rParen.Range.Start);
+        }
     }
 
     /// <summary>

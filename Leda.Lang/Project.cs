@@ -183,7 +183,7 @@ public class Project
     /// <summary>
     /// Checks the types of all nodes.
     /// </summary>
-    private void Check(Source source)
+    public void Check(Source source)
     {
         if (source.CheckedVersion == EditVersion)
         {

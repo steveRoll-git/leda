@@ -70,6 +70,7 @@ public class LedaServer
         server.AddHandler(new DocumentHighlightHandler(this));
         server.AddHandler(new DidChangeWatchedFilesHandler(this));
         server.AddHandler(new DocumentDiagnosticHandler(this));
+        server.AddHandler(new SignatureHelpHandler(this));
     }
 
     public Task Run()
@@ -80,7 +81,7 @@ public class LedaServer
     /// <summary>
     /// Converts a Leda location to a language server location. Assumes that `location.Source` is not null.
     /// </summary>
-    public Location ToLsLocation(Leda.Lang.Location location)
+    public Location ToLsLocation(Lang.Location location)
     {
         return new(sourceUris[location.Source!], location.Range.ToLs());
     }
