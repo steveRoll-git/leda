@@ -15,6 +15,15 @@ public class Parser
         return token.Kind is TokenKind.End or TokenKind.Else or TokenKind.Elseif or TokenKind.Until or TokenKind.Eof;
     }
 
+    /// <summary>
+    /// Returns whether `token` is one that doesn't commonly appear after tree nodes, meaning it may be skipped if an
+    /// error is encountered.
+    /// </summary>
+    private static bool IsSkippableToken(Token token)
+    {
+        return token.Kind is not (TokenKind.RParen or TokenKind.RCurly or TokenKind.RSquare or TokenKind.End or TokenKind.Comma);
+    }
+
     private List<Diagnostic> Diagnostics { get; } = [];
 
     private readonly Lexer lexer;
@@ -114,10 +123,18 @@ public class Parser
     /// </summary>
     private Token Expect(TokenKind kind)
     {
-        var got = Consume();
+        var got = token;
         if (got.Kind != kind)
         {
             Report(new Diagnostic.ExpectedToken(got.Range, kind));
+            if (IsSkippableToken(got))
+            {
+                NextToken();
+            }
+        }
+        else
+        {
+            NextToken();
         }
 
         return got;
@@ -125,10 +142,14 @@ public class Parser
 
     private void ReportUnexpectedToken()
     {
-        var got = Consume();
-        if (got.Kind != TokenKind.Unknown)
+        if (token.Kind != TokenKind.Unknown)
         {
-            Report(new Diagnostic.DidNotExpectTokenHere(got.Range, got.Kind));
+            Report(new Diagnostic.DidNotExpectTokenHere(token.Range, token.Kind));
+        }
+
+        if (IsSkippableToken(token))
+        {
+            NextToken();
         }
     }
 
@@ -990,14 +1011,10 @@ public class Parser
     {
         // {exp ','} exp
         List<Tree.Expression> values = [];
-        while (true)
+        do
         {
             values.Add(ParseExpression());
-            if (!Accept(TokenKind.Comma))
-            {
-                break;
-            }
-        }
+        } while (Accept(TokenKind.Comma));
 
         return values;
     }
