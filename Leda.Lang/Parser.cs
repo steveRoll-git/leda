@@ -302,7 +302,7 @@ public class Parser
                 // This behavior models Lua 5.1's syntax - in Lua 5.2+, semicolons may be their own statements.
                 Accept(TokenKind.Semicolon);
 
-                if (statement is Tree.Statement.Return or Tree.Statement.Break)
+                if (statement is Tree.Statement.Return or Tree.Statement.Break or Tree.Statement.Error)
                 {
                     // No more statements can come after `return` or `break`.
                     break;
