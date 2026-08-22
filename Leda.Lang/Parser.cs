@@ -119,6 +119,17 @@ public class Parser
     }
 
     /// <summary>
+    /// Skips or consumes the current token, for when it causes a syntax error.
+    /// </summary>
+    private void HandleErrorToken()
+    {
+        if (IsSkippableToken(token))
+        {
+            NextToken();
+        }
+    }
+
+    /// <summary>
     /// Consumes and returns the current token. If it isn't of the given kind, reports an error.<br/>
     /// </summary>
     private Token Expect(TokenKind kind)
@@ -127,10 +138,7 @@ public class Parser
         if (got.Kind != kind)
         {
             Report(new Diagnostic.ExpectedToken(got.Range, kind));
-            if (IsSkippableToken(got))
-            {
-                NextToken();
-            }
+            HandleErrorToken();
         }
         else
         {
@@ -147,10 +155,7 @@ public class Parser
             Report(new Diagnostic.DidNotExpectTokenHere(token.Range, token.Kind));
         }
 
-        if (IsSkippableToken(token))
-        {
-            NextToken();
-        }
+        HandleErrorToken();
     }
 
     /// <summary>
