@@ -72,15 +72,19 @@ public class CallFinder(Position position) : Visitor
         return "";
     }
 
-    public record struct FindResult(string FunctionName, int ArgumentIndex);
+    public record struct FindResult(string FunctionName, List<string> Parameters, int ArgumentIndex);
 
-    public static FindResult? FindCall(Source source, Position position)
+    public static FindResult? FindCall(Source source, Position position, TypeEvaluator typeEvaluator)
     {
         var finder = new CallFinder(position);
         finder.Start(source);
-        if (finder.result is { } result)
+
+        if (finder.result is { } result &&
+            typeEvaluator.GetTypeOfExpression(result.Call.Target) is Lang.Type.Function function)
         {
-            return new(GetCallName(result.Call.Target), result.ArgumentIndex);
+            return new(GetCallName(result.Call.Target),
+                typeEvaluator.TypeListToStringElements(function.Parameters),
+                result.ArgumentIndex);
         }
 
         return null;

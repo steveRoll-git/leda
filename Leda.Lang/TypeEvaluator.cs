@@ -1161,27 +1161,28 @@ public class TypeEvaluator(Project project)
         return s + "}";
     }
 
-    private string TypeListToString(TypeList typeList)
+    public List<string> TypeListToStringElements(TypeList typeList)
     {
-        var result = "";
+        List<string> elements = [];
 
         var maximum = GetTypeListMaximum(typeList);
         for (var i = 0; i < maximum; i++)
         {
+            var prefix = "";
             if (GetNameInTypeList(typeList, i) is { } name)
             {
-                result += name + ": ";
+                prefix = name + ": ";
             }
 
-            result += TypeToString(GetTypeInTypeList(typeList, i));
-
-            if (i < maximum - 1)
-            {
-                result += ", ";
-            }
+            elements.Add(prefix + TypeToString(GetTypeInTypeList(typeList, i)));
         }
 
-        return result;
+        return elements;
+    }
+
+    private string TypeListToString(TypeList typeList)
+    {
+        return string.Join(", ", TypeListToStringElements(typeList));
     }
 
     public string FunctionSignatureToString(Type.Function function)
