@@ -598,6 +598,29 @@ public class TypeEvaluator(Project project)
     }
 
     /// <summary>
+    /// Returns a TypeMap that has all of `map`'s mappings, along with the mappings in `original` mapped through `map`.
+    /// e.g. if `original` maps T to U and `map` maps U to number, the result will map T to number.
+    /// </summary>
+    private TypeMap MapTypeMap(TypeMap? original, TypeMap map)
+    {
+        if (original == null)
+        {
+            return map;
+        }
+
+        var result = new TypeMap(map);
+        foreach (var (key, value) in original)
+        {
+            if (value is Type.TypeParameter originalMapped && map.TryGetValue(originalMapped, out var newMapped))
+            {
+                result.Add(key, newMapped);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Instantiates a generic type with the given TypeMap.
     /// </summary>
     /// <param name="type">The generic type to instantiate.</param>
@@ -612,7 +635,7 @@ public class TypeEvaluator(Project project)
         // TODO check whether the type contains type parameters at all
         if (type is Type.Table original)
         {
-            return new Type.Table(original) { TypeMap = map };
+            return new Type.Table(original) { TypeMap = MapTypeMap(original.TypeMap, map) };
         }
 
         if (type is Type.Function function)

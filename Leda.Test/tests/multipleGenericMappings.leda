@@ -1,0 +1,19 @@
+local function a<T>(t: T)
+  return {
+    a = t
+  }
+end
+
+local function b<U>(u: U)
+  return a(u)
+end
+
+local function c<V>(v: V)
+  return b(v)
+end
+
+local result = c(123)
+local a1: number = result.a
+
+local result2 = c("abc")
+local a2: string = result2.a
