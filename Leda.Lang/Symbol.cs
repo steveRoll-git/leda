@@ -84,7 +84,7 @@ public abstract class Symbol(string name)
     /// <summary>
     /// A language-defined type that is known ahead of time.
     /// </summary>
-    public class IntrinsicType(Type type) : Symbol(type.Name!)
+    public class IntrinsicType(string name, Type type) : Symbol(name)
     {
         public Type Type { get; } = type;
     }
@@ -100,13 +100,18 @@ public abstract class Symbol(string name)
     /// <summary>
     /// A generic type parameter.
     /// </summary>
-    public class TypeParameter(Tree.Type.Name name) : Symbol(name.Value)
+    public class TypeParameter : Symbol
     {
+        public TypeParameter(Tree.Type.Name name) : base(name.Value)
+        {
+            Type = new Type.TypeParameter(this);
+        }
+
         /// <summary>
         /// The type of this type parameter.
         /// </summary>
         // It is created here and not by TypeEvaluator because it just needs to uniquely represent the type parameter.
-        public Type.TypeParameter Type { get; } = new(name.Value);
+        public Type.TypeParameter Type { get; }
     }
 
     /// <summary>
@@ -118,34 +123,4 @@ public abstract class Symbol(string name)
     }
 
     public class Label(Tree.LabelName name) : Symbol(name.Value);
-
-    /// <summary>
-    /// The built-in any type.
-    /// </summary>
-    public static readonly IntrinsicType AnyType = new(Type.Any);
-
-    /// <summary>
-    /// The built-in nil type.
-    /// </summary>
-    public static readonly IntrinsicType NilType = new(Type.Nil);
-
-    /// <summary>
-    /// The built-in boolean type.
-    /// </summary>
-    public static readonly IntrinsicType BooleanType = new(Type.Boolean);
-
-    /// <summary>
-    /// The built-in number type.
-    /// </summary>
-    public static readonly IntrinsicType NumberType = new(Type.NumberPrimitive);
-
-    /// <summary>
-    /// The built-in string type.
-    /// </summary>
-    public static readonly IntrinsicType StringType = new(Type.StringPrimitive);
-
-    /// <summary>
-    /// The built-in function type.
-    /// </summary>
-    public static readonly IntrinsicType FunctionType = new(Type.FunctionPrimitive);
 }

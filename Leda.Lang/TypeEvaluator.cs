@@ -534,9 +534,9 @@ public class TypeEvaluator(Project project)
     private Type GetTypeOfTypeAliasUncached(Symbol.TypeAlias typeAlias)
     {
         var type = GetTypeOfTypeAnnotation(typeAlias.Declaration.Type);
-        if (typeAlias.Declaration.Type is Tree.Type.Table)
+        if (type.Symbol == null && typeAlias.Declaration.Type is Tree.Type.Table or Tree.Type.Function)
         {
-            type.Name = typeAlias.Declaration.Name.Value;
+            type.Symbol = typeAlias;
         }
 
         return type;
@@ -1212,7 +1212,7 @@ public class TypeEvaluator(Project project)
     {
         var parameters = TypeListToString(function.Parameters);
         var typeParameters = function.TypeParameters.Count > 0
-            ? $"<{string.Join(", ", function.TypeParameters.Select(t => t.Name))}>"
+            ? $"<{string.Join(", ", function.TypeParameters.Select(t => t.Symbol.Name))}>"
             : "";
         var returns = function.Returns == TypeList.Empty ? "" : ": " + TypeListToString(function.Returns);
         return $"{typeParameters}({parameters}){returns}";
@@ -1225,22 +1225,22 @@ public class TypeEvaluator(Project project)
 
     private string TypeToStringIndent(Type type, bool typeContents = false, bool multiline = false, string indent = "")
     {
-        if (!typeContents && type.Name != null)
+        if (!typeContents && type.Symbol != null)
         {
-            return type.Name;
+            return type.Symbol.Name;
         }
 
         return type switch
         {
             Type.NumberLiteral numberLiteral => numberLiteral.Literal.ToString(CultureInfo.InvariantCulture),
             Type.StringLiteral stringLiteral => '"' + stringLiteral.Literal + '"',
-            Type.PrimitiveType => type.Name!,
+            Type.PrimitiveType primitiveType => primitiveType.Symbol.Name,
             Type.Table table => TableToString(table, multiline, indent),
             Type.Function function => FunctionToString(function),
             Type.Nillable { Inner: var inner } => TypeToStringIndent(inner, typeContents, multiline, indent) + "?",
             Type.Array { ElementType: var elementType } =>
                 TypeToStringIndent(elementType, typeContents, multiline, indent) + "[]",
-            Type.TypeParameter typeParameter => typeParameter.Name!,
+            Type.TypeParameter typeParameter => typeParameter.Symbol.Name,
             _ => throw new ArgumentOutOfRangeException(nameof(type)),
         };
     }

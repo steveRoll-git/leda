@@ -46,12 +46,12 @@ public class Binder
 
     private static readonly Scope InitialScope = new(null, null)
     {
-        [Type.Any.Name!] = new(null, Symbol.AnyType),
-        [Type.Nil.Name!] = new(null, Symbol.NilType),
-        [Type.Boolean.Name!] = new(null, Symbol.BooleanType),
-        [Type.NumberPrimitive.Name!] = new(null, Symbol.NumberType),
-        [Type.StringPrimitive.Name!] = new(null, Symbol.StringType), // TODO stringlib should be a value here
-        [Type.FunctionPrimitive.Name!] = new(null, Symbol.FunctionType),
+        [Type.Any.Symbol.Name] = new(null, Type.Any.Symbol),
+        [Type.Nil.Symbol.Name] = new(null, Type.Nil.Symbol),
+        [Type.Boolean.Symbol.Name] = new(null, Type.Boolean.Symbol),
+        [Type.NumberPrimitive.Symbol.Name] = new(null, Type.NumberPrimitive.Symbol),
+        [Type.StringPrimitive.Symbol.Name] = new(null, Type.StringPrimitive.Symbol), // TODO stringlib should be a value here
+        [Type.FunctionPrimitive.Symbol.Name] = new(null, Type.FunctionPrimitive.Symbol),
     };
 
     private readonly Stack<ValueLocation> valueLocationStack = [];

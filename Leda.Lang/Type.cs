@@ -7,53 +7,66 @@ namespace Leda.Lang;
 /// </summary>
 public abstract class Type
 {
-    public string? Name { get; set; }
+    /// <summary>
+    /// The symbol that corresponds to this type.
+    /// It is non-null for intrinsic types, and for types that have a named definition (type aliases and parameters).
+    /// </summary>
+    public Symbol? Symbol { get; internal set; }
 
     /// <summary>
     /// A type that doesn't require much checking logic other than checking that the source
     /// type is equal to one or more existing types.
     /// </summary>
-    public class PrimitiveType(Func<Type, bool> assignableFunc) : Type
+    public class PrimitiveType : Type
     {
-        public Func<Type, bool> AssignableFunc { get; } = assignableFunc;
+        public new Symbol Symbol => base.Symbol!;
+
+        /// <summary>
+        /// A function that returns whether the given type is assignable to this type.
+        /// </summary>
+        public Func<Type, bool> AssignableFunc { get; }
+
+        public PrimitiveType(string name, Func<Type, bool> assignableFunc)
+        {
+            AssignableFunc = assignableFunc;
+            base.Symbol = new Symbol.IntrinsicType(name, this);
+        }
     }
 
     /// <summary>
     /// A type that can hold any value.
     /// </summary>
-    public static readonly Type Any = new PrimitiveType(_ => true) { Name = "any" };
+    public static readonly PrimitiveType Any = new("any", _ => true);
 
     /// <summary>
     /// A type that is returned in case of errors. Currently, it behaves similarly to `any`.
     /// </summary>
-    public static readonly Type Unknown = new PrimitiveType(_ => true) { Name = "unknown" };
+    public static readonly PrimitiveType Unknown = new("unknown", _ => true);
 
     /// <summary>
     /// The `nil` literal.
     /// </summary>
-    public static readonly Type Nil = new PrimitiveType(_ => false) { Name = "nil" };
+    public static readonly PrimitiveType Nil = new("nil", _ => false);
 
     /// <summary>
     /// The `true` boolean literal.
     /// </summary>
-    public static readonly Type True = new PrimitiveType(_ => false) { Name = "true" };
+    public static readonly PrimitiveType True = new("true", _ => false);
 
     /// <summary>
     /// The `false` boolean literal.
     /// </summary>
-    public static readonly Type False = new PrimitiveType(_ => false) { Name = "false" };
+    public static readonly PrimitiveType False = new("false", _ => false);
 
     /// <summary>
     /// The primitive boolean type.
     /// </summary>
-    public static readonly Type Boolean =
-        new PrimitiveType(other => other == True || other == False) { Name = "boolean" };
+    public static readonly PrimitiveType Boolean = new("boolean", other => other == True || other == False);
 
     /// <summary>
     /// The primitive number type.
     /// </summary>
-    public static readonly Type NumberPrimitive =
-        new PrimitiveType(other => other is NumberLiteral) { Name = "number" };
+    public static readonly PrimitiveType NumberPrimitive = new("number", other => other is NumberLiteral);
 
     public class NumberLiteral(double literal) : Type
     {
@@ -63,8 +76,7 @@ public abstract class Type
     /// <summary>
     /// The primitive string type.
     /// </summary>
-    public static readonly Type StringPrimitive =
-        new PrimitiveType(other => other is StringLiteral) { Name = "string" };
+    public static readonly PrimitiveType StringPrimitive = new("string", other => other is StringLiteral);
 
     /// <summary>
     /// A string literal.
@@ -77,7 +89,7 @@ public abstract class Type
     /// <summary>
     /// Supertype of all function types.
     /// </summary>
-    public static readonly Type FunctionPrimitive = new PrimitiveType(other => other is Function) { Name = "function" };
+    public static readonly PrimitiveType FunctionPrimitive = new("function", other => other is Function);
 
     public class Function(TypeList parameters, TypeList returns, List<TypeParameter> typeParameters) : Type
     {
@@ -99,8 +111,7 @@ public abstract class Type
     /// <summary>
     /// Supertype of all table types.
     /// </summary>
-    public static readonly Type TablePrimitive =
-        new PrimitiveType(other => other == TablePrimitive || other is Table or Array) { Name = "table" };
+    public static readonly PrimitiveType TablePrimitive = new("table", other => other == TablePrimitive || other is Table or Array);
 
     /// <summary>
     /// A table type, which can originate either from a Tree.Type.Table, or inferred from a Tree.Expression.Table.
@@ -190,12 +201,14 @@ public abstract class Type
     /// </summary>
     public class TypeParameter : Type
     {
+        public new Symbol Symbol => base.Symbol!;
+
         /// <summary>
         /// A generic type parameter.
         /// </summary>
-        public TypeParameter(string name)
+        public TypeParameter(Symbol symbol)
         {
-            Name = name;
+            base.Symbol = symbol;
         }
     }
 }
