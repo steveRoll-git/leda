@@ -85,7 +85,7 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
         return false;
     }
 
-    protected override void Visit(Tree tree, Tree? parent)
+    protected override void Visit(Tree tree, Tree? parent, ChildKind childKind)
     {
         switch (tree)
         {
@@ -104,7 +104,7 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
             case Tree.Expression.Name name:
                 if (parent is not Tree.Declaration)
                 {
-                    Visit(name);
+                    Visit(name, childKind);
                 }
 
                 break;
@@ -420,7 +420,7 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
         }
     }
 
-    private void Visit(Tree.Expression.Name name)
+    private void Visit(Tree.Expression.Name name, ChildKind childKind)
     {
         var symbol = evaluator.GetNameSymbol(name);
 
@@ -428,7 +428,7 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
         {
             Report(new Diagnostic.NameNotFound(name.Range, name.Value, Tree.NameContext.Value));
         }
-        else if (!name.IsAssignmentTarget &&
+        else if (childKind != ChildKind.AssignmentTarget &&
                  symbol is Symbol.Variable variable &&
                  variable.Uninitialized &&
                  variable.Chunk == functionStack.Peek().Chunk &&

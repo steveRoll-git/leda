@@ -437,17 +437,9 @@ public class Parser
 
             Expect(TokenKind.Equal);
 
-            var expressions = ParseExpressionList();
+            var values = ParseExpressionList();
 
-            foreach (var target in targets)
-            {
-                if (target is Tree.Expression.Name name)
-                {
-                    name.IsAssignmentTarget = true;
-                }
-            }
-
-            return EndTree(new Tree.Statement.Assignment(targets, expressions));
+            return EndTree(new Tree.Statement.Assignment(targets, values));
         }
 
         ReportUnexpectedToken();

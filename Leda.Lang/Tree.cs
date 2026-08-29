@@ -352,8 +352,6 @@ public abstract class Tree
         {
             public string Value { get; } = value;
 
-            public bool IsAssignmentTarget { get; internal set; }
-
             public override string ToString()
             {
                 return Value;
@@ -580,6 +578,27 @@ public abstract class Tree
         public List<Type.Name> TypeParameters { get; } = typeParameters;
         public Type Type { get; } = type;
     }
+}
+
+/// <summary>
+/// The way in which a tree node can be a child of another tree node, where such a distinction is needed.
+/// </summary>
+public enum ChildKind
+{
+    /// <summary>
+    /// A general child node.
+    /// </summary>
+    Child,
+
+    /// <summary>
+    /// Expressions that are directly on the left hand side of an assignment.
+    /// </summary>
+    AssignmentTarget,
+
+    /// <summary>
+    /// Tree.Type in the bodies of type annotations.
+    /// </summary>
+    TypeAnnotation,
 }
 
 /// <summary>

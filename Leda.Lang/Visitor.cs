@@ -6,7 +6,7 @@ namespace Leda.Lang;
 /// </summary>
 public abstract class Visitor
 {
-    protected virtual void Visit(Tree tree, Tree? parent)
+    protected virtual void Visit(Tree tree, Tree? parent, ChildKind childKind)
     {
         Visit(tree);
     }
@@ -31,7 +31,7 @@ public abstract class Visitor
     /// </summary>
     protected bool Stop { get; set; }
 
-    private void VisitAll<T>(List<T>? trees, Tree? parent) where T : Tree
+    private void VisitAll<T>(List<T>? trees, Tree? parent, ChildKind childKind = ChildKind.Child) where T : Tree
     {
         if (trees == null)
         {
@@ -40,7 +40,7 @@ public abstract class Visitor
 
         foreach (var tree in trees)
         {
-            VisitAll(tree, parent);
+            VisitAll(tree, parent, childKind);
             if (Stop)
             {
                 return;
@@ -83,7 +83,7 @@ public abstract class Visitor
     /// <summary>
     /// Recursively calls `Visit` on the tree and all its children.
     /// </summary>
-    private void VisitAll(Tree? tree, Tree? parent)
+    private void VisitAll(Tree? tree, Tree? parent, ChildKind childKind = ChildKind.Child)
     {
         if (Stop)
         {
@@ -100,7 +100,7 @@ public abstract class Visitor
             return;
         }
 
-        Visit(tree, parent);
+        Visit(tree, parent, childKind);
         if (Stop)
         {
             return;
@@ -110,7 +110,7 @@ public abstract class Visitor
         {
             case Tree.Declaration declaration:
                 VisitAll(declaration.Name, tree);
-                VisitAll(declaration.Type, tree);
+                VisitAll(declaration.Type, tree, ChildKind.TypeAnnotation);
                 break;
             case Tree.Expression.Access access:
                 VisitAll(access.Target, tree);
@@ -123,7 +123,7 @@ public abstract class Visitor
             case Tree.Expression.Call call:
                 VisitAll(call.Target, tree);
                 VisitAll(call.Arguments, tree);
-                VisitAll(call.TypeArguments, tree);
+                VisitAll(call.TypeArguments, tree, ChildKind.TypeAnnotation);
                 break;
             case Tree.Expression.Function function:
                 VisitAll(function.Type, tree);
@@ -150,7 +150,7 @@ public abstract class Visitor
                 VisitAll(unary.Expression, tree);
                 break;
             case Tree.Statement.Assignment assignment:
-                VisitAll(assignment.Targets, tree);
+                VisitAll(assignment.Targets, tree, ChildKind.AssignmentTarget);
                 VisitAll(assignment.Values, tree);
                 break;
             case Tree.Statement.Call callStatement:
@@ -215,21 +215,21 @@ public abstract class Visitor
             case Tree.TypeAliasDeclaration typeAliasDeclaration:
                 VisitAll(typeAliasDeclaration.Name, tree);
                 VisitAll(typeAliasDeclaration.TypeParameters, tree);
-                VisitAll(typeAliasDeclaration.Type, tree);
+                VisitAll(typeAliasDeclaration.Type, tree, ChildKind.TypeAnnotation);
                 break;
             case Tree.Type.Function function:
                 VisitAll(function.Parameters, tree);
-                VisitAll(function.ReturnTypes, tree);
+                VisitAll(function.ReturnTypes, tree, ChildKind.TypeAnnotation);
                 VisitAll(function.TypeParameters, tree);
                 break;
             case Tree.Type.Nillable nillable:
-                VisitAll(nillable.Inner, tree);
+                VisitAll(nillable.Inner, tree, ChildKind.TypeAnnotation);
                 break;
             case Tree.Type.Table table:
                 foreach (var field in table.Fields)
                 {
-                    VisitAll(field.Key, tree);
-                    VisitAll(field.Value, tree);
+                    VisitAll(field.Key, tree, ChildKind.TypeAnnotation);
+                    VisitAll(field.Value, tree, ChildKind.TypeAnnotation);
                     if (Stop)
                     {
                         return;
@@ -238,7 +238,7 @@ public abstract class Visitor
 
                 break;
             case Tree.Type.Array array:
-                VisitAll(array.ElementType, tree);
+                VisitAll(array.ElementType, tree, ChildKind.TypeAnnotation);
                 break;
         }
 
