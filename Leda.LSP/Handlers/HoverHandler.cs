@@ -53,13 +53,21 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                     break;
                 }
 
-                case Symbol.IntrinsicType or Symbol.TypeAlias or Symbol.TypeParameter:
+                case Symbol.TypeAlias { Declaration.TypeParameters: var typeParameters }:
                 {
-                    var typeValue = symbol is not Symbol.IntrinsicType and not Symbol.TypeParameter
-                        ? " = " + Project.TypeEvaluator.TypeToString(Project.TypeEvaluator.GetTypeOfSymbol(symbol),
-                            true, true)
+                    var typeParams = typeParameters.Count > 0
+                        ? $"<{string.Join(", ", typeParameters.Select(t => t.Value))}>"
                         : "";
-                    content = $"type {symbol.Name}{typeValue}";
+
+                    var typeValue = " = " + Project.TypeEvaluator.TypeToString(Project.TypeEvaluator.GetTypeOfSymbol(symbol), true, true);
+
+                    content = $"type {symbol.Name}{typeParams}{typeValue}";
+                    break;
+                }
+
+                case Symbol.IntrinsicType or Symbol.TypeParameter:
+                {
+                    content = $"type {symbol.Name}";
                     break;
                 }
 

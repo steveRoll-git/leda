@@ -214,6 +214,7 @@ public abstract class Visitor
                 break;
             case Tree.TypeAliasDeclaration typeAliasDeclaration:
                 VisitAll(typeAliasDeclaration.Name, tree);
+                VisitAll(typeAliasDeclaration.TypeParameters, tree);
                 VisitAll(typeAliasDeclaration.Type, tree);
                 break;
             case Tree.Type.Function function:

@@ -574,9 +574,10 @@ public abstract class Tree
     /// <summary>
     /// A declaration of a type alias.
     /// </summary>
-    public class TypeAliasDeclaration(Type.Name name, Type type) : Statement
+    public class TypeAliasDeclaration(Type.Name name, List<Type.Name> typeParameters, Type type) : Statement
     {
         public Type.Name Name { get; } = name;
+        public List<Type.Name> TypeParameters { get; } = typeParameters;
         public Type Type { get; } = type;
     }
 }

@@ -1189,11 +1189,17 @@ public class Parser
 
         var name = ParseTypeName();
 
+        List<Tree.Type.Name> typeParameters = [];
+        if (token.Kind == TokenKind.Less)
+        {
+            typeParameters = ParseTypeParameterList();
+        }
+
         Expect(TokenKind.Equal);
 
         var type = ParseType();
 
-        return EndTree(new Tree.TypeAliasDeclaration(name, type));
+        return EndTree(new Tree.TypeAliasDeclaration(name, typeParameters, type));
     }
 
     /// <summary>

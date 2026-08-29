@@ -489,6 +489,14 @@ public class Binder
         }
     }
 
+    private void Visit(Tree.TypeAliasDeclaration typeAlias)
+    {
+        PushScope();
+        VisitTypeParameterDeclaration(typeAlias.TypeParameters);
+        Visit(typeAlias.Type);
+        PopScope();
+    }
+
     private void VisitTypeParameterDeclaration(List<Tree.Type.Name> typeParameters)
     {
         foreach (var typeParameter in typeParameters)
@@ -781,6 +789,7 @@ public class Binder
 
     private FlowNode? VisitBlock(Tree.Block block, FlowNode? antecedent)
     {
+        // Type alias symbols are created before anything else, so that they'll be available everywhere in the block.
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
             AddSymbol(typeDeclaration.Name, new Symbol.TypeAlias(typeDeclaration));
@@ -788,7 +797,7 @@ public class Binder
 
         foreach (var typeDeclaration in block.TypeDeclarations)
         {
-            Visit(typeDeclaration.Type);
+            Visit(typeDeclaration);
         }
 
         foreach (var label in block.Labels)
