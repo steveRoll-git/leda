@@ -127,12 +127,18 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
             case Tree.Statement.Return @return:
                 Visit(@return);
                 break;
+            case Tree.Type.Name typeName:
+                Visit(typeName, childKind);
+                break;
             case Tree.Type.Function functionType:
                 if (parent is not Tree.Expression.Function)
                 {
                     Visit(functionType);
                 }
 
+                break;
+            case Tree.Type.Instantiation instantiation:
+                Visit(instantiation);
                 break;
         }
     }
@@ -438,6 +444,18 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
         }
     }
 
+    private void Visit(Tree.Type.Name name, ChildKind childKind)
+    {
+        if (childKind == ChildKind.TypeAnnotation)
+        {
+            if (project.GetTreeSymbol(name) is Symbol.TypeAlias typeAlias &&
+                typeAlias.Declaration.TypeParameters.Count > 0)
+            {
+                Report(new Diagnostic.GenericTypeRequiresTypeArguments(name.Range, typeAlias.Name, typeAlias.Declaration.TypeParameters.Count));
+            }
+        }
+    }
+
     private void Visit(Tree.Type.Function functionType)
     {
         foreach (var parameter in functionType.Parameters)
@@ -445,6 +463,21 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
             if (parameter.Type == null)
             {
                 Report(new Diagnostic.ImplicitAnyType(parameter.Range, parameter.Name.Value));
+            }
+        }
+    }
+
+    private void Visit(Tree.Type.Instantiation instantiation)
+    {
+        if (project.GetTreeSymbol(instantiation.Name) is {} symbol)
+        {
+            if (symbol is not Symbol.TypeAlias typeAlias || typeAlias.Declaration.TypeParameters.Count == 0)
+            {
+                Report(new Diagnostic.NotAGenericType(instantiation.Range, instantiation.Name.Value));
+            }
+            else if (instantiation.TypeArguments.Count != typeAlias.Declaration.TypeParameters.Count)
+            {
+                Report(new Diagnostic.GenericTypeRequiresTypeArguments(instantiation.Range, instantiation.Name.Value, typeAlias.Declaration.TypeParameters.Count));
             }
         }
     }

@@ -611,7 +611,16 @@ public class Parser
         }
         else
         {
-            type = ParseTypeName();
+            StartTree();
+            var name = ParseTypeName();
+            if (token.Kind == TokenKind.Less && ParseTypeArgumentList() is { } typeArguments)
+            {
+                type = EndTree(new Tree.Type.Instantiation(name, typeArguments));
+            }
+            else
+            {
+                type = EndTree(name);
+            }
         }
 
         return ParseTypePostfix(type);
@@ -688,6 +697,23 @@ public class Parser
         {
             list.Add(ParseType());
         } while (Accept(TokenKind.Comma));
+
+        return list;
+    }
+
+    private List<Tree.Type>? ParseTypeArgumentList()
+    {
+        var less = Expect(TokenKind.Less);
+
+        if (Accept(TokenKind.Greater, out var greater))
+        {
+            Report(new Diagnostic.EmptyTypeParameterList(less.Range.Union(greater.Range)));
+            return null;
+        }
+
+        var list = ParseTypeList();
+
+        Expect(TokenKind.Greater);
 
         return list;
     }
@@ -918,21 +944,11 @@ public class Parser
 
         if (Accept(TokenKind.Dot))
         {
-            if (Accept(TokenKind.Less, out var less))
+            if (token.Kind == TokenKind.Less)
             {
-                // Function call with type parameters: '.' '<' typelist '>' '(' [explist] ')'
-                List<Tree.Type>? typeParameters = null;
-                if (Accept(TokenKind.Greater, out var greater))
-                {
-                    Report(new Diagnostic.EmptyTypeParameterList(less.Range.Union(greater.Range)));
-                }
-                else
-                {
-                    typeParameters = ParseTypeList();
-                    Expect(TokenKind.Greater);
-                }
-
-                return ParsePrefixExpression(EndTree(ParseCall(previous, typeParameters)));
+                // Function call with type arguments: '.' '<' typelist '>' '(' [explist] ')'
+                var typeArguments = ParseTypeArgumentList();
+                return ParsePrefixExpression(EndTree(ParseCall(previous, typeArguments)));
             }
 
             // Access with a dot: '.' Name

@@ -240,6 +240,10 @@ public abstract class Visitor
             case Tree.Type.Array array:
                 VisitAll(array.ElementType, tree, ChildKind.TypeAnnotation);
                 break;
+            case Tree.Type.Instantiation instantiation:
+                VisitAll(instantiation.Name, tree);
+                VisitAll(instantiation.TypeArguments, tree, ChildKind.TypeAnnotation);
+                break;
         }
 
         if (!Stop)

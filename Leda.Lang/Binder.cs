@@ -426,6 +426,10 @@ public class Binder
             case Tree.Type.Nillable { Inner: var inner }:
                 Visit(inner);
                 break;
+            case Tree.Type.Instantiation instantiation:
+                Visit(instantiation.Name);
+                Visit(instantiation.TypeArguments);
+                break;
         }
     }
 

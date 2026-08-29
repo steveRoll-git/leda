@@ -101,6 +101,15 @@ public abstract class Tree
             public Type Inner { get; } = inner;
         }
 
+        /// <summary>
+        /// An instantiation of a named generic type.
+        /// </summary>
+        public class Instantiation(Name name, List<Type> typeArguments) : Type
+        {
+            public Name Name { get; } = name;
+            public List<Type> TypeArguments { get; } = typeArguments;
+        }
+
         // public class Union(List<Type> types) : Type
         // {
         //     public List<Type> Types { get; } = types;

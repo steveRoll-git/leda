@@ -209,6 +209,18 @@ public abstract record Diagnostic(Range Range)
         public override string Message => "Type parameter list cannot be empty.";
     }
 
+    public record GenericTypeRequiresTypeArguments(Range Range, string Name, int NumArguments) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Generic type '{Name}' requires {NumArguments} type argument(s).";
+    }
+
+    public record NotAGenericType(Range Range, string Name) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"Type '{Name}' is not generic.";
+    }
+
     public record ValueNotAssigned(Range Range) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Warning;
