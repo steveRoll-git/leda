@@ -18,7 +18,9 @@ public class DidChangeWatchedFilesHandler(LedaServer server) : DidChangeWatchedF
         {
             if (change.Type == FileChangeType.Created)
             {
-                server.AddSource(change.Uri);
+                // When the user creates a file and opens it immediately, the `didOpen` notification might create the
+                // file before this one.
+                server.TryAddSource(change.Uri);
             }
             else if (change.Type == FileChangeType.Deleted)
             {

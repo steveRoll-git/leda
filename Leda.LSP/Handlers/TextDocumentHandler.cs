@@ -11,6 +11,9 @@ public class TextDocumentHandler(LedaServer server) : TextDocumentHandlerBase
 {
     protected override Task Handle(DidOpenTextDocumentParams request, CancellationToken token)
     {
+        // When the user creates a file and opens it immediately, this notification may come before
+        // didChangeWatchedFiles, so we have to create the file here.
+        server.TryAddSource(request.TextDocument.Uri);
         return Task.CompletedTask;
     }
 
@@ -45,7 +48,7 @@ public class TextDocumentHandler(LedaServer server) : TextDocumentHandlerBase
         {
             Change = TextDocumentSyncKind.Full,
             OpenClose = true,
-            Save = true
+            Save = true,
         };
     }
 }

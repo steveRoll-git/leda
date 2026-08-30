@@ -89,11 +89,24 @@ public class LedaServer
     /// <summary>
     /// Adds a new empty source at the given URI.
     /// </summary>
-    public void AddSource(DocumentUri uri)
+    private void AddSource(DocumentUri uri)
     {
         var source = new Source(uri.FileSystemPath, "");
         Project.AddSource(source);
         MapSourceToUri(source, uri);
+    }
+
+    /// <summary>
+    /// Adds a new empty source at the given URI if it's not already added.
+    /// </summary>
+    public void TryAddSource(DocumentUri uri)
+    {
+        if (uriSources.ContainsKey(uri))
+        {
+            return;
+        }
+
+        AddSource(uri);
     }
 
     public void RemoveSource(DocumentUri uri)
