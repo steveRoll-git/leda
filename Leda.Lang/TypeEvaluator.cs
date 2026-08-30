@@ -1153,6 +1153,8 @@ public class TypeEvaluator(Project project)
                 parameters[index].Name.Value,
             TypeList.FromDeclarations { Declarations: var declarations } when index < declarations.Count =>
                 declarations[index].Name.Value,
+            TypeList.Instantiation { Inner: var inner } =>
+                GetNameInTypeList(inner, index),
             _ => null,
         };
     }
