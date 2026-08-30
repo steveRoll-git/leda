@@ -531,6 +531,10 @@ public class TypeEvaluator(Project project)
         return null;
     }
 
+    /// <summary>
+    /// Returns the type of the type alias, and associates the type with the declaration's symbol, if applicable.
+    /// If the type declaration is a generic one, an uninstantiated type will be returned.
+    /// </summary>
     private Type GetTypeOfTypeAliasUncached(Symbol.TypeAlias typeAlias)
     {
         var type = GetTypeOfTypeAnnotation(typeAlias.Declaration.Type);
@@ -582,6 +586,21 @@ public class TypeEvaluator(Project project)
         return GetQueryOrCached(CreateArrayTypeUncached, elementType, arrayTypeCache);
     }
 
+    private Type GetTypeOfInstantiationAnnotation(Tree.Type.Instantiation instantiation)
+    {
+        if (project.GetTreeSymbol(instantiation.Name) is not Symbol.TypeAlias { Declaration: var declaration } typeAlias ||
+            declaration.TypeParameters.Count == 0)
+        {
+            return Type.Unknown;
+        }
+
+        var typeMap = GetTypeMapFromTypeArguments(
+            declaration.TypeParameters.Select(p => (project.GetTreeSymbol(p) as Symbol.TypeParameter)!.Type).ToList(),
+            instantiation.TypeArguments);
+
+        return InstantiateType(GetTypeOfTypeAlias(typeAlias), typeMap);
+    }
+
     public Type GetTypeOfTypeAnnotation(Tree.Type typeAnnotation)
     {
         return typeAnnotation switch
@@ -593,6 +612,7 @@ public class TypeEvaluator(Project project)
             Tree.Type.Function function => GetTypeOfFunctionAnnotation(function),
             Tree.Type.Nillable { Inner: var inner } => CreateNillableType(GetTypeOfTypeAnnotation(inner)),
             Tree.Type.Array { ElementType: var elementType } => CreateArrayType(GetTypeOfTypeAnnotation(elementType)),
+            Tree.Type.Instantiation instantiation => GetTypeOfInstantiationAnnotation(instantiation),
             _ => Type.Unknown,
         };
     }
@@ -747,6 +767,17 @@ public class TypeEvaluator(Project project)
         }
     }
 
+    private TypeMap GetTypeMapFromTypeArguments(List<Type.TypeParameter> typeParameters, List<Tree.Type> typeArguments)
+    {
+        var typeMap = new TypeMap();
+        for (var i = 0; i < Math.Min(typeParameters.Count, typeArguments.Count); i++)
+        {
+            typeMap[typeParameters[i]] = GetTypeOfTypeAnnotation(typeArguments[i]);
+        }
+
+        return typeMap;
+    }
+
     private readonly Dictionary<Tree.Expression.Call, TypeMap> genericCallTypeMapCache = [];
 
     /// <summary>
@@ -759,19 +790,9 @@ public class TypeEvaluator(Project project)
             return cached;
         }
 
-        TypeMap typeMap;
-        if (call.TypeArguments != null)
-        {
-            typeMap = new();
-            for (var i = 0; i < Math.Min(callee.TypeParameters.Count, call.TypeArguments.Count); i++)
-            {
-                typeMap[callee.TypeParameters[i]] = GetTypeOfTypeAnnotation(call.TypeArguments[i]);
-            }
-        }
-        else
-        {
-            typeMap = InferCallTypeParameters(call, callee);
-        }
+        var typeMap = call.TypeArguments != null
+            ? GetTypeMapFromTypeArguments(callee.TypeParameters, call.TypeArguments)
+            : InferCallTypeParameters(call, callee);
 
         genericCallTypeMapCache.Add(call, typeMap);
 

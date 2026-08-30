@@ -177,6 +177,7 @@ public abstract class Type
 
         public Table(Table other)
         {
+            Symbol = other.Symbol;
             StringLiterals = other.StringLiterals;
             NumberLiterals = other.NumberLiterals;
             Indexers = other.Indexers;
