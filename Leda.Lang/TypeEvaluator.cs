@@ -829,6 +829,11 @@ public class TypeEvaluator(Project project)
     /// </summary>
     internal TypeList InstantiateTypeList(TypeList typeList, TypeMap map)
     {
+        if (typeList is TypeList.Builtin)
+        {
+            return typeList;
+        }
+
         return new TypeList.Instantiation(typeList, map);
     }
 
