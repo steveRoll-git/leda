@@ -91,6 +91,17 @@ public abstract class Type
     /// </summary>
     public static readonly PrimitiveType FunctionPrimitive = new("function", other => other is Function);
 
+    /// <summary>
+    /// The base class for types that may be instantiations of generic types.
+    /// </summary>
+    public abstract class Instantiable : Type
+    {
+        /// <summary>
+        /// The type arguments that this type was instantiated with.
+        /// </summary>
+        public TypeMap? TypeMap { get; init; }
+    }
+
     public class Function(TypeList parameters, TypeList returns, List<TypeParameter> typeParameters) : Type
     {
         /// <summary>
@@ -116,7 +127,7 @@ public abstract class Type
     /// <summary>
     /// A table type, which can originate either from a Tree.Type.Table, or inferred from a Tree.Expression.Table.
     /// </summary>
-    public class Table : Type
+    public class Table : Instantiable
     {
         /// <summary>
         /// The symbol and type of a string field in a table.
@@ -161,12 +172,6 @@ public abstract class Type
         /// Cached values of fields whose key is not a string or number literal.
         /// </summary>
         public List<Field> Indexers { get; }
-
-        /// <summary>
-        /// The type arguments that this table was instantiated with, if this table is an instantiation of a generic
-        /// table.
-        /// </summary>
-        public TypeMap? TypeMap { get; init; }
 
         public Table()
         {

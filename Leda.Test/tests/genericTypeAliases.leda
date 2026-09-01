@@ -1,0 +1,10 @@
+type Thing<T> = {a: T}
+local ab: Thing<number> = {a = 123}
+
+local function f(t: Thing<number>)
+  local a: number = t.a
+end
+
+type A<T, U> = {t: T, u: U}
+
+local a: A<number, Thing<number>> = {u = {a = ""}}

@@ -173,6 +173,11 @@ public class TypeEvaluator(Project project)
         return TypeList.Empty;
     }
 
+    private List<Type.TypeParameter> GetTypeParameterTypes(List<Tree.Type.Name> list)
+    {
+        return list.Select(n => (project.GetTreeSymbol(n) as Symbol.TypeParameter)!.Type).ToList();
+    }
+
     private Type.Function GetTypeOfFunctionUncached(Tree.Expression.Function function)
     {
         var parameters = new TypeList.Parameters(function);
@@ -192,15 +197,9 @@ public class TypeEvaluator(Project project)
             returns = TypeList.Empty;
         }
 
-        var typeParameters = new List<Type.TypeParameter>();
-
-        if (function.Type.TypeParameters != null)
-        {
-            foreach (var typeParameter in function.Type.TypeParameters)
-            {
-                typeParameters.Add((project.GetTreeSymbol(typeParameter) as Symbol.TypeParameter)!.Type);
-            }
-        }
+        var typeParameters = function.Type.TypeParameters != null
+            ? GetTypeParameterTypes(function.Type.TypeParameters)
+            : [];
 
         return new Type.Function(parameters, returns, typeParameters);
     }
@@ -595,7 +594,7 @@ public class TypeEvaluator(Project project)
         }
 
         var typeMap = GetTypeMapFromTypeArguments(
-            declaration.TypeParameters.Select(p => (project.GetTreeSymbol(p) as Symbol.TypeParameter)!.Type).ToList(),
+            GetTypeParameterTypes(declaration.TypeParameters),
             instantiation.TypeArguments);
 
         return InstantiateType(GetTypeOfTypeAlias(typeAlias), typeMap);
@@ -1255,6 +1254,17 @@ public class TypeEvaluator(Project project)
     {
         if (!typeContents && type.Symbol != null)
         {
+            if (type is Type.Instantiable { TypeMap: { } typeMap } &&
+                type.Symbol is Symbol.TypeAlias { Declaration.TypeParameters: var typeParameters } &&
+                typeParameters.Count > 0)
+            {
+                return type.Symbol.Name + "<" +
+                       string.Join(", ",
+                           GetTypeParameterTypes(typeParameters)
+                               .Select(typeParam => TypeToString(typeMap.GetValueOrDefault(typeParam) ?? Type.Unknown)))
+                       + ">";
+            }
+
             return type.Symbol.Name;
         }
 
