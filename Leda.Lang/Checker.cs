@@ -469,7 +469,7 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
 
     private void Visit(Tree.Type.Instantiation instantiation)
     {
-        if (project.GetTreeSymbol(instantiation.Name) is {} symbol)
+        if (project.GetTreeSymbol(instantiation.Name) is { } symbol)
         {
             if (symbol is not Symbol.TypeAlias typeAlias || typeAlias.Declaration.TypeParameters.Count == 0)
             {

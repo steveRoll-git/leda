@@ -8,3 +8,7 @@ end
 type A<T, U> = {t: T, u: U}
 
 local a: A<number, Thing<number>> = {u = {a = ""}}
+
+local err: A = 123
+local err2: A<number> = "abc"
+local err3: number<string> = {}

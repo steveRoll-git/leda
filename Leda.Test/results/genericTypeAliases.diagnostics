@@ -2,3 +2,9 @@ TypeMismatch(10:43 10:44)
 Error: Type 'string' is not assignable to type 'number'.
 TypeMismatch(10:7 10:8)
 Error: Key "t" is missing in type '{ u: { a: string, }, }' but required in type 'A<number, Thing<number>>'.
+GenericTypeRequiresTypeArguments(12:12 12:13)
+Error: Generic type 'A' requires 2 type argument(s).
+GenericTypeRequiresTypeArguments(13:13 13:22)
+Error: Generic type 'A' requires 2 type argument(s).
+NotAGenericType(14:13 14:27)
+Error: Type 'number' is not generic.

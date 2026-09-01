@@ -554,6 +554,12 @@ public class TypeEvaluator(Project project)
     {
         if (project.GetTreeSymbol(name) is { } symbol)
         {
+            if (symbol is Symbol.TypeAlias { Declaration.TypeParameters: var typeParameters } && typeParameters.Count > 0)
+            {
+                // A generic type cannot be referenced without type argument.
+                return Type.Unknown;
+            }
+
             return GetTypeOfSymbol(symbol);
         }
 
@@ -588,7 +594,7 @@ public class TypeEvaluator(Project project)
     private Type GetTypeOfInstantiationAnnotation(Tree.Type.Instantiation instantiation)
     {
         if (project.GetTreeSymbol(instantiation.Name) is not Symbol.TypeAlias { Declaration: var declaration } typeAlias ||
-            declaration.TypeParameters.Count == 0)
+            instantiation.TypeArguments.Count != declaration.TypeParameters.Count)
         {
             return Type.Unknown;
         }
