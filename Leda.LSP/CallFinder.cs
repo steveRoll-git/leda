@@ -64,6 +64,11 @@ public class CallFinder(Position position) : Visitor
             return name.Value;
         }
 
+        if (tree is Tree.Expression.String str)
+        {
+            return str.Value;
+        }
+
         if (tree is Tree.Expression.Access access)
         {
             return GetCallName(access.Key);
