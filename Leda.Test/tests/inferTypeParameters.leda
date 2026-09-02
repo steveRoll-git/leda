@@ -10,3 +10,12 @@ local function g<T>()
   end
   local a: T, b: number = d(123, 456)
 end
+
+local function insert<T>(t: T[], item: T)
+  t[#t + 1] = item
+end
+
+local arr = {1, 2, 3}
+
+insert(arr, 123)
+insert(arr, "a")

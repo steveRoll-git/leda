@@ -848,17 +848,34 @@ public class TypeEvaluator(Project project)
     private TypeMap InferCallTypeParameters(Tree.Expression.Call call, Type.Function callee)
     {
         var typeMap = new TypeMap();
+
         for (var i = 0; i < callee.Parameters.Count; i++)
         {
-            if (GetTypeInTypeList(callee.Parameters, i) is Type.TypeParameter typeParameter &&
-                callee.TypeParameters.Contains(typeParameter) &&
-                GetTypeOfExpressionInList(call.Arguments, i) is { } argument)
-            {
-                typeMap.Add(typeParameter, argument);
-            }
+            Infer(GetTypeInTypeList(callee.Parameters, i), GetTypeOfExpressionInList(call.Arguments, i));
+        }
+
+        foreach (var typeParameter in callee.TypeParameters)
+        {
+            // Type parameters that could not be inferred will be unknown.
+            typeMap.TryAdd(typeParameter, Type.Unknown);
         }
 
         return typeMap;
+
+        // Attempts to infer type arguments based on the argument type's relationship to the parameter.
+        void Infer(Type parameter, Type argument)
+        {
+            if (parameter is Type.TypeParameter typeParameter &&
+                callee.TypeParameters.Contains(typeParameter))
+            {
+                typeMap.TryAdd(typeParameter, argument);
+            }
+            else if (parameter is Type.Array { ElementType: var paramElementType } &&
+                     argument is Type.Array { ElementType: var argElementType })
+            {
+                Infer(paramElementType, argElementType);
+            }
+        }
     }
 
     private TypeList GetTypeListOfCall(Tree.Expression.Call call)

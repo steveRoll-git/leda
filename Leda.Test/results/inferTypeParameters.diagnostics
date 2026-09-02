@@ -1,2 +1,4 @@
 TypeMismatch(11:29 11:32)
 Error: Type 'number' is not assignable to type 'T'.
+TypeMismatch(21:13 21:16)
+Error: Type 'string' is not assignable to type 'number'.

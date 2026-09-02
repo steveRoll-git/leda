@@ -8,3 +8,9 @@ local function g()
   end
   local a, b = d(123, 456)
 end
+local function insert(t, item)
+  t[#t + 1] = item
+end
+local arr = {1, 2, 3}
+insert(arr, 123)
+insert(arr, "a")
