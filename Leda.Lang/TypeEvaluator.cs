@@ -702,6 +702,16 @@ public class TypeEvaluator(Project project)
                 function.TypeParameters);
         }
 
+        if (type is Type.Nillable nillable)
+        {
+            return CreateNillableType(InstantiateType(nillable.Inner, map));
+        }
+
+        if (type is Type.Array array)
+        {
+            return CreateArrayType(InstantiateType(array.ElementType, map));
+        }
+
         return type;
     }
 
