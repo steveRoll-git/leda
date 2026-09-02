@@ -95,6 +95,9 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
             case Tree.Expression.Binary binary:
                 Visit(binary);
                 break;
+            case Tree.Expression.Unary unary:
+                Visit(unary);
+                break;
             case Tree.Expression.Call call:
                 Visit(call);
                 break;
@@ -410,6 +413,17 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
                 binary.Operator.Kind,
                 evaluator.TypeToString(evaluator.GetTypeOfExpression(binary.Left)),
                 evaluator.TypeToString(evaluator.GetTypeOfExpression(binary.Right))));
+        }
+    }
+
+    private void Visit(Tree.Expression.Unary unary)
+    {
+        if (unary.Operator.Kind != TokenKind.Not &&
+            evaluator.GetTypeOfUnaryExpression(unary) == null)
+        {
+            Report(new Diagnostic.UnaryOperatorCantBeUsed(unary.Range,
+                unary.Operator.Kind,
+                evaluator.TypeToString(evaluator.GetTypeOfExpression(unary.Expression))));
         }
     }
 

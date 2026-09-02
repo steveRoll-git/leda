@@ -148,6 +148,7 @@ public class TypeEvaluator(Project project)
             Tree.Expression.Access access => GetTypeOfAccess(access).type ?? Type.Unknown,
             Tree.Expression.Call call => GetTypeInTypeList(GetTypeListOfCall(call), 0),
             Tree.Expression.Binary binary => GetTypeOfBinaryExpression(binary) ?? Type.Unknown,
+            Tree.Expression.Unary unary => GetTypeOfUnaryExpression(unary) ?? Type.Unknown,
             Tree.Expression.False => isConstant ? Type.False : Type.Boolean,
             Tree.Expression.True => isConstant ? Type.True : Type.Boolean,
             Tree.Expression.Nil => Type.Nil,
@@ -524,6 +525,36 @@ public class TypeEvaluator(Project project)
                 }
 
                 break;
+            }
+        }
+
+        return null;
+    }
+
+    internal Type? GetTypeOfUnaryExpression(Tree.Expression.Unary unary)
+    {
+        var innerType = GetTypeOfExpression(unary.Expression);
+
+        if (unary.Operator.Kind == TokenKind.Not)
+        {
+            return Type.Boolean;
+        }
+
+        if (unary.Operator.Kind == TokenKind.Minus)
+        {
+            // The `__unm` metamethod should be handled here.
+            if (IsAssignableFrom(Type.NumberPrimitive, innerType))
+            {
+                return Type.NumberPrimitive;
+            }
+        }
+
+        if (unary.Operator.Kind == TokenKind.NumberSign)
+        {
+            // The `__len` metamethod should be handled here.
+            if (innerType is Type.Array || IsAssignableFrom(Type.StringPrimitive, innerType))
+            {
+                return Type.NumberPrimitive;
             }
         }
 

@@ -1,0 +1,9 @@
+local arr = {1, 2}
+
+local len: number = #arr
+local len2: number = #"123"
+local neg: number = -len
+local inv: boolean = not neg
+
+local bad = -"asdf"
+local bad2 = #len

@@ -262,13 +262,19 @@ public abstract record Diagnostic(Range Range)
         public override string Message => $"Variable '{Variable}' is used before being assigned.";
     }
 
-    public record BinaryOperatorCantBeUsed(Range Range, TokenKind Operator, string Left, string Right)
-        : Diagnostic(Range)
+    public record BinaryOperatorCantBeUsed(Range Range, TokenKind Operator, string Left, string Right) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
 
         public override string Message =>
             $"Operator {Token.GetKindName(Operator)} cannot be used on types '{Left}' and '{Right}'.";
+    }
+
+    public record UnaryOperatorCantBeUsed(Range Range, TokenKind Operator, string Operand) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+
+        public override string Message => $"Operator {Token.GetKindName(Operator)} cannot be used on type '{Operand}'.";
     }
 
     public record ValuePossiblyNil(Range Range, string? Value) : Diagnostic(Range)

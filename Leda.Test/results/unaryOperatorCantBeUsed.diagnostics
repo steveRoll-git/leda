@@ -1,0 +1,4 @@
+UnaryOperatorCantBeUsed(8:13 8:20)
+Error: Operator "-" cannot be used on type 'string'.
+UnaryOperatorCantBeUsed(9:14 9:18)
+Error: Operator "#" cannot be used on type 'number'.
