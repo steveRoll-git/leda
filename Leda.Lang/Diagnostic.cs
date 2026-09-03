@@ -135,18 +135,6 @@ public abstract record Diagnostic(Range Range)
         public override string Message => "`break` cannot be used outside of loops.";
     }
 
-    public record CantGetLength(Range Range, string Got) : Diagnostic(Range)
-    {
-        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"Cannot get the length of a '{Got}' value.";
-    }
-
-    public record CantNegate(Range Range, string Got) : Diagnostic(Range)
-    {
-        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
-        public override string Message => $"Cannot negate a '{Got}' value.";
-    }
-
     public record ForLoopStartNotNumber(Range Range, string Got) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
