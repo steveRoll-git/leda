@@ -58,6 +58,18 @@ public class Emitter
         Emit(indentChar, indentSize * level);
     }
 
+    private void EmitNameList(List<Tree.Expression.Name> names)
+    {
+        for (var i = 0; i < names.Count; i++)
+        {
+            Emit(names[i].Value);
+            if (i < names.Count - 1)
+            {
+                Emit(", ");
+            }
+        }
+    }
+
     private void EmitDeclarationList(List<Tree.Declaration> declarations)
     {
         for (var i = 0; i < declarations.Count; i++)
@@ -376,7 +388,7 @@ public class Emitter
         else if (statement is Tree.Statement.IteratorFor iteratorFor)
         {
             Emit("for ");
-            EmitDeclarationList(iteratorFor.Declarations);
+            EmitNameList(iteratorFor.Variables);
             Emit(" in ");
             EmitExpressionList(iteratorFor.InitExpressions, indent);
             Emit(" do\n");

@@ -176,7 +176,7 @@ public abstract class Visitor
                 VisitAll(@if.ElseBody, tree);
                 break;
             case Tree.Statement.IteratorFor iteratorFor:
-                VisitAll(iteratorFor.Declarations, tree);
+                VisitAll(iteratorFor.Variables, tree);
                 VisitAll(iteratorFor.InitExpressions, tree);
                 VisitAll(iteratorFor.Body, tree);
                 break;

@@ -717,10 +717,10 @@ public class Binder
 
         PushLoopScope(forLoop);
 
-        for (var i = 0; i < forLoop.Declarations.Count; i++)
+        for (var i = 0; i < forLoop.Variables.Count; i++)
         {
-            var declaration = forLoop.Declarations[i];
-            AddSymbol(declaration.Name, new Symbol.ForVariable(forLoop, i));
+            var variable = forLoop.Variables[i];
+            AddSymbol(variable, new Symbol.ForLoopVariable(forLoop, i));
         }
 
         AddIfNotNull(descendents, VisitBlock(forLoop.Body, antecedent));

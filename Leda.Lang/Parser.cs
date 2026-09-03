@@ -529,12 +529,12 @@ public class Parser
 
         // 'for' declarations 'in' exp 'do' block 'end'
         {
-            var declarations = ParseDeclarationList();
+            var variables = ParseNameList();
             Expect(TokenKind.In);
             var iterator = ParseExpressionList();
             Expect(TokenKind.Do);
             var body = ParseBlock();
-            return EndTree(new Tree.Statement.IteratorFor(declarations, iterator, body));
+            return EndTree(new Tree.Statement.IteratorFor(variables, iterator, body));
         }
     }
 
@@ -716,6 +716,18 @@ public class Parser
         Expect(TokenKind.Greater);
 
         return list;
+    }
+
+    private List<Tree.Expression.Name> ParseNameList()
+    {
+        List<Tree.Expression.Name> names = [];
+        // name {',' name}
+        do
+        {
+            names.Add(ParseValueName());
+        } while (Accept(TokenKind.Comma));
+
+        return names;
     }
 
     private List<Tree.Declaration> ParseDeclarationList()
