@@ -10,6 +10,6 @@ end
 while true do
   break
 end
-for a in f() do
+for a in f do
   break
 end
