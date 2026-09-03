@@ -1,0 +1,18 @@
+local function ipairs<T>(t: T[])
+  return function(t: T[], i: number)
+    return i + 1, t[i]
+  end, t, 0
+end
+
+local arr = {"a", "b", "c"}
+
+for i, item in ipairs(arr) do
+  local j: number = i
+  local e: string = item
+end
+
+for nope, bad in 1, 2, 3 do
+end
+
+for nope, nad in ipairs do
+end
