@@ -532,8 +532,11 @@ public class Parser
             var variables = ParseNameList();
             Expect(TokenKind.In);
             var iterator = ParseExpressionList();
+
             Expect(TokenKind.Do);
             var body = ParseBlock();
+            Expect(TokenKind.End);
+
             return EndTree(new Tree.Statement.IteratorFor(variables, iterator, body));
         }
     }
