@@ -587,6 +587,14 @@ public abstract class Tree
         public List<Type.Name> TypeParameters { get; } = typeParameters;
         public Type Type { get; } = type;
     }
+
+    /// <summary>
+    /// Returns a range that covers all the nodes in the given list.
+    /// </summary>
+    public static Range ListRange<T>(List<T> list) where T : Tree
+    {
+        return list[0].Range.Union(list[^1].Range);
+    }
 }
 
 /// <summary>

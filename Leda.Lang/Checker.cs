@@ -127,6 +127,9 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
             case Tree.Statement.NumericalFor numericalFor:
                 Visit(numericalFor);
                 break;
+            case Tree.Statement.IteratorFor iteratorFor:
+                Visit(iteratorFor);
+                break;
             case Tree.Statement.Return @return:
                 Visit(@return);
                 break;
@@ -238,10 +241,27 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
         }
     }
 
+    private void Visit(Tree.Statement.IteratorFor iteratorFor)
+    {
+        var initTypes = TypeEvaluator.CreateTypeListFromValues(iteratorFor.InitExpressions);
+        var iteratorType = evaluator.GetTypeInTypeList(initTypes, 0);
+
+        if (iteratorType is not Type.Function function)
+        {
+            Report(new Diagnostic.ForLoopIteratorNotFunction(iteratorFor.InitExpressions[0].Range, evaluator.TypeToString(iteratorType)));
+            return;
+        }
+
+        if (!evaluator.IsAssignableFrom(function.Parameters, initTypes, out var reasons, TypeListKind.Value, 1))
+        {
+            Report(new Diagnostic.ForLoopIteratorArgumentsNotAssignable(Tree.ListRange(iteratorFor.InitExpressions), reasons));
+        }
+    }
+
     private void Visit(Tree.Statement.Assignment assignment)
     {
         var sideErrorRange = assignment.Values.Count >= 1
-            ? assignment.Values[0].Range.Union(assignment.Values[^1].Range)
+            ? Tree.ListRange(assignment.Values)
             : assignment.Range;
 
         CheckAssignment(new TypeList.AssignmentTargets(assignment.Targets), assignment.Values, TypeListKind.Value,

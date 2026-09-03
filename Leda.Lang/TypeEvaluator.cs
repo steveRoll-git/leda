@@ -164,7 +164,7 @@ public class TypeEvaluator(Project project)
         return result;
     }
 
-    private static TypeList CreateTypeListFromValues(List<Tree.Expression> values)
+    internal static TypeList CreateTypeListFromValues(List<Tree.Expression> values)
     {
         if (values.Count > 0)
         {
@@ -1147,12 +1147,13 @@ public class TypeEvaluator(Project project)
     internal bool IsAssignableFrom(TypeList targets, TypeList sources,
         [NotNullWhen(false)] out List<TypeMismatch>? reasons,
         TypeListKind kind,
+        int sourceIndex = 0,
         int targetIndex = 0)
     {
         reasons = [];
 
         var targetMinimum = GetTypeListMinimum(targets) - targetIndex;
-        var sourceMinimum = GetTypeListMinimum(sources);
+        var sourceMinimum = GetTypeListMinimum(sources) - sourceIndex;
         if (sourceMinimum < targetMinimum)
         {
             reasons.Add(new TypeMismatch.NotEnoughValues(targetMinimum, sourceMinimum, kind, false));
@@ -1177,7 +1178,6 @@ public class TypeEvaluator(Project project)
                 GetTypeListMaximum(sources) + targetIndex);
         }
 
-        var sourceIndex = 0;
         for (; targetIndex < maximum; targetIndex++)
         {
             var sourceType = GetTypeInTypeList(sources, sourceIndex);

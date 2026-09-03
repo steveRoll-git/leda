@@ -53,15 +53,20 @@ public abstract record TypeMismatch
         public override string Message => "The values returned here are incompatible.";
     }
 
-    private string ToString(int indent)
+    public static string ListToString(List<TypeMismatch> mismatches, int indent = 0)
     {
-        var result = new string(' ', indent * 2) + Message;
-        foreach (var child in Children)
+        var result = "";
+        foreach (var child in mismatches)
         {
             result += "\n" + child.ToString(indent + 1);
         }
 
         return result;
+    }
+
+    private string ToString(int indent)
+    {
+        return new string(' ', indent * 2) + Message + ListToString(Children, indent);
     }
 
     public sealed override string ToString()

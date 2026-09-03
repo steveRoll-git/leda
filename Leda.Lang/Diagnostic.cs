@@ -153,6 +153,20 @@ public abstract record Diagnostic(Range Range)
         public override string Message => $"Step value of `for` loop must be 'number', but is '{Got}'.";
     }
 
+    public record ForLoopIteratorNotFunction(Range Range, string Got) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => $"The iterator of a `for` loop must be a function, but is '{Got}'.";
+    }
+
+    public record ForLoopIteratorArgumentsNotAssignable(Range Range, List<Lang.TypeMismatch> Reasons) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+
+        public override string Message => "The iterator function is not receiving arguments of the correct type."
+                                          + Lang.TypeMismatch.ListToString(Reasons);
+    }
+
     public record TypeMismatch(Range Range, Lang.TypeMismatch Mismatch) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
