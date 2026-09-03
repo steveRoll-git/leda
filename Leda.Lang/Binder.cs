@@ -51,6 +51,7 @@ public class Binder
         [Type.Boolean.Symbol.Name] = new(null, Type.Boolean.Symbol),
         [Type.NumberPrimitive.Symbol.Name] = new(null, Type.NumberPrimitive.Symbol),
         [Type.StringPrimitive.Symbol.Name] = new(null, Type.StringPrimitive.Symbol), // TODO stringlib should be a value here
+        [Type.TablePrimitive.Symbol.Name] = new(null, Type.TablePrimitive.Symbol), // TODO same with table
         [Type.FunctionPrimitive.Symbol.Name] = new(null, Type.FunctionPrimitive.Symbol),
     };
 
