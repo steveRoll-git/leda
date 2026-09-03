@@ -413,6 +413,18 @@ public class TypeEvaluator(Project project)
         return GetInferredParameterType(function, index) ?? Type.Any;
     }
 
+    private Type GetTypeOfIteratorForVariable(Symbol.ForLoopVariable loopVariable)
+    {
+        var iteratorType = GetTypeOfExpression(loopVariable.ForLoop.InitExpressions[0]);
+
+        if (iteratorType is not Type.Function function)
+        {
+            return Type.Unknown;
+        }
+
+        return GetTypeInTypeList(function.Returns, loopVariable.Index);
+    }
+
     private Type GetTypeOfSymbolUncached(Symbol symbol)
     {
         return symbol switch
@@ -421,6 +433,7 @@ public class TypeEvaluator(Project project)
             Symbol.LocalFunction localFunction => GetTypeOfFunction(localFunction.Declaration.Function),
             Symbol.Parameter parameter => GetTypeOfParameter(parameter.Function, parameter.Index),
             Symbol.NumericForCounter => Type.NumberPrimitive,
+            Symbol.ForLoopVariable variable => GetTypeOfIteratorForVariable(variable),
             Symbol.IntrinsicType intrinsicType => intrinsicType.Type,
             Symbol.TypeAlias typeAlias => GetTypeOfTypeAlias(typeAlias),
             Symbol.TypeParameter typeParameter => typeParameter.Type,
@@ -731,6 +744,12 @@ public class TypeEvaluator(Project project)
     internal int GetTypeListMinimum(TypeList typeList)
     {
         // TODO consider nillable types and rest
+
+        if (typeList is TypeList.FromValues { Values: var values })
+        {
+            return GetMinimumNumberOfValues(values);
+        }
+
         return typeList.Count;
     }
 

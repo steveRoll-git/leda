@@ -74,8 +74,7 @@ public abstract class Symbol(string name)
     /// <summary>
     /// An iteration variable in a generic `for` loop.
     /// </summary>
-    public class ForVariable(Tree.Statement.IteratorFor forLoop, int index)
-        : Symbol(forLoop.Declarations[index].Name.Value)
+    public class ForLoopVariable(Tree.Statement.IteratorFor forLoop, int index) : Symbol(forLoop.Variables[index].Value)
     {
         public Tree.Statement.IteratorFor ForLoop { get; } = forLoop;
         public int Index { get; } = index;

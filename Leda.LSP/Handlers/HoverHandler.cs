@@ -30,11 +30,11 @@ public class HoverHandler(LedaServer server) : HoverHandlerBase
                         $"(field) {key}: {Project.TypeEvaluator.TypeToString(gotType ?? Type.Unknown)}";
                     break;
 
-                case Symbol.Variable or Symbol.Parameter:
+                case Symbol.Variable or Symbol.Parameter or Symbol.ForLoopVariable:
                 {
                     var kind = symbol switch
                     {
-                        Symbol.LocalVariable => "local",
+                        Symbol.LocalVariable or Symbol.ForLoopVariable => "local",
                         Symbol.GlobalVariable => "global",
                         Symbol.Parameter => "(parameter)",
                         _ => "???",
