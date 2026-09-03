@@ -7,6 +7,7 @@ f(a)
 f({1, "abc", 3})
 local b = {"a", "b"}
 f(b)
+b[#b] = nil
 local c = {function(a, b)
   local c = a + b
 end}

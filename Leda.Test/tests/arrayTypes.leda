@@ -11,6 +11,8 @@ f({1, "abc", 3})
 local b = {"a", "b"}
 f(b)
 
+b[#b] = nil
+
 local c: function(a: number, b: number)[] = {
   function(a, b)
     local c: number = a + b

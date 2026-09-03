@@ -507,6 +507,15 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
     {
         var errorRange = (targetValue ?? sourceValue).Range;
 
+        // Explicitly assigning `nil` to an array element is allowed, due to the common pattern of removing the last
+        // element with `t[#t] = nil`.
+        if (sourceValue is Tree.Expression.Nil &&
+            targetValue is Tree.Expression.Access { Target: var target } &&
+            evaluator.GetTypeOfExpression(target) is Type.Array)
+        {
+            return;
+        }
+
         // We only comprehensively check table values against types that can be tables (Table or Array).
         if (sourceValue is not Tree.Expression.Table sourceTable || targetType is not (Type.Table or Type.Array))
         {
