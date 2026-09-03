@@ -378,7 +378,7 @@ public class Emitter
             Emit("for ");
             EmitDeclarationList(iteratorFor.Declarations);
             Emit(" in ");
-            EmitExpression(iteratorFor.Iterator, indent);
+            EmitExpressionList(iteratorFor.InitExpressions, indent);
             Emit(" do\n");
             EmitBlock(iteratorFor.Body, indent + 1);
             EmitIndent(indent);

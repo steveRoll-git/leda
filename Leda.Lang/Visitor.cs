@@ -177,7 +177,7 @@ public abstract class Visitor
                 break;
             case Tree.Statement.IteratorFor iteratorFor:
                 VisitAll(iteratorFor.Declarations, tree);
-                VisitAll(iteratorFor.Iterator, tree);
+                VisitAll(iteratorFor.InitExpressions, tree);
                 VisitAll(iteratorFor.Body, tree);
                 break;
             case Tree.Statement.LabelDefinition labelDefinition:

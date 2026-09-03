@@ -712,7 +712,7 @@ public class Binder
         var descendents = new List<FlowNode>();
         AddIfNotNull(descendents, antecedent);
 
-        VisitExpression(forLoop.Iterator, antecedent);
+        Visit(forLoop.InitExpressions, antecedent);
 
         PushLoopScope(forLoop);
 

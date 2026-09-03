@@ -531,7 +531,7 @@ public class Parser
         {
             var declarations = ParseDeclarationList();
             Expect(TokenKind.In);
-            var iterator = ParseExpression();
+            var iterator = ParseExpressionList();
             Expect(TokenKind.Do);
             var body = ParseBlock();
             return EndTree(new Tree.Statement.IteratorFor(declarations, iterator, body));

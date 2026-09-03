@@ -231,10 +231,10 @@ public abstract class Tree
         /// <summary>
         /// A for loop with an iterator.
         /// </summary>
-        public class IteratorFor(List<Declaration> declarations, Expression iterator, Block body) : Statement
+        public class IteratorFor(List<Declaration> declarations, List<Expression> initExpressions, Block body) : Statement
         {
             public List<Declaration> Declarations { get; } = declarations;
-            public Expression Iterator { get; } = iterator;
+            public List<Expression> InitExpressions { get; } = initExpressions;
             public Block Body { get; } = body;
         }
 
