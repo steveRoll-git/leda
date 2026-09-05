@@ -1,2 +1,2 @@
-AmbiguousSyntax(8:1 8:2)
+AmbiguousSyntax(10:1 10:2)
 Error: Ambiguous syntax. Prepend ';' or move characters to same line.
