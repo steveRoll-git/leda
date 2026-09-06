@@ -65,7 +65,7 @@ public abstract class Tree
             /// <summary>
             /// A pair of key and value types.
             /// </summary>
-            public class Field(Type key, Type value)
+            public class Field(Type key, Type value) : Tree
             {
                 public Type Key { get; } = key;
                 public Type Value { get; } = value;
@@ -434,7 +434,7 @@ public abstract class Tree
             /// <summary>
             /// A field in a table constructor.
             /// </summary>
-            public class Field(Expression key, Expression value)
+            public class Field(Expression key, Expression value) : Tree
             {
                 public Expression Key { get; } = key;
                 public Expression Value { get; } = value;

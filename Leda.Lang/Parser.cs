@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics;
 
 namespace Leda.Lang;
 
@@ -8,20 +8,127 @@ namespace Leda.Lang;
 public class Parser
 {
     /// <summary>
-    /// Returns whether `token` can end a statement.
+    /// A context that the parser could be in.
+    /// Stores the kinds of tokens that act as delimiters, and ones that close the context.
+    /// Used mainly for deciding whether to skip a token on a syntax error.
     /// </summary>
-    private static bool IsStatementEndingToken(Token token)
+    private class ParseContext
     {
-        return token.Kind is TokenKind.End or TokenKind.Else or TokenKind.Elseif or TokenKind.Until or TokenKind.Eof;
-    }
+        /// <summary>
+        /// The token that this context starts with.
+        /// </summary>
+        internal TokenKind? Open { get; private init; }
 
-    /// <summary>
-    /// Returns whether `token` is one that doesn't commonly appear after tree nodes, meaning it may be skipped if an
-    /// error is encountered.
-    /// </summary>
-    private static bool IsSkippableToken(Token token)
-    {
-        return token.Kind is not (TokenKind.RParen or TokenKind.RCurly or TokenKind.RSquare or TokenKind.End or TokenKind.Comma);
+        /// <summary>
+        /// The token that this context ends with.
+        /// </summary>
+        internal TokenKind? Close { get; private init; }
+
+        /// <summary>
+        /// Tokens that delimit sibling tree nodes in this context.
+        /// </summary>
+        internal List<TokenKind> Delimiters { get; private init; } = [];
+
+        /// <summary>
+        /// Whether to allow one extra trailing delimiter at the end.
+        /// </summary>
+        internal bool AllowTrailingDelimiter { get; private init; }
+
+        internal static readonly ParseContext Block = new()
+        {
+            Delimiters = [TokenKind.Semicolon],
+        };
+
+        internal static readonly ParseContext DoEnd = new()
+        {
+            Open = TokenKind.Do,
+            Delimiters = [TokenKind.Semicolon],
+            Close = TokenKind.End,
+        };
+
+        internal static readonly ParseContext IfThen = new()
+        {
+            Open = TokenKind.If,
+            Close = TokenKind.Then,
+        };
+
+        internal static readonly ParseContext ElseifThen = new()
+        {
+            Open = TokenKind.Elseif,
+            Close = TokenKind.Then,
+        };
+
+        internal static readonly ParseContext ThenEnd = new()
+        {
+            Open = TokenKind.Then,
+            Delimiters = [TokenKind.Semicolon, TokenKind.Else, TokenKind.Elseif],
+            Close = TokenKind.End,
+        };
+
+        internal static readonly ParseContext ElseEnd = new()
+        {
+            Open = TokenKind.Else,
+            Delimiters = [TokenKind.Semicolon],
+            Close = TokenKind.End,
+        };
+
+        internal static readonly ParseContext WhileDo = new()
+        {
+            Open = TokenKind.While,
+            Close = TokenKind.Do,
+        };
+
+        internal static readonly ParseContext ForDo = new()
+        {
+            Open = TokenKind.For,
+            Delimiters = [TokenKind.Comma],
+            Close = TokenKind.Do,
+        };
+
+        internal static readonly ParseContext RepeatUntil = new()
+        {
+            Open = TokenKind.Repeat,
+            Delimiters = [TokenKind.Semicolon],
+            Close = TokenKind.Until,
+        };
+
+        internal static readonly ParseContext FunctionBody = new()
+        {
+            Delimiters = [TokenKind.Semicolon],
+            Close = TokenKind.End,
+        };
+
+        internal static readonly ParseContext CommaSeparatedList = new()
+        {
+            Delimiters = [TokenKind.Comma],
+        };
+
+        internal static readonly ParseContext Parens = new()
+        {
+            Open = TokenKind.LParen,
+            Close = TokenKind.RParen,
+        };
+
+        internal static readonly ParseContext SquareBrackets = new()
+        {
+            Open = TokenKind.LSquare,
+            Close = TokenKind.RSquare,
+        };
+
+        internal static readonly ParseContext AngleBrackets = new()
+        {
+            Open = TokenKind.Less,
+            Delimiters = [TokenKind.Comma],
+            Close = TokenKind.Greater,
+        };
+
+        internal static readonly ParseContext TableConstructor = new()
+        {
+            Open = TokenKind.LCurly,
+            Delimiters = [TokenKind.Comma, TokenKind.Semicolon],
+            Close = TokenKind.RCurly,
+            AllowTrailingDelimiter = true,
+        };
     }
 
     private List<Diagnostic> Diagnostics { get; } = [];
@@ -42,6 +149,8 @@ public class Parser
     /// Stores tokens that were received when Lookahead was called.
     /// </summary>
     private readonly List<Token> lookaheadTokens = [];
+
+    private readonly List<ParseContext> parseContextStack = [];
 
     /// <summary>
     /// Stores the positions that were started with `StartTree`.
@@ -97,33 +206,26 @@ public class Parser
         return consumed;
     }
 
-    private bool Accept(TokenKind kind, [NotNullWhen(true)] out Token? result)
-    {
-        if (token.Kind == kind)
-        {
-            result = token;
-            NextToken();
-            return true;
-        }
-
-        result = null;
-        return false;
-    }
-
     /// <summary>
     /// If the current token is of the given kind, consumes it and returns `true`, otherwise returns `false`.
     /// </summary>
     private bool Accept(TokenKind kind)
     {
-        return Accept(kind, out _);
+        if (token.Kind == kind)
+        {
+            NextToken();
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
-    /// Skips or consumes the current token, for when it causes a syntax error.
+    /// Keeps or consumes the current token, for when it causes a syntax error.
     /// </summary>
     private void HandleErrorToken()
     {
-        if (IsSkippableToken(token))
+        if (!IsTokenDelimiter())
         {
             NextToken();
         }
@@ -146,6 +248,20 @@ public class Parser
         }
 
         return got;
+    }
+
+    private bool AcceptOneOf(List<TokenKind> kinds)
+    {
+        foreach (var tokenKind in kinds)
+        {
+            if (token.Kind == tokenKind)
+            {
+                NextToken();
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ReportUnexpectedToken()
@@ -259,6 +375,91 @@ public class Parser
         return ExpectName(name => new Tree.Expression.String(name));
     }
 
+    private Tree.Type.StringLiteral ParseTypeStringIdentifier()
+    {
+        return ExpectName(name => new Tree.Type.StringLiteral(name));
+    }
+
+    /// <summary>
+    /// Starts the given parse context, and expects its opening token if it has one.
+    /// </summary>
+    private void StartContext(ParseContext parseContext)
+    {
+        parseContextStack.Add(parseContext);
+        if (parseContext.Open is { } open)
+        {
+            Expect(open);
+        }
+    }
+
+    /// <summary>
+    /// Ends the current parse context, and expects its closing token if it has one.
+    /// </summary>
+    private void EndContext()
+    {
+        var parseContext = parseContextStack[^1];
+        parseContextStack.RemoveAt(parseContextStack.Count - 1);
+        if (parseContext.Close is { } close)
+        {
+            Expect(close);
+        }
+    }
+
+    /// <summary>
+    /// Starts a new parse context without expecting the previous context's close token. Used when starting a context
+    /// whose close token is the same as the previous context's start token.
+    /// </summary>
+    private void ReplaceContext(ParseContext parseContext)
+    {
+        parseContextStack.RemoveAt(parseContextStack.Count - 1);
+        StartContext(parseContext);
+    }
+
+    /// <summary>
+    /// Returns whether the current token delimits or ends the given parse context.
+    /// </summary>
+    private bool IsTokenDelimiter(ParseContext parseContext)
+    {
+        return token.Kind == TokenKind.Eof || token.Kind == parseContext.Close || parseContext.Delimiters.Contains(token.Kind);
+    }
+
+    /// <summary>
+    /// Returns whether the current token delimits or ends the current parse context, or the one before it.
+    /// </summary>
+    private bool IsTokenDelimiter()
+    {
+        return IsTokenDelimiter(parseContextStack[^1]) ||
+               (parseContextStack.Count > 1 && IsTokenDelimiter(parseContextStack[^2]));
+    }
+
+    /// <summary>
+    /// Parses a list of items that are delimited by the given context's delimiters.
+    /// </summary>
+    /// <param name="context">The context to parse in.</param>
+    /// <param name="parseFunc">A function that parses a single item in the list.</param>
+    /// <param name="allowEmpty">Whether to allow parsing an empty list.</param>
+    private List<T> ParseDelimitedList<T>(ParseContext context, Func<T> parseFunc, bool allowEmpty) where T : Tree
+    {
+        List<T> items = [];
+
+        StartContext(context);
+
+        if (allowEmpty && (token.Kind == context.Close || IsTokenDelimiter(parseContextStack[^2])))
+        {
+            EndContext();
+            return items;
+        }
+
+        do
+        {
+            items.Add(parseFunc());
+        } while (AcceptOneOf(context.Delimiters) && (token.Kind != context.Close || !context.AllowTrailingDelimiter));
+
+        EndContext();
+
+        return items;
+    }
+
     /// <summary>
     /// Parse a block of statements.
     /// </summary>
@@ -268,7 +469,7 @@ public class Parser
         var typeDeclarations = new List<Tree.TypeAliasDeclaration>();
         var labels = new List<Tree.Statement.LabelDefinition>();
 
-        while (!IsStatementEndingToken(token))
+        while (!IsTokenDelimiter())
         {
             if (token is { Kind: TokenKind.Name, Value: "type" } && Lookahead(1).Kind == TokenKind.Name)
             {
@@ -302,7 +503,7 @@ public class Parser
                 // This behavior models Lua 5.1's syntax - in Lua 5.2+, semicolons may be their own statements.
                 Accept(TokenKind.Semicolon);
 
-                if (statement is Tree.Statement.Return or Tree.Statement.Break or Tree.Statement.Error)
+                if (statement is Tree.Statement.Return or Tree.Statement.Break)
                 {
                     // No more statements can come after `return` or `break`.
                     break;
@@ -328,7 +529,9 @@ public class Parser
     {
         var fileInfo = new FileInfo([]);
 
+        StartContext(ParseContext.Block);
         var chunk = ParseChunk(fileInfo);
+        EndContext();
 
         return new Tree.File(chunk, fileInfo.GlobalDeclarations);
     }
@@ -343,7 +546,7 @@ public class Parser
         {
             StartTree();
             NextToken(); // skip 'return'
-            var returnStatement = new Tree.Statement.Return(IsStatementEndingToken(token) ? [] : ParseExpressionList());
+            var returnStatement = new Tree.Statement.Return(ParseExpressionList(true));
             chunkStack.Peek().ReturnStatements.Add(returnStatement);
             return EndTree(returnStatement);
         }
@@ -437,7 +640,7 @@ public class Parser
 
             Expect(TokenKind.Equal);
 
-            var values = ParseExpressionList();
+            var values = ParseExpressionList(false);
 
             return EndTree(new Tree.Statement.Assignment(targets, values));
         }
@@ -450,10 +653,12 @@ public class Parser
     private Tree.Statement.Do ParseDo()
     {
         StartTree();
+
         // do 'block' end
-        Expect(TokenKind.Do);
+        StartContext(ParseContext.DoEnd);
         var block = ParseBlock();
-        Expect(TokenKind.End);
+        EndContext();
+
         return EndTree(new Tree.Statement.Do(block));
     }
 
@@ -468,9 +673,9 @@ public class Parser
 
         // 'if' exp 'then' block
         {
-            Expect(TokenKind.If);
+            StartContext(ParseContext.IfThen);
             var condition = ParseExpression();
-            Expect(TokenKind.Then);
+            ReplaceContext(ParseContext.ThenEnd);
             var body = ParseBlock();
             primary = new Tree.IfBranch(condition, body);
         }
@@ -478,10 +683,11 @@ public class Parser
         List<Tree.IfBranch> elseIfs = [];
 
         // 'elseif' exp 'then' block
-        while (Accept(TokenKind.Elseif))
+        while (token.Kind == TokenKind.Elseif)
         {
+            ReplaceContext(ParseContext.ElseifThen);
             var condition = ParseExpression();
-            Expect(TokenKind.Then);
+            ReplaceContext(ParseContext.ThenEnd);
             var body = ParseBlock();
             elseIfs.Add(new Tree.IfBranch(condition, body));
         }
@@ -489,12 +695,13 @@ public class Parser
         Tree.Block? elseBody = null;
 
         // 'else' block
-        if (Accept(TokenKind.Else))
+        if (token.Kind == TokenKind.Else)
         {
+            ReplaceContext(ParseContext.ElseEnd);
             elseBody = ParseBlock();
         }
 
-        Expect(TokenKind.End);
+        EndContext();
 
         return EndTree(new Tree.Statement.If(primary, elseIfs, elseBody));
     }
@@ -503,7 +710,7 @@ public class Parser
     {
         StartTree();
 
-        Expect(TokenKind.For);
+        StartContext(ParseContext.ForDo);
 
         // 'for' name '=' exp ',' exp [',' exp] 'do' block 'end'
         if (Lookahead(1).Kind == TokenKind.Equal)
@@ -520,9 +727,9 @@ public class Parser
                 step = ParseExpression();
             }
 
-            Expect(TokenKind.Do);
+            ReplaceContext(ParseContext.DoEnd);
             var body = ParseBlock();
-            Expect(TokenKind.End);
+            EndContext();
 
             return EndTree(new Tree.Statement.NumericalFor(counter, start, end, step, body));
         }
@@ -531,11 +738,11 @@ public class Parser
         {
             var variables = ParseNameList();
             Expect(TokenKind.In);
-            var iterator = ParseExpressionList();
+            var iterator = ParseExpressionList(false);
 
-            Expect(TokenKind.Do);
+            ReplaceContext(ParseContext.DoEnd);
             var body = ParseBlock();
-            Expect(TokenKind.End);
+            EndContext();
 
             return EndTree(new Tree.Statement.IteratorFor(variables, iterator, body));
         }
@@ -544,22 +751,26 @@ public class Parser
     private Tree.Statement.While ParseWhileLoop()
     {
         StartTree();
+
         // 'while' exp 'do' block 'end'
-        Expect(TokenKind.While);
+        StartContext(ParseContext.WhileDo);
         var condition = ParseExpression();
-        Expect(TokenKind.Do);
+        ReplaceContext(ParseContext.DoEnd);
         var body = ParseBlock();
-        Expect(TokenKind.End);
+        EndContext();
+
         return EndTree(new Tree.Statement.While(condition, body));
     }
 
     private Tree.Statement.RepeatUntil ParseRepeatUntilLoop()
     {
         StartTree();
+
         // 'repeat' block 'until' exp
-        Expect(TokenKind.Repeat);
+        StartContext(ParseContext.RepeatUntil);
         var body = ParseBlock();
-        Expect(TokenKind.Until);
+        EndContext();
+
         var condition = ParseExpression();
         return EndTree(new Tree.Statement.RepeatUntil(body, condition));
     }
@@ -633,11 +844,13 @@ public class Parser
     {
         StartTree(prev);
 
+        // type '?'
         if (Accept(TokenKind.QuestionMark))
         {
             return ParseTypePostfix(EndTree(new Tree.Type.Nillable(prev)));
         }
 
+        // type '[' ']'
         if (Accept(TokenKind.LSquare))
         {
             Expect(TokenKind.RSquare);
@@ -647,102 +860,72 @@ public class Parser
         return EndTree(prev);
     }
 
+    private Tree.Type.Table.Field ParseTableTypeField()
+    {
+        StartTree();
+
+        Tree.Type key;
+        if (token.Kind == TokenKind.LSquare)
+        {
+            StartContext(ParseContext.SquareBrackets);
+            key = ParseType();
+            EndContext();
+        }
+        else
+        {
+            key = ParseTypeStringIdentifier();
+        }
+
+        Expect(TokenKind.Colon);
+
+        var value = ParseType();
+
+        return EndTree(new Tree.Type.Table.Field(key, value));
+    }
+
     private Tree.Type.Table ParseTableType()
     {
         // '{' [typepair {',' typepair}] '}'
 
         StartTree();
 
-        Expect(TokenKind.LCurly);
-
-        List<Tree.Type.Table.Field> fields = [];
-
-        while (!Accept(TokenKind.RCurly))
-        {
-            Tree.Type? key = null;
-            if (Accept(TokenKind.LSquare))
-            {
-                key = ParseType();
-                Expect(TokenKind.RSquare);
-            }
-            else if (token.Kind == TokenKind.Name)
-            {
-                key = ConsumeTree(new Tree.Type.StringLiteral(token.Value));
-            }
-            else
-            {
-                Report(new Diagnostic.DidNotExpectTokenHere(token.Range, token.Kind));
-            }
-
-            Expect(TokenKind.Colon);
-
-            var value = ParseType();
-
-            if (key != null)
-            {
-                fields.Add(new(key, value));
-            }
-
-            if (!Accept(TokenKind.Comma))
-            {
-                Expect(TokenKind.RCurly);
-                break;
-            }
-        }
+        var fields = ParseDelimitedList(ParseContext.TableConstructor, ParseTableTypeField, true);
 
         return EndTree(new Tree.Type.Table(fields));
     }
 
-    private List<Tree.Type> ParseTypeList()
+    private List<Tree.Type> ParseTypeList(bool allowEmpty)
     {
-        List<Tree.Type> list = [];
-        do
-        {
-            list.Add(ParseType());
-        } while (Accept(TokenKind.Comma));
-
-        return list;
+        return ParseDelimitedList(ParseContext.CommaSeparatedList, ParseType, allowEmpty);
     }
 
     private List<Tree.Type>? ParseTypeArgumentList()
     {
-        var less = Expect(TokenKind.Less);
+        var less = token;
+        StartContext(ParseContext.AngleBrackets);
 
-        if (Accept(TokenKind.Greater, out var greater))
+        var list = ParseTypeList(true);
+
+        var greater = token;
+        EndContext();
+
+        if (list.Count == 0)
         {
             Report(new Diagnostic.EmptyTypeParameterList(less.Range.Union(greater.Range)));
             return null;
         }
-
-        var list = ParseTypeList();
-
-        Expect(TokenKind.Greater);
 
         return list;
     }
 
     private List<Tree.Expression.Name> ParseNameList()
     {
-        List<Tree.Expression.Name> names = [];
-        // name {',' name}
-        do
-        {
-            names.Add(ParseValueName());
-        } while (Accept(TokenKind.Comma));
-
-        return names;
+        return ParseDelimitedList(ParseContext.CommaSeparatedList, ParseValueName, false);
     }
 
-    private List<Tree.Declaration> ParseDeclarationList()
+    private List<Tree.Declaration> ParseDeclarationList(bool allowEmpty)
     {
-        List<Tree.Declaration> declarations = [];
-        // declaration {',' declaration}
-        do
-        {
-            declarations.Add(ParseDeclaration());
-        } while (Accept(TokenKind.Comma));
-
-        return declarations;
+        return ParseDelimitedList(ParseContext.CommaSeparatedList, ParseDeclaration, allowEmpty);
     }
 
     private Tree.Statement ParseLocalDeclaration()
@@ -760,12 +943,12 @@ public class Parser
         }
 
         // 'local' declaration {',' declaration} ['=' explist]
-        var declarations = ParseDeclarationList();
+        var declarations = ParseDeclarationList(false);
 
         List<Tree.Expression> values = [];
         if (Accept(TokenKind.Equal))
         {
-            values = ParseExpressionList();
+            values = ParseExpressionList(false);
         }
 
         return EndTree(new Tree.Statement.LocalDeclaration(declarations, values));
@@ -788,12 +971,12 @@ public class Parser
         }
 
         // 'global' declaration {',' declaration} ['=' explist]
-        var declarations = ParseDeclarationList();
+        var declarations = ParseDeclarationList(false);
 
         List<Tree.Expression> values = [];
         if (Accept(TokenKind.Equal))
         {
-            values = ParseExpressionList();
+            values = ParseExpressionList(false);
         }
 
         return EndTree(new Tree.Statement.GlobalDeclaration(declarations, values));
@@ -853,23 +1036,20 @@ public class Parser
 
     private List<Tree.Type.Name> ParseTypeParameterList()
     {
-        var less = Expect(TokenKind.Less);
+        var less = token;
+        StartContext(ParseContext.AngleBrackets);
 
-        if (Accept(TokenKind.Greater, out var greater))
+        var list = ParseDelimitedList(ParseContext.CommaSeparatedList, ParseTypeName, true);
+
+        var greater = token;
+        EndContext();
+
+        if (list.Count == 0)
         {
             Report(new Diagnostic.EmptyTypeParameterList(less.Range.Union(greater.Range)));
-            return [];
         }
 
-        List<Tree.Type.Name> parameters = [];
-        do
-        {
-            parameters.Add(ParseTypeName());
-        } while (Accept(TokenKind.Comma));
-
-        Expect(TokenKind.Greater);
-
-        return parameters;
+        return list;
     }
 
     /// <summary>
@@ -888,7 +1068,6 @@ public class Parser
         }
 
         var lParenRange = token.Range;
-        Expect(TokenKind.LParen);
         List<Tree.Declaration> parameters = [];
         if (isMethod)
         {
@@ -896,16 +1075,14 @@ public class Parser
             parameters.Add(new(new Tree.Expression.Name("self") { Range = lParenRange }, null));
         }
 
-        if (!Accept(TokenKind.RParen))
-        {
-            parameters = ParseDeclarationList();
-            Expect(TokenKind.RParen);
-        }
+        StartContext(ParseContext.Parens);
+        parameters = ParseDeclarationList(true);
+        EndContext();
 
         List<Tree.Type>? returnTypes = null;
         if (Accept(TokenKind.Colon))
         {
-            returnTypes = ParseTypeList();
+            returnTypes = ParseTypeList(false);
         }
 
         return EndTree(new Tree.Type.Function(parameters, returnTypes, typeParameters));
@@ -921,8 +1098,9 @@ public class Parser
         // functiontype block 'end'
         var functionType = ParseFunctionType(isMethod);
 
+        StartContext(ParseContext.FunctionBody);
         var chunk = ParseChunk(null);
-        Expect(TokenKind.End);
+        EndContext();
 
         return EndTree(new Tree.Expression.Function(functionType, chunk, nameRange, isMethod));
     }
@@ -935,10 +1113,11 @@ public class Parser
         StartTree();
 
         // '(' exp ')'
-        if (Accept(TokenKind.LParen))
+        if (token.Kind == TokenKind.LParen)
         {
+            StartContext(ParseContext.Parens);
             var expression = ParseExpression();
-            Expect(TokenKind.RParen);
+            EndContext();
             return ParsePrefixExpression(EndTree(expression));
         }
 
@@ -975,25 +1154,21 @@ public class Parser
         if (Accept(TokenKind.Colon))
         {
             var funcName = ParseStringIdentifier();
-            Expect(TokenKind.LParen);
+            StartContext(ParseContext.Parens);
 
             // TODO parse optional type parameters
 
-            if (Accept(TokenKind.RParen))
-            {
-                return ParsePrefixExpression(EndTree(new Tree.Expression.MethodCall(previous, funcName, [])));
-            }
-
-            var parameters = ParseExpressionList();
-            Expect(TokenKind.RParen);
-            return ParsePrefixExpression(EndTree(new Tree.Expression.MethodCall(previous, funcName, parameters)));
+            var arguments = ParseExpressionList(true);
+            EndContext();
+            return ParsePrefixExpression(EndTree(new Tree.Expression.MethodCall(previous, funcName, arguments)));
         }
 
         // Access with square brackets: '[' exp ']'
-        if (Accept(TokenKind.LSquare))
+        if (token.Kind == TokenKind.LSquare)
         {
+            StartContext(ParseContext.SquareBrackets);
             var expression = ParseExpression();
-            Expect(TokenKind.RSquare);
+            EndContext();
             return ParsePrefixExpression(EndTree(new Tree.Expression.Access(previous, expression)));
         }
 
@@ -1014,7 +1189,7 @@ public class Parser
     {
         // Function call: '(' [explist] ')'
 
-        var lParen = Expect(TokenKind.LParen);
+        var lParen = token;
 
         // If the '(' is on a new line, it could be a new statement that starts with it - report ambiguous syntax.
         if (previous.Range.End.Line < lParen.Range.Start.Line)
@@ -1022,35 +1197,21 @@ public class Parser
             Report(new Diagnostic.AmbiguousSyntax(lParen.Range));
         }
 
-        if (Accept(TokenKind.RParen, out var rParen))
-        {
-            return new Tree.Expression.Call(previous, [], typeArguments, ArgsRange());
-        }
+        StartContext(ParseContext.Parens);
+        var arguments = ParseExpressionList(true);
+        var rParen = token;
+        EndContext();
 
-        var arguments = ParseExpressionList();
-        rParen = Expect(TokenKind.RParen);
-        return new Tree.Expression.Call(previous, arguments, typeArguments, ArgsRange());
-
-        // Returns the range inside the call's parentheses.
-        Range ArgsRange()
-        {
-            return new(lParen.Range.End, rParen.Range.Start);
-        }
+        return new Tree.Expression.Call(previous, arguments, typeArguments, new(lParen.Range.End, rParen.Range.Start));
     }
 
     /// <summary>
     /// Parse a list of expressions separated by commas.
     /// </summary>
-    private List<Tree.Expression> ParseExpressionList()
+    private List<Tree.Expression> ParseExpressionList(bool allowEmpty)
     {
         // {exp ','} exp
-        List<Tree.Expression> values = [];
-        do
-        {
-            values.Add(ParseExpression());
-        } while (Accept(TokenKind.Comma));
-
-        return values;
+        return ParseDelimitedList(ParseContext.CommaSeparatedList, ParseExpression, allowEmpty);
     }
 
     /// <summary>
@@ -1090,21 +1251,20 @@ public class Parser
     {
         StartTree();
 
-        Expect(TokenKind.LCurly);
-
         var lastNumberIndex = 1;
-        List<Tree.Expression.Table.Field> fields = [];
-
-        while (!Accept(TokenKind.RCurly))
+        var fields = ParseDelimitedList(ParseContext.TableConstructor, () =>
         {
+            StartTree();
+
             var isListElement = false;
 
             Tree.Expression key;
             // '[' exp ']' '=' exp
-            if (Accept(TokenKind.LSquare))
+            if (token.Kind == TokenKind.LSquare)
             {
+                StartContext(ParseContext.SquareBrackets);
                 key = ParseExpression();
-                Expect(TokenKind.RSquare);
+                EndContext();
                 Expect(TokenKind.Equal);
             }
             // name '=' exp
@@ -1122,7 +1282,6 @@ public class Parser
             }
 
             var value = ParseExpression();
-            fields.Add(new Tree.Expression.Table.Field(key, value));
 
             if (isListElement)
             {
@@ -1130,12 +1289,8 @@ public class Parser
                 key.Range = value.Range;
             }
 
-            if (!Accept(TokenKind.Comma) && !Accept(TokenKind.Semicolon))
-            {
-                Expect(TokenKind.RCurly);
-                break;
-            }
-        }
+            return EndTree(new Tree.Expression.Table.Field(key, value));
+        }, true);
 
         return EndTree(new Tree.Expression.Table(fields, fields.Count > 0 && lastNumberIndex - 1 == fields.Count));
     }
@@ -1232,6 +1387,8 @@ public class Parser
     {
         var parser = new Parser(source);
         var file = parser.ParseFile();
+        Debug.Assert(parser.chunkStack.Count == 0);
+        Debug.Assert(parser.parseContextStack.Count == 0);
         return (file, parser.Diagnostics);
     }
 }
