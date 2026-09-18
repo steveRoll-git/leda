@@ -541,14 +541,9 @@ public class Parser
     /// </summary>
     private Tree.Statement ParseStatement()
     {
-        // 'return' [explist]
         if (token.Kind == TokenKind.Return)
         {
-            StartTree();
-            NextToken(); // skip 'return'
-            var returnStatement = new Tree.Statement.Return(ParseExpressionList(true));
-            chunkStack.Peek().ReturnStatements.Add(returnStatement);
-            return EndTree(returnStatement);
+            return ParseReturn();
         }
 
         if (token.Kind == TokenKind.Break)
@@ -648,6 +643,19 @@ public class Parser
         ReportUnexpectedToken();
 
         return EndTree(new Tree.Statement.Error());
+    }
+
+    private Tree.Statement.Return ParseReturn()
+    {
+        StartTree();
+
+        // 'return' [explist]
+        Expect(TokenKind.Return);
+
+        var returnStatement = new Tree.Statement.Return(ParseExpressionList(true));
+        chunkStack.Peek().ReturnStatements.Add(returnStatement);
+
+        return EndTree(returnStatement);
     }
 
     private Tree.Statement.Do ParseDo()
