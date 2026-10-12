@@ -382,6 +382,14 @@ public class TypeEvaluator(Project project)
         };
     }
 
+    /// <summary>
+    /// If `optional` is true, returns a nillable of the given type, otherwise returns the type itself.
+    /// </summary>
+    private Type Optional(Type type, bool optional)
+    {
+        return optional ? CreateNillableType(type) : type;
+    }
+
     // TODO this probably needs to be cached
     internal Type? GetInferredParameterType(Tree.Expression.Function function, int index)
     {
@@ -403,14 +411,11 @@ public class TypeEvaluator(Project project)
             return Type.Unknown;
         }
 
-        var declaration = function.Type.Parameters[index];
+        var param = function.Type.Parameters[index];
 
-        if (declaration.Type != null)
-        {
-            return GetTypeOfTypeAnnotation(declaration.Type);
-        }
-
-        return GetInferredParameterType(function, index) ?? Type.Any;
+        return Optional(param.Type is { } declarationType
+            ? GetTypeOfTypeAnnotation(declarationType)
+            : GetInferredParameterType(function, index) ?? Type.Any, param.Optional);
     }
 
     private Type GetTypeOfIteratorForVariable(Symbol.ForLoopVariable loopVariable)
@@ -816,10 +821,10 @@ public class TypeEvaluator(Project project)
                 // TODO check rest
                 return GetTypeOfExpressionInList(targets, index);
 
-            case TypeList.AnnotationParameters { Parameters: var declarations }:
-                if (index < declarations.Count && declarations[index].Type is { } declarationType)
+            case TypeList.AnnotationParameters { Parameters: var parameters }:
+                if (index < parameters.Count && parameters[index].Type is { } declarationType)
                 {
-                    return GetTypeOfTypeAnnotation(declarationType);
+                    return Optional(GetTypeOfTypeAnnotation(declarationType), parameters[index].Optional);
                 }
 
                 return Type.Nil;

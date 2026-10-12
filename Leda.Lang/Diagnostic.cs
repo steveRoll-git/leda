@@ -205,6 +205,12 @@ public abstract record Diagnostic(Range Range)
         public override string Message => $"Parameter '{Name}' implicitly has 'any' type.";
     }
 
+    public record NonTrailingOptionalParameter(Range Range) : Diagnostic(Range)
+    {
+        public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;
+        public override string Message => "A required parameter cannot follow an optional parameter.";
+    }
+
     public record EmptyTypeParameterList(Range Range) : Diagnostic(Range)
     {
         public override DiagnosticSeverity Severity => DiagnosticSeverity.Error;

@@ -85,6 +85,22 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
         return false;
     }
 
+    private void CheckOptionalParameterOrder(List<Tree.Parameter> parameters)
+    {
+        var seenOptional = false;
+        foreach (var parameter in parameters)
+        {
+            if (parameter.Optional)
+            {
+                seenOptional = true;
+            }
+            else if (seenOptional)
+            {
+                Report(new Diagnostic.NonTrailingOptionalParameter(parameter.Name.Range));
+            }
+        }
+    }
+
     protected override void Visit(Tree tree, Tree? parent, ChildKind childKind)
     {
         switch (tree)
@@ -194,6 +210,8 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
                 Report(new Diagnostic.NotAllPathsReturn(function.NameRange));
             }
         }
+
+        CheckOptionalParameterOrder(function.Type.Parameters);
 
         for (var i = 0; i < function.Type.Parameters.Count; i++)
         {
@@ -492,6 +510,8 @@ public class Checker(Project project, TypeEvaluator evaluator) : Visitor
 
     private void Visit(Tree.Type.Function functionType)
     {
+        CheckOptionalParameterOrder(functionType.Parameters);
+
         foreach (var parameter in functionType.Parameters)
         {
             if (parameter.Type == null)
