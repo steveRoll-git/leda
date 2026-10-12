@@ -744,18 +744,35 @@ public class TypeEvaluator(Project project)
     }
 
     /// <summary>
+    /// Returns the minimum number of arguments that a parameter list needs.
+    /// </summary>
+    private int GetParameterListMinimum(List<Tree.Parameter> parameters)
+    {
+        for (var i = 0; i < parameters.Count; i++)
+        {
+            if (parameters[i].Optional)
+            {
+                return i;
+            }
+        }
+
+        return parameters.Count;
+    }
+
+    /// <summary>
     /// Returns the minimum number of elements in this TypeList.
     /// </summary>
     internal int GetTypeListMinimum(TypeList typeList)
     {
-        // TODO consider nillable types and rest
+        // TODO consider rest
 
-        if (typeList is TypeList.FromValues { Values: var values })
+        return typeList switch
         {
-            return GetMinimumNumberOfValues(values);
-        }
-
-        return typeList.Count;
+            TypeList.FromValues { Values: var values } => GetMinimumNumberOfValues(values),
+            TypeList.FunctionParameters { Function.Type.Parameters: var parameters } => GetParameterListMinimum(parameters),
+            TypeList.AnnotationParameters { Parameters: var parameters } => GetParameterListMinimum(parameters),
+            _ => typeList.Count,
+        };
     }
 
     /// <summary>
