@@ -27,7 +27,7 @@ public abstract record TypeMismatch
                 TypeListKind.FunctionTypeParameter =>
                     $"Target type doesn't provide enough parameters. Expected {AmountPhrase}{Minimum}, got {Got}.",
                 _ =>
-                    $"Not enough {TypeList.ItemNoun(Kind)}(s) are given. Expected {AmountPhrase}{Minimum} but got {Got}.",
+                    $"Expected {AmountPhrase}{Minimum} {TypeList.ItemNoun(Kind)}s, but got {Got}.",
             };
     }
 

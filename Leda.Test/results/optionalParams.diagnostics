@@ -1,7 +1,7 @@
 TooManyValues(4:18 4:21)
 Error: Expected at most 3 arguments, but got 4.
 TypeMismatch(5:1 5:2)
-Error: Not enough argument(s) are given. Expected at least 1 but got 0.
+Error: Expected at least 1 arguments, but got 0.
 NonTrailingOptionalParameter(12:41 12:42)
 Error: A required parameter cannot follow an optional parameter.
 NonTrailingOptionalParameter(14:42 14:43)
