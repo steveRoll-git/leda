@@ -34,9 +34,9 @@ public abstract class TypeList
     public static readonly Builtin Unknown = new();
 
     /// <summary>
-    /// The parameters of a function.
+    /// The parameters in a function value.
     /// </summary>
-    public class Parameters(Tree.Expression.Function function) : TypeList
+    public class FunctionParameters(Tree.Expression.Function function) : TypeList
     {
         public Tree.Expression.Function Function { get; } = function;
         public override int Count => Function.Type.Parameters.Count;
@@ -60,10 +60,14 @@ public abstract class TypeList
         public override int Count => Values.Count;
     }
 
-    public class FromDeclarations(List<Tree.Declaration> declarations) : TypeList
+    /// <summary>
+    /// Parameters in a function type annotation.
+    /// </summary>
+    /// <param name="parameters"></param>
+    public class AnnotationParameters(List<Tree.Parameter> parameters) : TypeList
     {
-        public List<Tree.Declaration> Declarations { get; } = declarations;
-        public override int Count => Declarations.Count;
+        public List<Tree.Parameter> Parameters { get; } = parameters;
+        public override int Count => Parameters.Count;
     }
 
     /// <summary>

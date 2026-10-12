@@ -181,7 +181,7 @@ public class TypeEvaluator(Project project)
 
     private Type.Function GetTypeOfFunctionUncached(Tree.Expression.Function function)
     {
-        var parameters = new TypeList.Parameters(function);
+        var parameters = new TypeList.FunctionParameters(function);
 
         TypeList returns;
         if (function.Type.ReturnTypes != null)
@@ -341,7 +341,7 @@ public class TypeEvaluator(Project project)
 
     private static Type.Function GetTypeOfFunctionAnnotationUncached(Tree.Type.Function function)
     {
-        return new Type.Function(new TypeList.FromDeclarations(function.Parameters),
+        return new Type.Function(new TypeList.AnnotationParameters(function.Parameters),
             function.ReturnTypes != null ? new TypeList.FromTypes(function.ReturnTypes) : TypeList.Empty, []);
     }
 
@@ -387,7 +387,7 @@ public class TypeEvaluator(Project project)
     {
         if (function.ValueLocation != null &&
             GetTypeAtValueLocation(function.ValueLocation) is Type.Function targetFunction &&
-            !(targetFunction.Parameters is TypeList.Parameters { Function: var other } && other == function))
+            !(targetFunction.Parameters is TypeList.FunctionParameters { Function: var other } && other == function))
         {
             return GetTypeInTypeList(targetFunction.Parameters, index);
         }
@@ -796,7 +796,7 @@ public class TypeEvaluator(Project project)
 
         switch (typeList)
         {
-            case TypeList.Parameters { Function: var function }:
+            case TypeList.FunctionParameters { Function: var function }:
                 return GetTypeOfParameter(function, index);
 
             case TypeList.FromTypes { Types: var types }:
@@ -816,7 +816,7 @@ public class TypeEvaluator(Project project)
                 // TODO check rest
                 return GetTypeOfExpressionInList(targets, index);
 
-            case TypeList.FromDeclarations { Declarations: var declarations }:
+            case TypeList.AnnotationParameters { Parameters: var declarations }:
                 if (index < declarations.Count && declarations[index].Type is { } declarationType)
                 {
                     return GetTypeOfTypeAnnotation(declarationType);
@@ -1231,9 +1231,9 @@ public class TypeEvaluator(Project project)
     {
         return typeList switch
         {
-            TypeList.Parameters { Function.Type.Parameters: var parameters } when index < parameters.Count =>
+            TypeList.FunctionParameters { Function.Type.Parameters: var parameters } when index < parameters.Count =>
                 parameters[index].Name.Value,
-            TypeList.FromDeclarations { Declarations: var declarations } when index < declarations.Count =>
+            TypeList.AnnotationParameters { Parameters: var declarations } when index < declarations.Count =>
                 declarations[index].Name.Value,
             TypeList.Instantiation { Inner: var inner } =>
                 GetNameInTypeList(inner, index),

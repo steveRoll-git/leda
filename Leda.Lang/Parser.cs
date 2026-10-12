@@ -1060,6 +1060,29 @@ public class Parser
         return list;
     }
 
+    private Tree.Parameter ParseParameter()
+    {
+        StartTree();
+
+        // name ['?'] [':' type]
+        var name = ParseValueName();
+
+        var optional = Accept(TokenKind.QuestionMark);
+
+        Tree.Type? type = null;
+        if (Accept(TokenKind.Colon))
+        {
+            type = ParseType();
+        }
+
+        return EndTree(new Tree.Parameter(name, type, optional));
+    }
+
+    private List<Tree.Parameter> ParseParameterList()
+    {
+        return ParseDelimitedList(ParseContext.CommaSeparatedList, ParseParameter, true);
+    }
+
     /// <summary>
     /// Parses the parameters and return type of a function.
     /// </summary>
@@ -1067,7 +1090,7 @@ public class Parser
     {
         StartTree();
 
-        // ['<' typeparams '>'] '(' declarations ')' [':' typelist]
+        // ['<' typeparams '>'] '(' paramlist ')' [':' typelist]
 
         List<Tree.Type.Name>? typeParameters = null;
         if (token.Kind == TokenKind.Less)
@@ -1075,16 +1098,13 @@ public class Parser
             typeParameters = ParseTypeParameterList();
         }
 
-        var lParenRange = token.Range;
-        List<Tree.Declaration> parameters = [];
         if (isMethod)
         {
-            // TODO this is probably a bad way of handling `self`. Should be handled by the Binder
-            parameters.Add(new(new Tree.Expression.Name("self") { Range = lParenRange }, null));
+            // TODO 
         }
 
         StartContext(ParseContext.Parens);
-        parameters = ParseDeclarationList(true);
+        var parameters = ParseParameterList();
         EndContext();
 
         List<Tree.Type>? returnTypes = null;

@@ -70,7 +70,7 @@ public class Emitter
         }
     }
 
-    private void EmitDeclarationList(List<Tree.Declaration> declarations)
+    private void EmitDeclarationList<T>(List<T> declarations) where T : Tree.Declaration
     {
         for (var i = 0; i < declarations.Count; i++)
         {

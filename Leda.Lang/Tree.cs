@@ -81,9 +81,9 @@ public abstract class Tree
         /// <summary>
         /// The type of a function.
         /// </summary>
-        public class Function(List<Declaration> parameters, List<Type>? returnTypes, List<Name>? typeParameters) : Type
+        public class Function(List<Parameter> parameters, List<Type>? returnTypes, List<Name>? typeParameters) : Type
         {
-            public List<Declaration> Parameters { get; } = parameters;
+            public List<Parameter> Parameters { get; } = parameters;
             public List<Type>? ReturnTypes { get; } = returnTypes;
             public List<Name>? TypeParameters { get; } = typeParameters;
         }
@@ -555,6 +555,14 @@ public abstract class Tree
     {
         public Expression.Name Name { get; } = name;
         public Type? Type { get; } = type;
+    }
+
+    /// <summary>
+    /// A parameter in a function.
+    /// </summary>
+    public class Parameter(Expression.Name name, Type? type, bool optional) : Declaration(name, type)
+    {
+        public bool Optional { get; } = optional;
     }
 
     /// <summary>
