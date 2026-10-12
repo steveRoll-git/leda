@@ -1,0 +1,14 @@
+local function f(a: number, b?: string, c?: boolean) end
+
+f(123)
+f(123, nil, nil, 456)
+f()
+
+local function g(h: function(a: number, b?: string))
+  h(123)
+  h(123, "a")
+end
+
+local function h(a: number, b?: string, c: boolean) end
+
+type F = function(a: number, b?: string, c: boolean)
