@@ -136,6 +136,7 @@ public abstract class Type
         {
             public Symbol? Symbol { get; } = symbol;
             public Type? CachedType = null;
+            public virtual bool Optional => false;
         }
 
         /// <summary>
@@ -152,6 +153,7 @@ public abstract class Type
         public class TypeStringField(Symbol? symbol, Tree.Type.Table.Field tableField) : StringField(symbol)
         {
             public Tree.Type.Table.Field Field { get; } = tableField;
+            public override bool Optional => Field.Optional;
         }
 
         /// <summary>

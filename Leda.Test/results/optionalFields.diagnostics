@@ -1,0 +1,2 @@
+TypeMismatch(6:7 6:8)
+Error: Key "a" is missing in type '{}' but required in type 'T'.

@@ -870,6 +870,8 @@ public class Parser
 
     private Tree.Type.Table.Field ParseTableTypeField()
     {
+        // (name | '[' type ']') ['?'] ':' type
+
         StartTree();
 
         Tree.Type key;
@@ -884,11 +886,13 @@ public class Parser
             key = ParseTypeStringIdentifier();
         }
 
+        var optional = Accept(TokenKind.QuestionMark);
+
         Expect(TokenKind.Colon);
 
         var value = ParseType();
 
-        return EndTree(new Tree.Type.Table.Field(key, value));
+        return EndTree(new Tree.Type.Table.Field(key, value, optional));
     }
 
     private Tree.Type.Table ParseTableType()

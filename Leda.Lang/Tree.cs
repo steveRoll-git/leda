@@ -65,10 +65,11 @@ public abstract class Tree
             /// <summary>
             /// A pair of key and value types.
             /// </summary>
-            public class Field(Type key, Type value) : Tree
+            public class Field(Type key, Type value, bool optional) : Tree
             {
                 public Type Key { get; } = key;
                 public Type Value { get; } = value;
+                public bool Optional { get; } = optional;
 
                 /// <summary>
                 /// The symbol that this field defines.<br/>

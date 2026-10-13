@@ -1,0 +1,9 @@
+type T = {
+  a: number,
+  b?: string
+}
+
+local t: T = {}
+local u: T = {a = 123}
+u.b = "a"
+u.b = nil

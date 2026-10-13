@@ -256,7 +256,7 @@ public class TypeEvaluator(Project project)
         return GetQueryOrCached(GetTypeOfTableAnnotationUncached, table, tableAnnotationCache);
     }
 
-    internal Type GetTypeOfStringField(Type.Table table, Type.Table.StringField stringField)
+    private Type GetTypeOfStringField(Type.Table table, Type.Table.StringField stringField)
     {
         if (stringField.CachedType == null)
         {
@@ -270,12 +270,9 @@ public class TypeEvaluator(Project project)
             }
         }
 
-        if (table.TypeMap != null)
-        {
-            return InstantiateType(stringField.CachedType!, table.TypeMap);
-        }
-
-        return stringField.CachedType!;
+        return Optional(table.TypeMap != null
+            ? InstantiateType(stringField.CachedType!, table.TypeMap)
+            : stringField.CachedType!, stringField.Optional);
     }
 
     private (Type? type, Symbol? symbol) GetTypeOfStringFieldInTable(Type.Table table, string key)
@@ -1099,8 +1096,13 @@ public class TypeEvaluator(Project project)
     {
         List<string> missingKeys = [];
 
-        foreach (var (targetKey, _) in targetTable.StringLiterals)
+        foreach (var (targetKey, targetField) in targetTable.StringLiterals)
         {
+            if (targetField.Optional)
+            {
+                continue;
+            }
+
             var sourceType = GetTypeOfStringFieldInTable(sourceTable, targetKey).type;
             if (sourceType == null)
             {
@@ -1297,7 +1299,7 @@ public class TypeEvaluator(Project project)
             s += separator;
         }
 
-        foreach (var (key, value) in table.StringLiterals)
+        foreach (var (key, field) in table.StringLiterals)
         {
             if (multiline)
             {
@@ -1305,7 +1307,7 @@ public class TypeEvaluator(Project project)
             }
 
             s +=
-                $"{key}: {TypeToStringIndent(GetTypeOfStringField(table, value), multiline: multiline, indent: newIndent)},{separator}";
+                $"{key}{(field.Optional ? "?" : "")}: {TypeToStringIndent(GetTypeOfStringField(table, field), multiline: multiline, indent: newIndent)},{separator}";
         }
 
         if (multiline)
